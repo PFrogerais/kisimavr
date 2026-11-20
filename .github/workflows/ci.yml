@@ -97,3 +97,7 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure ${{ matrix.ctest_args }}
+
+      - name: Show the KiCad netlist (debug)
+        if: failure() && matrix.name == 'release'
+        run: cat build/tests/kicad/Arduino_UNO.cir || true
