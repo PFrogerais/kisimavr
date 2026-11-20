@@ -24,6 +24,7 @@
 #include "paths.h"
 #include "hd44780.h"
 #include "lcd_device.h"
+#include "rp2040_config.h"
 #include "spi_frame.h"
 #include "uart_script.h"
 #include "vcd.h"
@@ -499,6 +500,28 @@ void testLcdDevice()
     CHECK(dev.controller().lines()[0][0] == 'A');
 }
 
+void testRp2040Config()
+{
+    CHECK(parseGpio("GP25") == 25 && parseGpio("gp0") == 0 && parseGpio("29") == 29);
+    CHECK(parseGpio("GP30") == -1 && parseGpio("PB5") == -1 && parseGpio("") == -1);
+    CHECK(isRp2040Config({ "mcu", "rp2040", "fw", "a.uf2" }));
+    CHECK(!isRp2040Config({ "mcu", "atmega328p" }));
+
+    Rp2040Config cfg;
+    CHECK(parseRp2040Config({ "mcu", "rp2040", "fw", "a.uf2", "io", "GP0", "GP25", "adc", "0",
+                              "2", "uartlog", "u.txt" },
+                            cfg));
+    CHECK(cfg.fwPath == "a.uf2" && cfg.uartLog == "u.txt");
+    CHECK(cfg.ios == (std::vector<int>{ 0, 25 }) && cfg.adc == (std::vector<int>{ 0, 2 }));
+    CHECK(rp2040InputCount(cfg) == 4u && rp2040OutputCount(cfg) == 8u + 12u);
+
+    Rp2040Config bad;
+    CHECK(!parseRp2040Config({ "mcu", "rp2040", "io", "GP1" }, bad));              // No firmware
+    CHECK(!parseRp2040Config({ "mcu", "rp2040", "fw", "a", "io", "GP1", "GP1" }, bad));
+    CHECK(!parseRp2040Config({ "mcu", "rp2040", "fw", "a", "adc", "4" }, bad));
+    CHECK(!parseRp2040Config({ "mcu", "rp2040", "fw", "a", "foo", "1" }, bad));
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -519,6 +542,7 @@ int main(int argc, char *argv[])
     testSpiFrame();
     testHd44780();
     testLcdDevice();
+    testRp2040Config();
     testResolvePath(dir);
     testContentChecks();
     testVcd(dir);

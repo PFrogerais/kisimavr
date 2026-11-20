@@ -36,7 +36,7 @@ message(STATUS "simavr library: ${SIMAVR_LIBRARIES}")
 set(KISIMAVR_WARNINGS -Wall -Wextra -Wpedantic)
 add_library(kisimavr_core STATIC
     src/config.cpp src/hd44780.cpp src/i2c_devices.cpp src/lcd_device.cpp src/paths.cpp
-    src/spi_frame.cpp src/uart_script.cpp src/vcd.cpp)
+    src/rp2040_config.cpp src/spi_frame.cpp src/uart_script.cpp src/vcd.cpp)
 target_include_directories(kisimavr_core PUBLIC include src)
 target_compile_options(kisimavr_core PRIVATE ${KISIMAVR_WARNINGS})
 set_target_properties(kisimavr_core PROPERTIES
@@ -59,6 +59,30 @@ set_target_properties(mcu_cosim PROPERTIES
     PREFIX ""                       # mcu_cosim.so
     CXX_VISIBILITY_PRESET hidden    # Only Cosim_setup is exported
     VISIBILITY_INLINES_HIDDEN ON)
+
+# ---- RP2040 (Raspberry Pi Pico): rp2040js run by an embedded QuickJS -------
+# QuickJS-ng is downloaded at configure time (pinned tag). Offline: pass
+# -DKISIMAVR_RP2040=OFF, or -DFETCHCONTENT_SOURCE_DIR_QUICKJS=<local clone>.
+option(KISIMAVR_RP2040 "RP2040 support (QuickJS + rp2040js)" ON)
+if(KISIMAVR_RP2040)
+    cmake_minimum_required(VERSION 3.28)    # FetchContent EXCLUDE_FROM_ALL / SYSTEM
+    enable_language(C)
+    include(FetchContent)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)    # Linked into the plug-in.
+    FetchContent_Declare(quickjs
+        GIT_REPOSITORY https://github.com/quickjs-ng/quickjs.git
+        GIT_TAG        v0.10.1
+        GIT_SHALLOW    TRUE
+        EXCLUDE_FROM_ALL
+        SYSTEM)
+    FetchContent_MakeAvailable(quickjs)
+    target_sources(mcu_cosim PRIVATE src/rp2040_device.cpp)
+    target_link_libraries(mcu_cosim PRIVATE qjs)
+    target_compile_definitions(mcu_cosim PRIVATE KISIMAVR_HAVE_RP2040=1)
+    message(STATUS "RP2040 support: on (QuickJS-ng v0.10.1, third_party/rp2040js)")
+else()
+    message(STATUS "RP2040 support: off")
+endif()
 
 # ---- Stand-alone runner (tests the plug-in without ngspice) -----------------
 add_executable(cosim_runner tools/main.cpp)

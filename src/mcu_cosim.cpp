@@ -44,6 +44,9 @@
  *   sda / scl  TWI pins rebuilt as open-drain outputs (default PC4 / PC5)
  *   log   1 to print pin activity on stderr (default 0)
  *
+ * With "mcu" "rp2040" the instance is a Raspberry Pi Pico (rp2040js run by
+ * QuickJS, see rp2040_device.h and rp2040_config.h).
+ *
  * With "device" "hd44780" the instance is a character LCD instead of an
  * MCU (see lcd_device.h): 11 inputs RS RW E D0..D7, keys cols, rows,
  * lcdlog, name.
@@ -74,6 +77,10 @@
 #include "cosim_abi.h"
 #include "lcd_device.h"
 #include "mcu_bridge.h"
+#include "rp2040_config.h"
+#ifdef KISIMAVR_HAVE_RP2040
+#include "rp2040_device.h"
+#endif
 
 #define COSIM_EXPORT extern "C" __attribute__((visibility("default")))
 
@@ -127,7 +134,27 @@ COSIM_EXPORT void Cosim_setup(co_info *info)
 
     std::unique_ptr<CosimDevice> bridge;
     bool ok = false;
-    if (kisimavr::isDeviceConfig(args))
+    if (kisimavr::isRp2040Config(args))
+    {
+        // Raspberry Pi Pico: rp2040js in QuickJS.
+        kisimavr::Rp2040Config rp;
+        ok = kisimavr::parseRp2040Config(args, rp);
+        info->in_count  = kisimavr::rp2040InputCount(rp);
+        info->out_count = kisimavr::rp2040OutputCount(rp);
+#ifdef KISIMAVR_HAVE_RP2040
+        if (ok)
+        {
+            auto pico = std::make_unique<kisimavr::Rp2040Device>(std::move(rp));
+            ok = pico->start();
+            bridge = std::move(pico);
+        }
+#else
+        std::fprintf(stderr, "%s RP2040 support not built (cmake -DKISIMAVR_RP2040=ON)\n",
+                     kisimavr::kTag);
+        ok = false;
+#endif
+    }
+    else if (kisimavr::isDeviceConfig(args))
     {
         // A circuit device (character LCD) instead of an MCU.
         kisimavr::LcdConfig lcd;

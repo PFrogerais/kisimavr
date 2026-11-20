@@ -82,6 +82,36 @@ endif()
 add_test(NAME firmware COMMAND ${MAKE_PROGRAM} -C ${FW})
 set_tests_properties(firmware PROPERTIES FIXTURES_SETUP firmware)
 
+# Raspberry Pi Pico firmware: bare metal, built with clang + lld (thumbv6m).
+find_program(PICO_CLANG clang)
+find_program(PICO_LLD ld.lld)
+find_program(PICO_OBJCOPY llvm-objcopy)
+set(PICO_TESTS FALSE)
+if(PICO_CLANG AND PICO_LLD AND PICO_OBJCOPY AND KISIMAVR_RP2040)
+    set(PICO_TESTS TRUE)
+    add_test(NAME firmware_pico COMMAND ${MAKE_PROGRAM} -C ${FW}/pico
+             PICO_CC=${PICO_CLANG} PICO_OBJCOPY=${PICO_OBJCOPY})
+    set_tests_properties(firmware_pico PROPERTIES FIXTURES_SETUP firmware_pico)
+    # GP25 blinks at 1 kHz, UART0 frames on GP0, a line received on GP1
+    # (runner -u: frames on input 0) is answered.
+    kisimavr_test(runner.pico FIXTURE firmware_pico TIMEOUT 300
+        COMMAND ${RUN} -t 0.012 -u [[115200,Bonjour\n]] ${SO} -- mcu rp2040
+                fw ${FW}/pico/pico_demo.bin io GP1 GP0 GP25
+        EXPECT [[rp2040 \(rp2040js in QuickJS\)]] [[UART0> Pico pret]]
+               [[UART0> Recu : Bonjour]] [[UART0> ADC0 = ]]
+               [[out8: 2[0-9] changes, [0-9]+ rising edges, mean period 0\.99]]
+               [[out4: [1-9][0-9]+ changes]]
+        REJECT [[setup failed]] [[RP2040: ]])
+    kisimavr_test(args.pico_missing_fw
+        COMMAND ${RUN} -t 0.001 ${SO} -- mcu rp2040 io GP25
+        EXPECT [[missing firmware]] [[setup failed]])
+    kisimavr_test(args.pico_bad_gpio
+        COMMAND ${RUN} -t 0.001 ${SO} -- mcu rp2040 fw x.uf2 io GP30
+        EXPECT [[invalid or repeated GPIO 'GP30']] [[setup failed]])
+else()
+    message(STATUS "Pico tests disabled: clang, ld.lld, llvm-objcopy or KISIMAVR_RP2040 missing")
+endif()
+
 # The "uartin" file is read after the firmware: needs a built firmware.
 kisimavr_test(args.bad_uartin FIXTURE firmware
     COMMAND ${RUN} -t 0.001 ${SO} -- hex ${FW}/blink.hex
@@ -193,6 +223,17 @@ if(Python3_FOUND)
         set_tests_properties(models.${name}_compare PROPERTIES FIXTURES_REQUIRED model_${name})
     endfunction()
 
+    # Raspberry Pi Pico model.
+    kisimavr_test(models.pico_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
+        COMMAND ${Python3_EXECUTABLE} make_pico_lib.py --relative --so ../build/mcu_cosim.so
+                --fw ../firmware/pico/pico_demo.bin -o ${CMAKE_CURRENT_BINARY_DIR}/models/pico.lib
+        EXPECT [[written]])
+    add_test(NAME models.pico_compare
+        COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/models/pico.lib
+                ${PROJECT_SOURCE_DIR}/ngspice/pico.lib)
+    set_tests_properties(models.pico_up_to_date PROPERTIES FIXTURES_SETUP model_pico)
+    set_tests_properties(models.pico_compare PROPERTIES FIXTURES_REQUIRED model_pico)
+
     # Character LCD model.
     kisimavr_test(models.lcd1602_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
         COMMAND ${Python3_EXECUTABLE} make_lcd_lib.py --relative --so ../build/mcu_cosim.so
@@ -299,6 +340,16 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                [=[LCD> \[Bonjour STI2D   \] \[A0 = [0-4]\.[0-9][0-9] V     \]]=]
         REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[warning]] [[Segmentation]])
     set_tests_properties(ngspice.lcd PROPERTIES LABELS ngspice)
+    if(PICO_TESTS)
+        # Pico in SPICE: ADC0 on a 1.055 V divider, button, LED, UART frames.
+        kisimavr_test(ngspice.pico FIXTURE firmware_pico TIMEOUT 600
+            WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+            COMMAND ${NGSPICE} -b pico_test.cir
+            EXPECT [[UART0> Pico pret]]
+                   [=[UART0> ADC0 = 1[23][0-9][0-9] \(1\.0[4-7] V\)]=]
+            REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
+        set_tests_properties(ngspice.pico PROPERTIES LABELS ngspice)
+    endif()
 elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
 endif()

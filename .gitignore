@@ -16,3 +16,4 @@ fp-info-cache
 kicad/projects/*/atmega328p_cosim.lib
 kicad/projects/*/atmega328p_full.lib
 kicad/projects/*/lcd1602.lib
+firmware/pico/*.bin
