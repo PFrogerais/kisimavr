@@ -29,6 +29,7 @@ GP26..GP29 (ADC0..3) also feed the comparators of the SAR model
 
 import argparse
 import os
+import re
 import sys
 
 GPIOS = [f"GP{i}" for i in range(23)] + ["GP26", "GP27", "GP28"]
@@ -250,8 +251,9 @@ def main():
         n = "".join(ch for ch in a.name if ch.isalnum() or ch == "_")
         text = (text.replace(f".subckt {sub} ", f".subckt {sub}_{n.upper()} ")
                     .replace(f".ends {sub}", f".ends {sub}_{n.upper()}")
-                    .replace(f"Sim.Name = {sub},", f"Sim.Name = {sub}_{n.upper()},")
-                    .replace(f"{tag}_", f"{tag}{n.lower()}_"))
+                    .replace(f"Sim.Name = {sub},", f"Sim.Name = {sub}_{n.upper()},"))
+        text = re.sub(rf"\b{tag}_(core|in|lvl|bit|drv|pul|cmp|led)\b",
+                      lambda m: f"{tag}{n.lower()}_{m.group(1)}", text)
     if a.output:
         with open(a.output, "w") as f:
             f.write(text)
