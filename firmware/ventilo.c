@@ -95,18 +95,10 @@ static uint16_t ntcTenths(uint32_t ohm)
     return (uint16_t)(50u * (NTC_COUNT - 1u));    /* 80 degC or hotter */
 }
 
+/* Duty cycle of ENA (OC0A); 0 % leaves a 62 ns spike per period, negligible. */
 static void motorDuty(uint8_t percent)
 {
-    if (percent == 0u)
-    {
-        TCCR0A &= (uint8_t)~_BV(COM0A1);          /* Output off (no spike) */
-        PORTD  &= (uint8_t)~_BV(PORTD6);
-    }
-    else
-    {
-        OCR0A   = (uint8_t)((uint16_t)percent * 255u / 100u);
-        TCCR0A |= _BV(COM0A1);
-    }
+    OCR0A = (uint8_t)((uint16_t)percent * 255u / 100u);
 }
 
 int main(void)
@@ -114,7 +106,8 @@ int main(void)
     DDRD |= _BV(DDD6) | _BV(DDD7);                /* ENA, IN1 */
     DDRB |= _BV(DDB0);                            /* IN2 */
     PORTD |= _BV(PORTD7);                         /* IN1 = 1, IN2 = 0 */
-    TCCR0A = _BV(WGM01) | _BV(WGM00);             /* Fast PWM */
+    TCCR0A = _BV(COM0A1) | _BV(WGM01) | _BV(WGM00);   /* Fast PWM on OC0A */
+    OCR0A  = 0;
     TCCR0B = _BV(CS01) | _BV(CS00);               /* clk / 64: 976 Hz */
     ADMUX  = _BV(REFS0);                          /* AVcc, A0 */
     ADCSRA = _BV(ADEN) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);

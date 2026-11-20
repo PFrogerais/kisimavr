@@ -34,7 +34,6 @@ meas tran vitesse avg v(speed) from=0.27 to=0.3
 meas tran rapport_ena avg v(ena) from=0.27 to=0.3
 meas tran v_in1 avg v(in1) from=0.27 to=0.3
 meas tran v_in2 avg v(in2) from=0.27 to=0.3
-meas tran u_moteur avg v(m1,m2) from=0.27 to=0.3
 plot v(speed) v(xt.temp)/10 v(ena)
 .endc
 .end
