@@ -1,0 +1,36 @@
+simAVR_lcd - afficheur LCD 16x2 (HD44780) pilote par l'ATmega328P
+=================================================================
+
+Modeles : generes par "cmake --build build --target demos" (tools/setup_demos.py) :
+  - atmega328p_full.lib : U1 = ATmega328P, firmware firmware/lcd_demo.hex
+  - lcd1602.lib         : DS1 = afficheur 16x2 (symbole officiel
+                          Display_Character:WC1602A, empreinte Display:WC1602A)
+
+L'afficheur est un deuxieme composant co-simule (meme plug-in mcu_cosim.so,
+"device" "hd44780") : il lit RS, R/W, E et D0..D7 dans le circuit, comme le
+vrai module, et execute les instructions du controleur HD44780.
+
+Cablage (exemples LiquidCrystal : LiquidCrystal lcd(12, 11, 5, 4, 3, 2)) :
+  RS = D12 (PB4)  E = D11 (PB3)  D4 = D5  D5 = D4  D6 = D3  D7 = D2
+  R/W a la masse, D0..D3 non connectees (interface 4 bits).
+  Contraste VO : pont R1/R2 (a la place du potentiometre de 10 kOhm).
+  Retroeclairage : R3 220 Ohm.
+  A0 : rampe 0,5 -> 4,5 V (V2 + R4), affichee sur la 2e ligne.
+
+Firmware : firmware/lcd_demo.c ou firmware/lcd_demo/lcd_demo.ino
+  ligne 1 "Bonjour STI2D", ligne 2 "A0 = 2.50 V" (toutes les ~3 ms)
+  La version Arduino attend 50 ms dans lcd.begin() : simuler 70 ms au moins.
+
+Ou voir quoi ?
+  - Terminal (KiCad lance depuis un terminal) : chaque ecran stable
+      [mcu_cosim] t=... s LCD> [Bonjour STI2D   ] [A0 = 2.50 V     ]
+  - lcd_log.txt (ce dossier) : tous les ecrans, encadres, avec l'instant
+  - Simulateur : sonder LCD_E, LCD_RS, LCD_D4..LCD_D7 (zoom sur 15,0 - 15,3 ms)
+Verifications du datasheet (message "warning") : impulsion E < 230 ns,
+donnees changees moins de 80 ns avant la chute de E, instruction envoyee
+pendant que l'afficheur est occupe (37 us, 1,52 ms pour clear/home),
+premiere instruction moins de 15 ms apres la mise sous tension.
+
+Simulation : transitoire, pas 0.5u, duree 30m,
+             "Sauvegarder tous les courants" decoche.
+Guide detaille : README.md du dossier parent.

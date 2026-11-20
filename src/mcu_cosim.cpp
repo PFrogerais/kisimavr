@@ -44,6 +44,10 @@
  *   sda / scl  TWI pins rebuilt as open-drain outputs (default PC4 / PC5)
  *   log   1 to print pin activity on stderr (default 0)
  *
+ * With "device" "hd44780" the instance is a character LCD instead of an
+ * MCU (see lcd_device.h): 11 inputs RS RW E D0..D7, keys cols, rows,
+ * lcdlog, name.
+ *
  * Modules:
  *   config.*      sim_args parsing, port counts
  *   paths.*       KiCad lower-case path recovery, guarded output files
@@ -54,6 +58,8 @@
  *   i2c_bus.*     TWI master: virtual slaves, transaction log, SDA/SCL
  *   i2c_devices.* LM75 and 24C02 protocol logic (simavr independent)
  *   vcd.*         VCD trace of the pins
+ *   spi_bus.*     SPI master on the pins; spi_frame.* edge timing
+ *   lcd_device.*  HD44780 LCD as a circuit part; hd44780.* controller logic
  * This file only holds the d_cosim entry point.
  */
 
@@ -66,6 +72,7 @@
 #include "common.h"
 #include "config.h"
 #include "cosim_abi.h"
+#include "lcd_device.h"
 #include "mcu_bridge.h"
 
 #define COSIM_EXPORT extern "C" __attribute__((visibility("default")))
@@ -73,11 +80,11 @@
 namespace
 {
 
-using kisimavr::McuBridge;
+using kisimavr::CosimDevice;
 
-McuBridge *bridgeOf(co_info *info)
+CosimDevice *bridgeOf(co_info *info)
 {
-    return static_cast<McuBridge *>(info->handle);
+    return static_cast<CosimDevice *>(info->handle);
 }
 
 void cosimStep(co_info *info)
@@ -87,7 +94,7 @@ void cosimStep(co_info *info)
 
 void cosimInput(co_info *info, unsigned int index, Digital_t *value)
 {
-    bridgeOf(info)->input(index, value);
+    bridgeOf(info)->input(info, index, value);
 }
 
 void cosimCleanup(co_info *info)
@@ -115,16 +122,34 @@ COSIM_EXPORT void Cosim_setup(co_info *info)
         args.emplace_back(info->sim_argv[i] != nullptr ? info->sim_argv[i] : "");
     }
 
-    kisimavr::Config cfg;
-    const bool parsed = kisimavr::parseConfig(args, cfg);
-
-    info->in_count    = kisimavr::inputPortCount(cfg);
-    info->out_count   = kisimavr::outputPortCount(cfg);
     info->inout_count = 0;
     info->method      = Normal;
 
-    auto bridge = std::make_unique<McuBridge>(std::move(cfg));
-    if (!parsed || !bridge->start())
+    std::unique_ptr<CosimDevice> bridge;
+    bool ok = false;
+    if (kisimavr::isDeviceConfig(args))
+    {
+        // A circuit device (character LCD) instead of an MCU.
+        kisimavr::LcdConfig lcd;
+        ok = kisimavr::parseLcdConfig(args, lcd);
+        info->in_count  = kisimavr::LcdDevice::kInputs;
+        info->out_count = 0;
+        if (ok)
+        {
+            bridge = std::make_unique<kisimavr::LcdDevice>(std::move(lcd));
+        }
+    }
+    else
+    {
+        kisimavr::Config cfg;
+        const bool parsed = kisimavr::parseConfig(args, cfg);
+        info->in_count  = kisimavr::inputPortCount(cfg);
+        info->out_count = kisimavr::outputPortCount(cfg);
+        auto mcu = std::make_unique<kisimavr::McuBridge>(std::move(cfg));
+        ok = parsed && mcu->start();
+        bridge = std::move(mcu);
+    }
+    if (!ok)
     {
         std::fprintf(stderr, "%s setup failed: MCU outputs stay at their initial value\n",
                      kisimavr::kTag);

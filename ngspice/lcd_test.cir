@@ -1,0 +1,35 @@
+* Complete ATmega328P model driving a character LCD 16x2 (HD44780, 4 bits)
+* Run from this folder:  ngspice lcd_test.cir
+* Firmware: ../firmware/lcd_demo.hex (make -C ../firmware)
+* The display is a second co-simulated part (mcu_cosim.so, "device"
+* "hd44780"): it decodes RS, E and D4..D7 from the circuit and prints each
+* screen ("LCD> [...] [...]") and ../lcd_log.txt.
+
+* Models generated for this firmware and for the display:
+*   python3 ../tools/make_atmega328p_lib.py --relative --hex ../firmware/lcd_demo.hex \
+*       --so ../build/mcu_cosim.so --i2c= -o atmega328p_lcd.lib
+*   python3 ../tools/make_lcd_lib.py --relative --so ../build/mcu_cosim.so -o lcd1602.lib
+.include atmega328p_lcd.lib
+.include lcd1602.lib
+
+*      D0  D1  D2  D3  D4  D5  D6  D7  D8  D9  D10 D11 D12 D13 A0  A1  A2  A3  A4  A5
+X1     nd0 txd ld7 ld6 ld5 ld4 nd6 nd7 nb0 nb1 nb2 le  lrs nb5 a0  na1 na2 na3 na4 na5 ATMEGA328P
+
+*      VSS VDD VO  RS  RW E  D0  D1  D2  D3  D4  D5  D6  D7  LED+ LED-
+XLCD   0   vdd vo  lrs 0  le ld0 ld1 ld2 ld3 ld4 ld5 ld6 ld7 bla  0    LCD1602
+
+Vdd vdd 0 5
+* Contrast: 10k potentiometer at mid-course, backlight through 220 ohm
+Rvo1 vdd vo 5k
+Rvo2 vo 0 5k
+Rbl vdd bla 220
+
+* "Potentiometer" on A0: 0.5 V -> 4.5 V in 30 ms, through 10k
+Vpot pot 0 PULSE(0.5 4.5 0 30m 1u 1 2)
+Rpot pot a0 10k
+
+.control
+tran 0.5u 30m
+plot v(le) v(lrs)+6 v(ld4)+12 v(ld5)+18 v(ld6)+24 v(ld7)+30 xlimit 15m 15.3m
+.endc
+.end

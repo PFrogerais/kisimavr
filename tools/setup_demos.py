@@ -58,6 +58,14 @@ def main():
                     "--so", so, "-o", os.path.join(PROJECTS, "simAVR_spi", "atmega328p_full.lib")],
                    check=True)
 
+    # Character LCD demo: ATmega328P + HD44780 display (second d_cosim part).
+    lcd = os.path.join(PROJECTS, "simAVR_lcd")
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_atmega328p_lib.py"),
+                    "--hex", os.path.join(ROOT, "firmware", "lcd_demo.hex"), "--i2c=",
+                    "--so", so, "-o", os.path.join(lcd, "atmega328p_full.lib")], check=True)
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_lcd_lib.py"),
+                    "--so", so, "-o", os.path.join(lcd, "lcd1602.lib")], check=True)
+
     # Arduino UNO board (official schematic): uno_demo firmware, and the
     # terminal model rebuilt from terminal.txt (the text sent to RX).
     uno = os.path.join(PROJECTS, "Arduino_UNO")

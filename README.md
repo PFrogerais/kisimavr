@@ -23,6 +23,7 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | UART0 | émission : texte dans le terminal et un fichier, trames réelles sur TXD (PD1) ; réception : fichier de commandes horodaté ou trames venant du circuit sur RXD (PD0) |
 | I²C (TWI) | esclaves virtuels LM75 et EEPROM 24C02, journal des transactions, signaux SDA/SCL réels en drain ouvert |
 | SPI | maître sur les vraies broches (SCK, MOSI, MISO), 4 modes, ordre des bits, débit de SPCR ; esclaves = composants du schéma (modèle 74HC595 fourni) ; journal des octets |
+| Afficheur LCD | module 16x2 / 20x4 (HD44780) comme composant du schéma : écran affiché dans le terminal et un fichier, vérification des temps du datasheet |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
 
 ---
@@ -181,6 +182,7 @@ les essais en simulation.
 | `i2c_lm75.c` / `i2c_lm75/i2c_lm75.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `i2c_test.cir` | `simAVR_i2c` | bus I²C : capteur LM75, EEPROM, pull-ups |
 | `uart_cmd.c` / `uart_cmd/uart_cmd.ino` | `--uartin` ou RXD câblé | `uart_rx_test.cir` (2 MCU) | — | réception série : commandes `LED ON` / `LED OFF` |
 | `spi_595.c` / `spi_595/spi_595.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `spi_test.cir` | `simAVR_spi` (symboles officiels) | SPI maître : 74HC595, chenillard 8 LED, relecture par MISO |
+| `lcd_demo.c` / `lcd_demo/lcd_demo.ino` | `atmega328p_full.lib` + `lcd1602.lib` → `LCD1602` | `lcd_test.cir` | `simAVR_lcd` (symboles officiels) | afficheur 16x2 en 4 bits, tension de A0 |
 | `uno_demo.c` / `uno_demo/uno_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | netlist exportée par `kicad-cli` | `Arduino_UNO` (schéma officiel UNO R3) | blink + UART RX/TX avec un terminal simulé (`terminal.txt`) |
 
 Les tests ngspice se lancent depuis `ngspice/` (chemins relatifs).
@@ -279,6 +281,33 @@ un **74HC595** en XSPICE numérique (registre à décalage, verrou, ~OE,
 (125 ns à fosc/4, la valeur par défaut de `SPI.begin()`). Pour les esclaves
 lents, choisir fosc/16 (1 MHz) ou moins. Le mode esclave de l'AVR (MSTR = 0)
 n'est pas émulé.
+
+### 6.4 ter Afficheur LCD (HD44780)
+
+L'afficheur est un **deuxième composant co-simulé** : le même plug-in,
+chargé avec `"device" "hd44780"`, lit RS, R/W, E et D0..D7 dans le circuit
+et exécute les instructions du contrôleur à chaque front descendant de E
+(interfaces 8 et 4 bits, séquence d'initialisation de `LiquidCrystal`,
+effacement, curseur, décalage, CGRAM). Il n'a pas de sortie.
+
+- **Écran** : quand il ne change plus pendant 1 ms, il s'affiche :
+  `[mcu_cosim] t=0.0175 s LCD> [Bonjour STI2D   ] [A0 = 2.50 V     ]`,
+  et s'ajoute, encadré, dans `lcd_log.txt`. Caractères de la ROM A00
+  (`°` = code 223, `¥`, flèches) ; caractères CGRAM affichés `#`.
+- **Datasheet** (avertissement `warning`, une fois par type) : impulsion E
+  < 230 ns, données changées < 80 ns avant la chute de E, instruction
+  envoyée pendant que l'afficheur est occupé (37 µs ; 1,52 ms pour clear et
+  home), première instruction < 15 ms après la mise sous tension, lecture
+  (R/W = 1, non modélisée : relier R/W à la masse).
+- **Modèle** : `tools/make_lcd_lib.py -o lcd1602.lib` (options `--cols`,
+  `--rows` pour un 20x4, `--log`) ; sous-circuit `LCD1602`, broches dans
+  l'ordre du module, compatible avec le symbole officiel
+  `Display_Character:WC1602A`. Côté électrique : seuils CMOS, pull-ups
+  internes, consommation, LED de rétroéclairage.
+- **Rang `d_cosim`** : l'afficheur prend le rang 10 (`--irreversible`) ;
+  chaque composant co-simulé d'une netlist doit avoir le sien.
+
+Exemple : `ngspice/lcd_test.cir` et le projet `simAVR_lcd`.
 
 ### 6.5 UART0 et chronogrammes
 
@@ -439,6 +468,8 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `src/sar_adc.*`, `src/uart0.*` | convertisseur SAR, UART0 (console, log, trames TXD, réception) |
 | `src/uart_script.*` | lecture du fichier `uartin` (sans simavr, testée unitairement) |
 | `src/spi_bus.*`, `src/spi_frame.*` | SPI maître : trames sur SCK/MOSI, lecture de MISO, journal ; chronologie des fronts (testée unitairement) |
+| `src/lcd_device.*`, `src/hd44780.*` | afficheur LCD co-simulé : entrées RS/E/D, écran, journal ; contrôleur HD44780 (testé unitairement) |
+| `tools/make_lcd_lib.py` | génère le modèle `LCD1602` (ou 20x4) pour un projet |
 | `kicad/74hc595.lib` | modèle XSPICE du 74HC595 (symbole officiel `74xx:74HC595`) |
 | `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
 | `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
@@ -448,7 +479,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `tools/make_atmega328p_lib.py` | génère le modèle `ATMEGA328P` pour un projet |
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
-| `kicad/projects/` | 7 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
+| `kicad/projects/` | 8 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
 | `tools/make_terminal_lib.py` | modèle SPICE d'un terminal série (trames sur TXD) depuis un fichier texte |
 | `tools/setup_demos.py` | écrit les `.lib` des projets de démo (chemins de la machine) |
 | `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |

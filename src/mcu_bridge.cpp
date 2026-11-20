@@ -174,7 +174,7 @@ void McuBridge::step(co_info *info)
     }
 }
 
-void McuBridge::input(unsigned int index, const Digital_t *value)
+void McuBridge::input(co_info * /*info*/, unsigned int index, const Digital_t *value)
 {
     const size_t pins = m_cfg.inputs.size() + m_cfg.ios.size();
     if (index >= pins)

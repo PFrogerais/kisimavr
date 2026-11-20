@@ -193,6 +193,17 @@ if(Python3_FOUND)
         set_tests_properties(models.${name}_compare PROPERTIES FIXTURES_REQUIRED model_${name})
     endfunction()
 
+    # Character LCD model.
+    kisimavr_test(models.lcd1602_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
+        COMMAND ${Python3_EXECUTABLE} make_lcd_lib.py --relative --so ../build/mcu_cosim.so
+                -o ${CMAKE_CURRENT_BINARY_DIR}/models/lcd1602.lib
+        EXPECT [[written]])
+    add_test(NAME models.lcd1602_compare
+        COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/models/lcd1602.lib
+                ${PROJECT_SOURCE_DIR}/ngspice/lcd1602.lib)
+    set_tests_properties(models.lcd1602_up_to_date PROPERTIES FIXTURES_SETUP model_lcd1602)
+    set_tests_properties(models.lcd1602_compare PROPERTIES FIXTURES_REQUIRED model_lcd1602)
+
     # Terminal of the Arduino UNO project, rebuilt from its terminal.txt.
     set(uno ${PROJECT_SOURCE_DIR}/kicad/projects/Arduino_UNO)
     kisimavr_test(models.uno_terminal_up_to_date
@@ -209,6 +220,7 @@ if(Python3_FOUND)
     kisimavr_model_test(i2c_lib ngspice/atmega328p_i2c.lib --hex ../firmware/i2c_lm75.hex
                         --lm75temp 20 --lm75rate 1000)
     kisimavr_model_test(spi_lib ngspice/atmega328p_spi.lib --hex ../firmware/spi_595.hex --i2c=)
+    kisimavr_model_test(lcd_mcu_lib ngspice/atmega328p_lcd.lib --hex ../firmware/lcd_demo.hex --i2c=)
     kisimavr_model_test(uart_a_lib ngspice/atmega328p_a.lib --name A
                         --hex ../firmware/uart_adc.hex --uartlog ../uart_log_a.txt --i2c=)
     kisimavr_model_test(uart_b_lib ngspice/atmega328p_b.lib --name B
@@ -279,6 +291,14 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                [[UART0> Q = 80 +relu = 40]]
         REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[during a transfer]])
     set_tests_properties(ngspice.spi PROPERTIES LABELS ngspice)
+    # Character LCD as a second co-simulated part, wired like LiquidCrystal.
+    kisimavr_test(ngspice.lcd FIXTURE firmware TIMEOUT 300
+        WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+        COMMAND ${NGSPICE} -b lcd_test.cir
+        EXPECT [[LCD: HD44780 16x2]]
+               [[LCD> \[Bonjour STI2D   \] \[A0 = [0-4]\.[0-9][0-9] V     \]]]
+        REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[warning]] [[Segmentation]])
+    set_tests_properties(ngspice.lcd PROPERTIES LABELS ngspice)
 elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
 endif()
@@ -341,6 +361,22 @@ if(KICAD_CLI AND Python3_FOUND)
             REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[during a transfer]])
         set_tests_properties(ngspice.kicad_spi PROPERTIES LABELS "ngspice;kicad"
                              FIXTURES_REQUIRED "firmware;demos;spi_netlist")
+
+        # LCD project: the display is a second co-simulated part.
+        set(lcd_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simAVR_lcd.cir)
+        add_test(NAME kicad.lcd_netlist
+            COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${lcd_net}
+                    -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/simAVR_lcd/simAVR_lcd.kicad_sch
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+        set_tests_properties(kicad.lcd_netlist PROPERTIES FIXTURES_SETUP lcd_netlist
+                             LABELS kicad TIMEOUT 120)
+        kisimavr_test(ngspice.kicad_lcd TIMEOUT 300
+            WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/simAVR_lcd
+            COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/simAVR_lcd.raw ${lcd_net}
+            EXPECT [[LCD> \[Bonjour STI2D   \] \[A0 = [0-4]\.[0-9][0-9] V     \]]]
+            REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[warning]])
+        set_tests_properties(ngspice.kicad_lcd PROPERTIES LABELS "ngspice;kicad"
+                             FIXTURES_REQUIRED "firmware;demos;lcd_netlist")
     endif()
 else()
     message(STATUS "KiCad tests disabled: kicad-cli not found")

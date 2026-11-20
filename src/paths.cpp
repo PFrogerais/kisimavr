@@ -74,6 +74,11 @@ bool looksLikeVcd(const std::string &head)
     return head.rfind("$timescale", 0) == 0;
 }
 
+bool looksLikeLcdLog(const std::string &head)
+{
+    return head.rfind("# kisimavr LCD", 0) == 0;
+}
+
 bool looksLikeUartLog(const std::string &head)
 {
     size_t lineLength = 0;

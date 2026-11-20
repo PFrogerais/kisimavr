@@ -22,6 +22,8 @@
 #include "config.h"
 #include "i2c_devices.h"
 #include "paths.h"
+#include "hd44780.h"
+#include "lcd_device.h"
 #include "spi_frame.h"
 #include "uart_script.h"
 #include "vcd.h"
@@ -371,6 +373,132 @@ void testSpiFrame()
     CHECK(spiLogText({ 0xA5, 0x3C }, { 0x00, 0xA5 }) == "MOSI A5 3C | MISO 00 A5");
 }
 
+/** Sends one byte as LiquidCrystal does in 4-bit mode (two strobes). */
+void lcdWrite4(Hd44780 &lcd, bool rs, uint8_t value, double &t)
+{
+    lcd.strobe(rs, false, static_cast<uint8_t>(value & 0xF0u), t);
+    lcd.strobe(rs, false, static_cast<uint8_t>(value << 4), t + 2e-6);
+    t += (value <= 0x03u && !rs) ? 2e-3 : 100e-6;
+}
+
+/** LiquidCrystal::begin(16, 2): 50 ms, 0x3 x 3, 0x2, then 4-bit commands. */
+void lcdBegin(Hd44780 &lcd, double &t)
+{
+    t = 50e-3;
+    for (const double wait : { 4.5e-3, 4.5e-3, 150e-6, 100e-6 })
+    {
+        const uint8_t nibble = (wait == 100e-6) ? 0x20u : 0x30u;    // Last one: 4-bit.
+        lcd.strobe(false, false, nibble, t);
+        t += wait;
+    }
+    for (const uint8_t cmd : { uint8_t{ 0x28 }, uint8_t{ 0x0C }, uint8_t{ 0x01 }, uint8_t{ 0x06 } })
+    {
+        lcdWrite4(lcd, false, cmd, t);
+    }
+}
+
+void lcdPrint(Hd44780 &lcd, const char *text, double &t)
+{
+    for (const char *p = text; *p != '\0'; ++p)
+    {
+        lcdWrite4(lcd, true, static_cast<uint8_t>(*p), t);
+    }
+}
+
+void testHd44780()
+{
+    Hd44780 lcd(16, 2);
+    double t = 0.0;
+    lcdBegin(lcd, t);
+    CHECK(lcd.fourBit());
+    CHECK(lcd.displayOn());
+    CHECK(lcd.warnings().empty());
+
+    lcdPrint(lcd, "Bonjour STI2D", t);
+    lcdWrite4(lcd, false, 0xC0, t);                  // setCursor(0, 1)
+    lcdPrint(lcd, "T = 23", t);
+    lcdWrite4(lcd, true, 0xDF, t);                   // Degree sign
+    lcdPrint(lcd, "C", t);
+    std::vector<std::string> rows = lcd.lines();
+    CHECK(rows.size() == 2u);
+    CHECK(rows[0] == "Bonjour STI2D   ");
+    CHECK(rows[1] == "T = 23\xC2\xB0" "C        ");
+    CHECK(lcd.warnings().empty());
+
+    // Display shift left by one: the first character disappears.
+    lcdWrite4(lcd, false, 0x18, t);
+    CHECK(lcd.lines()[0] == "onjour STI2D    ");
+    // Clear, then a command right after it (busy for 1.52 ms): warning.
+    lcd.strobe(false, false, 0x00, t);
+    lcd.strobe(false, false, 0x10, t + 1e-6);        // 0x01 = clear
+    lcd.strobe(false, false, 0x80, t + 10e-6);
+    lcd.strobe(false, false, 0x00, t + 11e-6);       // 0x80, too early
+    CHECK(lcd.lines()[0] == std::string(16, ' '));
+    CHECK(lcd.warnings().size() == 1u && lcd.warnings()[0].find("busy") != std::string::npos);
+
+    // Too early after power-up, and a read cycle.
+    Hd44780 early(20, 4);
+    early.strobe(false, false, 0x30, 1e-3);
+    early.strobe(false, true, 0x00, 2e-3);
+    CHECK(early.warnings().size() == 2u);
+    CHECK(early.lines().size() == 4u && early.lines()[3].size() == 20u);
+
+    // 20x4: row 2 continues row 0 in DDRAM (address 0x14).
+    Hd44780 big(20, 4);
+    lcdBegin(big, t);
+    lcdWrite4(big, false, 0x80 | 0x14, t);
+    lcdPrint(big, "ligne 3", t);
+    CHECK(big.lines()[2].rfind("ligne 3", 0) == 0);
+
+    // Device keys.
+    LcdConfig cfg;
+    CHECK(isDeviceConfig({ "device", "hd44780" }));
+    CHECK(!isDeviceConfig({ "hex", "a.hex" }));
+    CHECK(parseLcdConfig({ "device", "hd44780", "cols", "20", "rows", "4" }, cfg) &&
+          cfg.cols == 20 && cfg.rows == 4);
+    CHECK(!parseLcdConfig({ "device", "ssd1306" }, cfg));
+    CHECK(!parseLcdConfig({ "device", "hd44780", "rows", "5" }, cfg));
+}
+
+/** The LCD device decodes E falling edges from its 11 inputs. */
+void testLcdDevice()
+{
+    LcdConfig cfg;
+    LcdDevice dev(cfg);
+    co_info info{};
+    double t = 50e-3;
+    auto set = [&](unsigned int pin, bool level) {
+        Digital_t v{ level ? ONE : ZERO, STRONG };
+        info.vtime = t;
+        dev.input(&info, pin, &v);
+    };
+    // RS=0, 8-bit transfer 0x38 (8-bit, 2 lines) then 0x0C (display on).
+    for (const uint8_t cmd : { uint8_t{ 0x38 }, uint8_t{ 0x0C } })
+    {
+        for (unsigned int k = 0; k < 8; ++k)
+        {
+            set(3 + k, ((cmd >> k) & 1u) != 0u);
+        }
+        t += 1e-6;
+        set(2, true);
+        t += 1e-6;
+        set(2, false);
+        t += 100e-6;
+    }
+    // Data 'A' (0x41) with RS = 1.
+    set(0, true);
+    for (unsigned int k = 0; k < 8; ++k)
+    {
+        set(3 + k, ((0x41 >> k) & 1u) != 0u);
+    }
+    t += 1e-6;
+    set(2, true);
+    t += 1e-6;
+    set(2, false);
+    CHECK(dev.controller().displayOn());
+    CHECK(dev.controller().lines()[0][0] == 'A');
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -389,6 +517,8 @@ int main(int argc, char *argv[])
     testEeprom();
     testUartScript();
     testSpiFrame();
+    testHd44780();
+    testLcdDevice();
     testResolvePath(dir);
     testContentChecks();
     testVcd(dir);

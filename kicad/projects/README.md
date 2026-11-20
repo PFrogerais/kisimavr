@@ -18,13 +18,14 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `simAVR_uart` | `firmware/uart_adc.c` | console série, trames sur TXD |
 | `simAVR_i2c` | `firmware/i2c_lm75.c` ou `i2c_lm75/i2c_lm75.ino` | bus I²C : capteur LM75, EEPROM 24C02, pull-ups 4,7 kΩ (symbole officiel) |
 | `simAVR_spi` | `firmware/spi_595.c` ou `spi_595/spi_595.ino` | SPI maître : 74HC595 (symbole officiel, modèle XSPICE) et 8 LED en chenillard, relecture par MISO |
+| `simAVR_lcd` | `firmware/lcd_demo.c` ou `lcd_demo/lcd_demo.ino` | afficheur LCD 16x2 (symbole officiel WC1602A) en 4 bits, câblage `LiquidCrystal`, tension de A0 |
 | `Arduino_UNO` | `firmware/uno_demo.c` ou `uno_demo/uno_demo.ino` | carte UNO R3 d'après le schéma officiel : LED L (tampon LMV358), reset, liaison série 1 kΩ vers le 16U2, connecteurs ; blink + UART RX/TX |
 
 *Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la
 copie du symbole intégrée au schéma par celle de votre bibliothèque KiCad,
 sans changer le câblage ni le modèle de simulation.
 
-`simAVR_atmega328p`, `simAVR_i2c`, `simAVR_spi` et `Arduino_UNO` utilisent le symbole et
+`simAVR_atmega328p`, `simAVR_i2c`, `simAVR_spi`, `simAVR_lcd` et `Arduino_UNO` utilisent le symbole et
 l'empreinte officiels de l'ATmega328P-P ; les trois autres utilisent des symboles
 simplifiés à 2–3 broches, faits uniquement pour la simulation.
 
@@ -207,6 +208,21 @@ montage.
    correspondance des broches comme dans `simAVR_spi` (bouton *Affecter*).
 3. Simuler : le terminal affiche chaque octet (`SPI> MOSI 04 | MISO 02`) ;
    sonder SCK, MOSI et MISO en zoomant sur quelques microsecondes.
+
+## Étape 3 bis ¾ — Ajouter un afficheur LCD
+
+1. Générer le modèle de l'afficheur dans le dossier du projet :
+   ```bash
+   python3 ~/dev/kisimavr/tools/make_lcd_lib.py -o ~/kicad/mon_projet/lcd1602.lib
+   ```
+   (`--cols 20 --rows 4` pour un 20x4 : sous-circuit `LCD2004`).
+2. Symbole officiel `Display_Character:WC1602A` → *Modèle SPICE depuis un
+   fichier* → `lcd1602.lib`, sous-circuit `LCD1602`, broches 1..16 dans
+   l'ordre `VSS VDD VO RS RW E D0..D7 LEDP LEDN` (comme `simAVR_lcd`).
+3. Câbler comme sur la carte (R/W à la masse). Avec `LiquidCrystal`,
+   simuler au moins 70 ms : `lcd.begin()` attend 50 ms.
+4. Simuler : le terminal affiche l'écran (`LCD> [...] [...]`), et
+   `lcd_log.txt` les garde tous.
 
 ## Étape 3 ter — Envoyer des commandes série au MCU
 

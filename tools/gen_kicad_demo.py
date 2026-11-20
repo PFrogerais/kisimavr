@@ -5,7 +5,8 @@
 Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DIR]
   VARIANT: full or i2c (official ATmega328P-P, DIP-28), gpio, adc, uart,
            uno (Arduino UNO R3 board around the ATmega328P, official schematic),
-           spi (SPI master driving a 74HC595 and 8 LEDs, official symbols)
+           spi (SPI master driving a 74HC595 and 8 LEDs, official symbols),
+           lcd (character LCD 16x2 HD44780 + voltage on A0, official symbols)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -21,7 +22,8 @@ import uuid
 VARIANT = sys.argv[3] if len(sys.argv) > 3 else "gpio"
 PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
            "full": "simAVR_atmega328p", "i2c": "simAVR_i2c",
-           "uno": "Arduino_UNO", "spi": "simAVR_spi"}[VARIANT]
+           "uno": "Arduino_UNO", "spi": "simAVR_spi",
+           "lcd": "simAVR_lcd"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -38,6 +40,7 @@ FOOTPRINTS = {
     "Switch:SW_Push": "Button_Switch_THT:SW_PUSH_6mm",
     "simAVR:LMV358": "Package_SO:VSSOP-8_3x3mm_P0.65mm",
     "74xx:74HC595": "Package_DIP:DIP-16_W7.62mm",
+    "Display_Character:WC1602A": "Display:WC1602A",
     "Connector_Generic:Conn_01x06": "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x08": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x10": "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
@@ -232,6 +235,31 @@ for _n in (6, 8, 10):
     LIB[f"Connector_Generic:Conn_01x{_n:02d}"] = _conn_1xn(_n)
 
 LIB.update({
+    # Official KiCad symbol Display_Character:WC1602A (16x2 module, 16 pins).
+    "Display_Character:WC1602A": dict(
+        ref="DS", value="WC1602A",
+        body='(rectangle (start -7.62 17.78) (end 7.62 -17.78) '
+             '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[("1", "VSS", 0.0, -20.32, 90, "power_in"),
+              ("2", "VDD", 0.0, 20.32, 270, "power_in"),
+              ("3", "VO", 10.16, 15.24, 180, "input"),
+              ("4", "RS", -10.16, 10.16, 0, "input"),
+              ("5", "R/W", -10.16, 12.7, 0, "input"),
+              ("6", "E", -10.16, 15.24, 0, "input"),
+              ("7", "D0", -10.16, 2.54, 0, "input"),
+              ("8", "D1", -10.16, 0.0, 0, "input"),
+              ("9", "D2", -10.16, -2.54, 0, "input"),
+              ("10", "D3", -10.16, -5.08, 0, "input"),
+              ("11", "D4", -10.16, -7.62, 0, "input"),
+              ("12", "D5", -10.16, -10.16, 0, "input"),
+              ("13", "D6", -10.16, -12.7, 0, "input"),
+              ("14", "D7", -10.16, -15.24, 0, "input"),
+              ("15", "LED(+)", 10.16, 7.62, 180, "power_in"),
+              ("16", "LED(-)", 10.16, 5.08, 180, "power_in")],
+        pin_names=True,
+        description="LCD 16x2 Alphanumeric , 8 bit parallel bus, 5V VDD",
+        keywords="display LCD dot-matrix",
+        fp_filters="*WC*1602A*"),
     # Official KiCad symbol 74xx:74HC595 (pins and outline converted from
     # the KiCad library).
     "74xx:74HC595": dict(
@@ -363,7 +391,7 @@ def pin_xy(X, Y, pin, rot=0):
 # Placed parts: (lib_id, ref, value, X, Y, extra properties)
 # --------------------------------------------------------------------------
 
-LIBFILE = ("atmega328p_full.lib" if VARIANT in ("full", "i2c", "uno", "spi")
+LIBFILE = ("atmega328p_full.lib" if VARIANT in ("full", "i2c", "uno", "spi", "lcd")
            else "atmega328p_cosim.lib")
 LEDFILE = "led_models.lib"
 
@@ -768,6 +796,55 @@ if VARIANT == "uno":
     PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(UNO_PARTS)
     JUNCTIONS = []
     NO_CONNECT_REF = None
+
+
+if VARIANT == "lcd":
+    SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
+                "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
+    LCDFILE = "lcd1602.lib"
+    LCD_PARTS = [
+        ("MCU_Microchip_ATmega:ATmega328P-P", "U1", "ATmega328P-P", 76.2, 99.06,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LIBFILE,
+          "Sim.Name": "ATMEGA328P", "Sim.Pins": SIM_PINS},
+         {"7": "+5V", "20": "+5V", "8": "GND", "*": "NC",
+          "18": "LCD_RS", "17": "LCD_E", "11": "LCD_D4", "6": "LCD_D5", "5": "LCD_D6",
+          "4": "LCD_D7", "23": "A0"}),
+        ("Display_Character:WC1602A", "DS1", "WC1602A", 165.1, 93.98,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LCDFILE, "Sim.Name": "LCD1602",
+          "Sim.Pins": "1=VSS 2=VDD 3=VO 4=RS 5=RW 6=E 7=D0 8=D1 9=D2 10=D3 11=D4 "
+                      "12=D5 13=D6 14=D7 15=LEDP 16=LEDN"},
+         {"1": "GND", "2": "+5V", "3": "VO", "4": "LCD_RS", "5": "GND", "6": "LCD_E",
+          "7": "NC", "8": "NC", "9": "NC", "10": "NC",
+          "11": "LCD_D4", "12": "LCD_D5", "13": "LCD_D6", "14": "LCD_D7",
+          "15": "BL_A", "16": "GND"}),
+        # Contrast: divider in place of the usual 10k potentiometer.
+        ("Device:R", "R1", "4.7k", 195.58, 63.5, {}, {"1": "+5V", "2": "VO"}),
+        ("Device:R", "R2", "4.7k", 195.58, 81.28, {}, {"1": "VO", "2": "GND"}),
+        # Backlight
+        ("Device:R", "R3", "220", 208.28, 76.2, {}, {"1": "+5V", "2": "BL_A"}),
+        # "Potentiometer" on A0: 0.5 V -> 4.5 V ramp through 10k
+        ("Device:R", "R4", "10k", 119.38, 132.08, {}, {"1": "A0", "2": "POT"}),
+        ("Simulation_SPICE:VPULSE", "V2", "POT", 119.38, 149.86,
+         {"Sim.Device": "V", "Sim.Type": "PULSE", "Sim.Pins": "1=+ 2=-",
+          "Sim.Params": "y1=0.5 y2=4.5 td=0 tr=30m tf=1u tw=1 per=2"},
+         {"1": "POT", "2": "GND"}),
+        ("Simulation_SPICE:VDC", "V1", "5V", 30.48, 160.02,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=5"},
+         {"1": "+5V!", "2": "GND!"}),
+    ]
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(LCD_PARTS)
+    JUNCTIONS = []
+    NO_CONNECT_REF = None
+    TEXTS = [
+        ("Afficheur LCD 16x2 (HD44780), interface 4 bits, cablage LiquidCrystal(12, 11, 5, 4, 3, 2)",
+         25.4, 30.48),
+        ("RS = D12, E = D11, D4..D7 = D5, D4, D3, D2 ; R/W a la masse", 25.4, 34.29),
+        ("Ecran affiche dans la console (LCD> [...]) et dans lcd_log.txt", 25.4, 38.1),
+        ("Contraste", 190.5, 50.8),
+        ("Retroeclairage", 203.2, 66.04),
+        ("Alimentation 5 V de la simulation", 22.86, 147.32),
+    ]
+    DIRECTIVES = [(".tran 0.5u 30m", 25.4, 185.42)]
 
 
 if VARIANT == "spi":

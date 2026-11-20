@@ -48,6 +48,9 @@ bool looksLikeVcd(const std::string &head);
 /** UART log: printable ASCII lines of at most 200 characters. */
 bool looksLikeUartLog(const std::string &head);
 
+/** LCD log: starts with "# kisimavr LCD". */
+bool looksLikeLcdLog(const std::string &head);
+
 /** Case-insensitive extension test, e.g. {".txt", ".log"}. */
 bool hasExtension(const std::string &path, std::initializer_list<const char *> extensions);
 

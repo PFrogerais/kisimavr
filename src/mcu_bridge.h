@@ -30,6 +30,7 @@
 
 #include "config.h"
 #include "cosim_abi.h"
+#include "cosim_device.h"
 #include "i2c_bus.h"
 #include "sar_adc.h"
 #include "spi_bus.h"
@@ -68,21 +69,19 @@ struct PortWatch
     avr_irq_t  *pinIrq[8] = {};
 };
 
-class McuBridge
+class McuBridge : public CosimDevice
 {
 public:
     explicit McuBridge(Config cfg);
-    McuBridge(const McuBridge &) = delete;
-    McuBridge &operator=(const McuBridge &) = delete;
 
     /** Create the MCU, load the firmware and hook the peripherals. */
     bool start();
 
     /** d_cosim step(): run until vtime, or until the first output change. */
-    void step(co_info *info);
+    void step(co_info *info) override;
 
     /** d_cosim in_fn(): an input node changed. */
-    void input(unsigned int index, const Digital_t *value);
+    void input(co_info *info, unsigned int index, const Digital_t *value) override;
 
 private:
     double now() const;
