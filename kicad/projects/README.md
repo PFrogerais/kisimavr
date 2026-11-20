@@ -1,9 +1,14 @@
 # Projets KiCad : mode d'emploi pas à pas
 
 Ce dossier contient quatre projets KiCad prêts à simuler. Le principal,
-**`simAVR_atmega328p`**, utilise un vrai ATmega328P-P en boîtier DIP-28 :
-le même schéma sert à la simulation **et** à la fabrication du circuit
-imprimé (empreintes réelles).
+**`simAVR_atmega328p`**, utilise le **symbole officiel de la bibliothèque
+KiCad `MCU_Microchip_ATmega:ATmega328P-P`** avec son empreinte officielle
+`Package_DIP:DIP-28_W7.62mm` : le même schéma sert à la simulation **et** à
+la fabrication du circuit imprimé.
+
+Disposition du symbole officiel : toutes les E/S à droite (PB, PC, PD),
+VCC et AVCC en haut, GND en bas, AREF à gauche. Les broches inutilisées de
+la démo portent un drapeau « non connecté » (ERC propre).
 
 | Projet | Firmware | Ce qu'il montre |
 |---|---|---|
@@ -11,6 +16,10 @@ imprimé (empreintes réelles).
 | `simAVR_demo` | `firmware/blink.c` | Timer0 + interruption (LED à 1 kHz), entrée filtrée RC |
 | `simAVR_adc` | `firmware/adc_pwm.c` | convertisseur SAR visible, PWM filtrée |
 | `simAVR_uart` | `firmware/uart_adc.c` | console série, trames sur TXD |
+
+*Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la
+copie du symbole intégrée au schéma par celle de votre bibliothèque KiCad,
+sans changer le câblage ni le modèle de simulation.
 
 Seul `simAVR_atmega328p` a des empreintes : les trois autres utilisent des
 symboles simplifiés à 2–3 broches, faits uniquement pour la simulation.

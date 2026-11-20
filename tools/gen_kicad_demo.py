@@ -26,14 +26,14 @@ if "--kisimavr" in sys.argv:
 
 # Real footprints (KiCad standard libraries), by symbol.
 FOOTPRINTS = {
-    "simAVR:ATmega328P-P": "Package_DIP:DIP-28_W7.62mm",
+    "MCU_Microchip_ATmega:ATmega328P-P": "Package_DIP:DIP-28_W7.62mm",
     "Device:R": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal",
     "Device:C": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
     "Device:LED": "LED_THT:LED_D5.0mm",
     "Device:D": "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal",
 }
 DATASHEETS = {
-    "simAVR:ATmega328P-P": "https://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-7810-Automotive-Microcontrollers-ATmega328P_Datasheet.pdf",
+    "MCU_Microchip_ATmega:ATmega328P-P": "http://ww1.microchip.com/downloads/en/DeviceDoc/ATmega328_P%20AVR%20MCU%20with%20picoPower%20Technology%20Data%20Sheet%2040001984A.pdf",
 }
 # Simulation-only parts: no footprint, not on the board, not in the BOM.
 SIM_ONLY = {"Simulation_SPICE:VPULSE"}
@@ -54,27 +54,6 @@ def font(hide=False, justify=None):
 # --------------------------------------------------------------------------
 # Library symbols: name -> (body graphics, pins[(num, name, x, y, angle, type)])
 # --------------------------------------------------------------------------
-
-DIP28_NAMES = {1: "PC6/~{RESET}", 2: "PD0/RXD", 3: "PD1/TXD", 4: "PD2", 5: "PD3",
-               6: "PD4", 7: "VCC", 8: "GND", 9: "PB6/XTAL1", 10: "PB7/XTAL2",
-               11: "PD5", 12: "PD6", 13: "PD7", 14: "PB0", 15: "PB1", 16: "PB2",
-               17: "PB3", 18: "PB4", 19: "PB5/SCK", 20: "AVCC", 21: "AREF",
-               22: "GND", 23: "PC0/A0", 24: "PC1/A1", 25: "PC2/A2", 26: "PC3/A3",
-               27: "PC4/A4", 28: "PC5/A5"}
-
-
-def dip28_pins():
-    """Left side 1..14 top to bottom, right side 28..15 top to bottom."""
-    pins = []
-    for n in range(1, 29):
-        name = DIP28_NAMES[n]
-        typ = "power_in" if name in ("VCC", "GND", "AVCC") else (
-              "passive" if n in (1, 9, 10, 21) else "bidirectional")
-        if n <= 14:
-            pins.append((str(n), name, -12.7, 16.51 - (n - 1) * 2.54, 0, typ))
-        else:
-            pins.append((str(n), name, 12.7, 16.51 - (28 - n) * 2.54, 180, typ))
-    return pins
 
 
 LIB = {
@@ -101,12 +80,45 @@ LIB = {
         pins=[("1", "ADC0", -10.16, 2.54, 0, "input"),
               ("2", "TXD", 10.16, 2.54, 180, "output")],
         pin_names=True),
-    "simAVR:ATmega328P-P": dict(
+    # Official KiCad symbol MCU_Microchip_ATmega:ATmega328P-P (pins and
+    # outline converted from the KiCad library, ATmega48PV-10P family).
+    "MCU_Microchip_ATmega:ATmega328P-P": dict(
         ref="U", value="ATmega328P-P",
-        body='(rectangle (start -10.16 19.05) (end 10.16 -19.05) '
+        body='(rectangle (start -12.7 35.56) (end 12.7 -35.56) '
              '(stroke (width 0.254) (type default)) (fill (type background)))',
-        pins=dip28_pins(),
-        pin_names=True),
+        pins=[
+              ('1', '~{RESET}/PC6', 15.24, -7.62, 180, 'bidirectional', False),
+              ('2', 'PD0', 15.24, -12.7, 180, 'bidirectional', False),
+              ('3', 'PD1', 15.24, -15.24, 180, 'bidirectional', False),
+              ('4', 'PD2', 15.24, -17.78, 180, 'bidirectional', False),
+              ('5', 'PD3', 15.24, -20.32, 180, 'bidirectional', False),
+              ('6', 'PD4', 15.24, -22.86, 180, 'bidirectional', False),
+              ('7', 'VCC', 0.0, 38.1, 270, 'power_in', False),
+              ('8', 'GND', 0.0, -38.1, 90, 'power_in', False),
+              ('9', 'XTAL1/PB6', 15.24, 15.24, 180, 'bidirectional', False),
+              ('10', 'XTAL2/PB7', 15.24, 12.7, 180, 'bidirectional', False),
+              ('11', 'PD5', 15.24, -25.4, 180, 'bidirectional', False),
+              ('12', 'PD6', 15.24, -27.94, 180, 'bidirectional', False),
+              ('13', 'PD7', 15.24, -30.48, 180, 'bidirectional', False),
+              ('14', 'PB0', 15.24, 30.48, 180, 'bidirectional', False),
+              ('15', 'PB1', 15.24, 27.94, 180, 'bidirectional', False),
+              ('16', 'PB2', 15.24, 25.4, 180, 'bidirectional', False),
+              ('17', 'PB3', 15.24, 22.86, 180, 'bidirectional', False),
+              ('18', 'PB4', 15.24, 20.32, 180, 'bidirectional', False),
+              ('19', 'PB5', 15.24, 17.78, 180, 'bidirectional', False),
+              ('20', 'AVCC', 2.54, 38.1, 270, 'power_in', False),
+              ('21', 'AREF', -15.24, 30.48, 0, 'passive', False),
+              ('22', 'GND', 0.0, -38.1, 90, 'passive', True),
+              ('23', 'PC0', 15.24, 7.62, 180, 'bidirectional', False),
+              ('24', 'PC1', 15.24, 5.08, 180, 'bidirectional', False),
+              ('25', 'PC2', 15.24, 2.54, 180, 'bidirectional', False),
+              ('26', 'PC3', 15.24, 0.0, 180, 'bidirectional', False),
+              ('27', 'PC4', 15.24, -2.54, 180, 'bidirectional', False),
+              ('28', 'PC5', 15.24, -5.08, 180, 'bidirectional', False)],
+        pin_names=True,
+        description="20MHz, 32kB Flash, 2kB SRAM, 1kB EEPROM, DIP-28",
+        keywords="AVR 8bit Microcontroller MegaAVR PicoPower",
+        fp_filters="DIP*W7.62mm*"),
     "Device:D": dict(
         ref="D", value="D",
         body='(polyline (pts (xy -1.27 1.27) (xy 1.27 1.27) (xy 0 -1.27) (xy -1.27 1.27)) '
@@ -188,9 +200,10 @@ def lib_symbol(lib_id, d):
     if d["pin_names"]:
         pn = "(pin_names (offset 1.016)) "
     pins = []
-    for num, name, x, y, ang, typ in d["pins"]:
+    for pin in d["pins"]:
+        num, name, x, y, ang, typ = pin[:6]
         length = 0 if d.get("power") else 2.54
-        hide = " hide" if d.get("power") else ""
+        hide = " hide" if (d.get("power") or (len(pin) > 6 and pin[6])) else ""
         pins.append(
             f'(pin {typ} line (at {x} {y} {ang}) (length {length}){hide} '
             f'(name "{name}" {font()}) (number "{num}" {font()}))')
@@ -198,10 +211,14 @@ def lib_symbol(lib_id, d):
         f'(symbol "{lib_id}" {power}{pn}(exclude_from_sim no) (in_bom yes) (on_board yes) '
         f'(property "Reference" "{d["ref"]}" (at 0 7.62 0) {font()}) '
         f'(property "Value" "{d["value"]}" (at 0 -7.62 0) {font()}) '
-        f'(property "Footprint" "" (at 0 0 0) {font(hide=True)}) '
-        f'(property "Datasheet" "" (at 0 0 0) {font(hide=True)}) '
-        f'(property "Description" "" (at 0 0 0) {font(hide=True)}) '
-        f'(symbol "{short}_0_1" {d["body"]}) '
+        f'(property "Footprint" "{FOOTPRINTS.get(lib_id, "")}" (at 0 0 0) {font(hide=True)}) '
+        f'(property "Datasheet" "{DATASHEETS.get(lib_id, "")}" (at 0 0 0) {font(hide=True)}) '
+        f'(property "Description" "{d.get("description", "")}" (at 0 0 0) {font(hide=True)}) '
+        + (f'(property "ki_keywords" "{d["keywords"]}" (at 0 0 0) {font(hide=True)}) '
+           if d.get("keywords") else "")
+        + (f'(property "ki_fp_filters" "{d["fp_filters"]}" (at 0 0 0) {font(hide=True)}) '
+           if d.get("fp_filters") else "")
+        + f'(symbol "{short}_0_1" {d["body"]}) '
         f'(symbol "{short}_1_1" {" ".join(pins)}))')
 
 
@@ -335,77 +352,77 @@ if VARIANT == "uart":
 if VARIANT == "full":
     SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
                 "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
+    # U1 at (127, 88.9): all I/O on the right (x = 142.24), VCC/AVCC on top
+    # (y = 50.8), GND at the bottom (y = 127).
     PARTS = [
-        ("simAVR:ATmega328P-P", "U1", "ATmega328P-P", 127.0, 88.9,
+        ("MCU_Microchip_ATmega:ATmega328P-P", "U1", "ATmega328P-P", 127.0, 88.9,
          {"Sim.Device": "SUBCKT", "Sim.Library": LIBFILE,
           "Sim.Name": "ATMEGA328P", "Sim.Pins": SIM_PINS}),
-        # D1 (TXD): receiver load
-        ("Device:R", "R1", "100k", 83.82, 81.28, {}),
-        ("power:GND", "#PWR01", "GND", 83.82, 87.63, {}),
-        # D2: push-button = diode to a 5 V / 0 V source (pressed 4..12 ms)
-        ("Device:D", "D1", "DSIG", 93.98, 87.63,
-         {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE,
-          "Sim.Name": "DSIG", "Sim.Pins": "1=K 2=A"}),
-        ("Simulation_SPICE:VPULSE", "V1", "BOUTON", 93.98, 99.06,
-         {"Sim.Device": "V", "Sim.Type": "PULSE", "Sim.Pins": "1=+ 2=-",
-          "Sim.Params": "y1=5 y2=0 td=4m tr=1u tf=1u tw=8m per=40m"}),
-        ("power:GND", "#PWR02", "GND", 93.98, 106.68, {}),
-        # D6: PWM averaged by an RC low-pass
-        ("Device:R", "R2", "10k", 106.68, 106.68, {}),
-        ("Device:C", "C1", "100n", 106.68, 118.11, {}),
-        ("power:GND", "#PWR03", "GND", 106.68, 124.46, {}),
-        # D13: LED
-        ("Device:R", "R3", "330", 149.86, 99.06, {}),
-        ("Device:LED", "D2", "LEDRED", 149.86, 109.22,
+        # Power
+        ("power:+5V", "#PWR01", "+5V", 127.0, 48.26, {}),
+        ("power:PWR_FLAG", "#FLG01", "PWR_FLAG", 129.54, 48.26, {}),
+        ("power:GND", "#PWR02", "GND", 127.0, 129.54, {}),
+        ("power:PWR_FLAG", "#FLG02", "PWR_FLAG", 121.92, 129.54, {}),
+        # D13 (PB5, pin 19): LED through 330 ohms
+        ("Device:R", "R3", "330", 190.5, 74.93, {}),
+        ("Device:LED", "D2", "LEDRED", 190.5, 85.09,
          {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE,
           "Sim.Name": "LEDRED", "Sim.Pins": "1=K 2=A"}),
-        ("power:GND", "#PWR04", "GND", 149.86, 115.57, {}),
-        # A0: potentiometer = 0.5 -> 4.5 V ramp through 10k
-        ("Device:R", "R4", "10k", 162.56, 88.9, {}),
-        ("Simulation_SPICE:VPULSE", "V2", "POT", 162.56, 99.06,
+        ("power:GND", "#PWR03", "GND", 190.5, 91.44, {}),
+        # A0 (PC0, pin 23): potentiometer = 0.5 -> 4.5 V ramp through 10k
+        ("Device:R", "R4", "10k", 177.8, 85.09, {}),
+        ("Simulation_SPICE:VPULSE", "V2", "POT", 177.8, 96.52,
          {"Sim.Device": "V", "Sim.Type": "PULSE", "Sim.Pins": "1=+ 2=-",
           "Sim.Params": "y1=0.5 y2=4.5 td=0 tr=20m tf=1u tw=1 per=2"}),
-        ("power:GND", "#PWR05", "GND", 162.56, 106.68, {}),
-        # Power pins of the DIP-28 (not simulated, needed for the board / ERC)
-        ("power:+5V", "#PWR06", "+5V", 109.22, 87.63, {}),      # pin 7  VCC
-        ("power:GND", "#PWR07", "GND", 111.76, 90.17, {}),      # pin 8  GND
-        ("power:GND", "#PWR08", "GND", 142.24, 87.63, {}),      # pin 22 GND
-        ("power:+5V", "#PWR09", "+5V", 144.78, 92.71, {}),      # pin 20 AVCC
-        ("power:PWR_FLAG", "#FLG01", "PWR_FLAG", 109.22, 87.63, {}),
-        ("power:PWR_FLAG", "#FLG02", "PWR_FLAG", 111.76, 90.17, {}),
+        ("power:GND", "#PWR04", "GND", 177.8, 104.14, {}),
+        # D1 (PD1/TXD, pin 3): receiver load
+        ("Device:R", "R1", "100k", 165.1, 107.95, {}),
+        ("power:GND", "#PWR05", "GND", 165.1, 114.3, {}),
+        # D2 (PD2, pin 4): push-button = diode to a 5 V / 0 V source
+        ("Device:D", "D1", "DSIG", 154.94, 110.49,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE,
+          "Sim.Name": "DSIG", "Sim.Pins": "1=K 2=A"}),
+        ("Simulation_SPICE:VPULSE", "V1", "BOUTON", 154.94, 121.92,
+         {"Sim.Device": "V", "Sim.Type": "PULSE", "Sim.Pins": "1=+ 2=-",
+          "Sim.Params": "y1=5 y2=0 td=4m tr=1u tf=1u tw=8m per=40m"}),
+        ("power:GND", "#PWR06", "GND", 154.94, 129.54, {}),
+        # D6 (PD6, pin 12): PWM averaged by an RC low-pass
+        ("Device:R", "R2", "10k", 147.32, 120.65, {}),
+        ("Device:C", "C1", "100n", 147.32, 130.81, {}),
+        ("power:GND", "#PWR07", "GND", 147.32, 137.16, {}),
     ]
     WIRES = [
-        # D1 / TXD (pin 3, y = 77.47)
-        ((114.3, 77.47), (83.82, 77.47)),
-        ((83.82, 85.09), (83.82, 87.63)),
-        # D2 / button (pin 4, y = 80.01)
-        ((114.3, 80.01), (93.98, 80.01)),
-        ((93.98, 80.01), (93.98, 83.82)),
-        ((93.98, 91.44), (93.98, 93.98)),
-        ((93.98, 104.14), (93.98, 106.68)),
-        # D6 / PWM (pin 12, y = 100.33)
-        ((114.3, 100.33), (106.68, 100.33)),
-        ((106.68, 100.33), (106.68, 102.87)),
-        ((106.68, 110.49), (106.68, 114.3)),
-        ((106.68, 121.92), (106.68, 124.46)),
-        # D13 / LED (pin 19, y = 95.25)
-        ((139.7, 95.25), (149.86, 95.25)),
-        ((149.86, 102.87), (149.86, 105.41)),
-        ((149.86, 113.03), (149.86, 115.57)),
-        # A0 (pin 23, y = 85.09)
-        ((139.7, 85.09), (162.56, 85.09)),
-        ((162.56, 92.71), (162.56, 93.98)),
-        ((162.56, 104.14), (162.56, 106.68)),
         # Power
-        ((114.3, 87.63), (109.22, 87.63)),
-        ((114.3, 90.17), (111.76, 90.17)),
-        ((139.7, 87.63), (142.24, 87.63)),
-        ((139.7, 92.71), (144.78, 92.71)),
+        ((127.0, 50.8), (127.0, 48.26)),
+        ((129.54, 50.8), (129.54, 48.26)),
+        ((127.0, 48.26), (129.54, 48.26)),
+        ((127.0, 127.0), (127.0, 129.54)),
+        ((127.0, 129.54), (121.92, 129.54)),
+        # D13
+        ((142.24, 71.12), (190.5, 71.12)),
+        ((190.5, 78.74), (190.5, 81.28)),
+        ((190.5, 88.9), (190.5, 91.44)),
+        # A0
+        ((142.24, 81.28), (177.8, 81.28)),
+        ((177.8, 88.9), (177.8, 91.44)),
+        ((177.8, 101.6), (177.8, 104.14)),
+        # TXD
+        ((142.24, 104.14), (165.1, 104.14)),
+        ((165.1, 111.76), (165.1, 114.3)),
+        # BTN
+        ((142.24, 106.68), (154.94, 106.68)),
+        ((154.94, 114.3), (154.94, 116.84)),
+        ((154.94, 127.0), (154.94, 129.54)),
+        # PWM
+        ((142.24, 116.84), (147.32, 116.84)),
+        ((147.32, 124.46), (147.32, 127.0)),
+        ((147.32, 134.62), (147.32, 137.16)),
     ]
     JUNCTIONS = []
-    LABELS = [("TXD", 99.06, 77.47), ("BTN", 101.6, 80.01), ("PWM", 110.49, 100.33),
-              ("VAVG", 106.68, 111.76), ("D13", 144.78, 95.25), ("A0", 152.4, 85.09)]
-    DIRECTIVES = [(".tran 0.5u 20m", 88.9, 132.08)]
+    LABELS = [("D13", 146.05, 71.12), ("A0", 146.05, 81.28), ("TXD", 148.59, 104.14),
+              ("BTN", 148.59, 106.68), ("PWM", 143.51, 116.84), ("VAVG", 147.32, 125.73)]
+    NO_CONNECT_REF = "U1"      # Unused U1 pins get a no-connect flag.
+    DIRECTIVES = [(".tran 0.5u 20m", 101.6, 144.78)]
 
 
 def placed_symbol(lib_id, ref, value, x, y, extra):
@@ -435,12 +452,23 @@ def placed_symbol(lib_id, ref, value, x, y, extra):
 def schematic():
     parts = [f'(kicad_sch (version 20231120) (generator "eeschema") '
              f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "A4")']
-    parts.append("(lib_symbols " + " ".join(lib_symbol(k, v) for k, v in LIB.items()) + ")")
+    used_ids = {p[0] for p in PARTS}
+    parts.append("(lib_symbols " + " ".join(lib_symbol(k, v) for k, v in LIB.items()
+                                           if k in used_ids) + ")")
     for (x, y) in JUNCTIONS:
         parts.append(f'(junction (at {x} {y}) (diameter 0) (color 0 0 0 0) (uuid "{uid()}"))')
     for (a, b) in WIRES:
         parts.append(f'(wire (pts (xy {a[0]} {a[1]}) (xy {b[0]} {b[1]})) '
                      f'(stroke (width 0) (type default)) (uuid "{uid()}"))')
+    if globals().get("NO_CONNECT_REF"):
+        used = {(round(x, 2), round(y, 2)) for a, b in WIRES for (x, y) in (a, b)}
+        for lib_id, ref, _v, X, Y, _e in PARTS:
+            if ref != NO_CONNECT_REF:
+                continue
+            for pin in LIB[lib_id]["pins"]:
+                pt = (round(X + pin[2], 2), round(Y - pin[3], 2))
+                if pt not in used:
+                    parts.append(f'(no_connect (at {pt[0]} {pt[1]}) (uuid "{uid()}"))')
     for (name, x, y) in LABELS:
         parts.append(f'(label "{name}" (at {x} {y} 0) (fields_autoplaced yes) '
                      f'{font(justify="left bottom")} (uuid "{uid()}"))')
@@ -461,7 +489,8 @@ def schematic():
 def check():
     pts = {}
     for lib_id, ref, _v, x, y, _e in PARTS:
-        for num, name, px, py, _a, _t in LIB[lib_id]["pins"]:
+        for pin in LIB[lib_id]["pins"]:
+            num, name, px, py = pin[:4]
             pts.setdefault((round(x + px, 2), round(y - py, 2)), []).append(f"{ref}.{name}")
 
     parent = {}
