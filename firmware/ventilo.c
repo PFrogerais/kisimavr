@@ -95,10 +95,11 @@ static uint16_t ntcTenths(uint32_t ohm)
     return (uint16_t)(50u * (NTC_COUNT - 1u));    /* 80 degC or hotter */
 }
 
-/* Duty cycle of ENA (OC0A); 0 % leaves a 62 ns spike per period, negligible. */
+/* Duty cycle of ENA (OC0A), at most 254 / 256 = 99 % (OCR0A = 255 is not
+ * handled by every simulator); 0 % leaves a 62 ns spike per period. */
 static void motorDuty(uint8_t percent)
 {
-    OCR0A = (uint8_t)((uint16_t)percent * 255u / 100u);
+    OCR0A = (uint8_t)((uint16_t)percent * 254u / 100u);
 }
 
 int main(void)
