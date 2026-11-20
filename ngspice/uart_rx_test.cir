@@ -26,7 +26,11 @@ Cline line 0 100p
 Rbtx btx 0 100k
 
 .control
-tran 0.5u 6m
+* Maximum step 1 us: ngspice advances the co-simulated MCUs one after the
+* other, and may then step back to an output of the second one. The first
+* MCU keeps its lead, so it sees the following input edges late by up to
+* one step: keep the step well below half a bit (8.5 us at 115200 bauds).
+tran 0.5u 6m 0 1u
 plot v(line) v(btx)+6
 .endc
 .end
