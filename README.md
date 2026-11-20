@@ -70,6 +70,9 @@ PWM filtrée qui suit A0, trames série sur TXD.
 
 ## 3. Nouveau projet KiCad
 
+> **Guide pas à pas détaillé (démo, nouveau projet, passage au PCB) :
+> [`kicad/projects/README.md`](kicad/projects/README.md).**
+
 ### 3.1 Générer le modèle avec votre firmware
 
 ```bash
@@ -107,8 +110,9 @@ Symbole officiel **`MCU_Microchip_ATmega:ATmega328P-P`**, puis
 VCC, GND, AVCC, AREF, RESET et XTAL ne sont pas simulés : on peut les câbler
 normalement (ERC) ou les laisser libres.
 
-Plus simple : **dupliquer le projet de démo `simAVR_atmega328p`** (déjà
-câblé, avec `led_models.lib`) et relancer le script avec votre `.hex`.
+Plus simple : **dupliquer le projet de démo `kicad/projects/simAVR_atmega328p`**
+(déjà câblé, empreintes réelles DIP-28 et THT, avec `led_models.lib`) et
+relancer le script avec votre `.hex`.
 
 ### 3.3 Simuler
 
@@ -156,7 +160,7 @@ les essais en simulation.
 
 | Firmware | Modèle (`.lib`) | Test ngspice | Projet KiCad | Montre |
 |---|---|---|---|---|
-| `full_demo.c` / `full_demo/full_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `full_test.cir` | `simAVR_atmega328p` | bouton + pull-up interne, LED, ADC, PWM, UART |
+| `full_demo.c` / `full_demo/full_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `full_test.cir` | `simAVR_atmega328p` (DIP-28, empreintes réelles) | bouton + pull-up interne, LED, ADC, PWM, UART |
 | `blink.c` | `atmega328p_cosim.lib` → `ATMEGA328P_COSIM` | `blink_test.cir` | `simAVR_demo` | Timer0 + interruption (1 kHz), entrée filtrée RC |
 | `adc_pwm.c` | `atmega328p_cosim.lib` → `ATMEGA328P_ADC` | `adc_test.cir` | `simAVR_adc` | SAR visible, PWM filtrée, seuil |
 | `uart_adc.c` | `atmega328p_cosim.lib` → `ATMEGA328P_UART` | `uart_test.cir` | `simAVR_uart` | console série, trames TXD, VCD |
@@ -301,6 +305,8 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `tools/make_atmega328p_lib.py` | génère le modèle `ATMEGA328P` pour un projet |
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
+| `kicad/projects/` | 4 projets KiCad de démo + guide pas à pas (`README.md`) |
+| `tools/gen_kicad_demo.py` | génère ces projets |
 | `firmware/` | firmwares de démo (C) et `full_demo/full_demo.ino` (Arduino) |
 | `ngspice/` | netlists de test autonomes |
 

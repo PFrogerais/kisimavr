@@ -1,0 +1,18 @@
+simAVR_adc - ADC de l'ATmega328P (modele SAR) dans KiCad
+==========================================================
+
+Circuit
+  V1 (rampe 0 -> 5 V en 20 ms) -> R1 10k + C1 10n -> ADC0   ("potentiometre")
+  PD6 (PWM ~7.8 kHz, rapport cyclique = ADC/1024) -> R4 10k + C2 100n -> VAVG
+  PB5 -> R2 330 -> LED : allumee quand ADC0 >= 2,5 V
+
+Firmware : /home/paul/dev/kisimavr/firmware/adc_pwm.hex
+           (cd ~/dev/kisimavr/firmware && make)
+
+Utilisation
+  1. Ouvrir simAVR_adc.kicad_pro puis le schema.
+  2. Simulateur : analyse transitoire, pas 0.5u, duree 20m.
+  3. Decocher "Sauvegarder tous les courants".
+  4. Sonder A0, VAVG (doit suivre A0) et PB5.
+  5. Pour voir la conversion SAR, ajouter le signal V(xu1.vdac)
+     et zoomer sur ~10 us : la tension Vdac "dichotomise" vers A0.

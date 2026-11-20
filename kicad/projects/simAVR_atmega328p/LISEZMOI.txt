@@ -1,0 +1,35 @@
+simAVR_atmega328p - ATmega328P complet (brochage Arduino Uno) dans KiCad
+=========================================================================
+
+Composant : U1 = ATmega328P-P (DIP-28), modele ATMEGA328P de
+atmega328p_full.lib. Les 20 E/S sont bidirectionnelles : c'est le firmware
+(DDRx / PORTx, pinMode) qui choisit entree, sortie ou pull-up interne.
+
+  D0..D7  = PD0..PD7 (broches 2-6, 11-13)   D1 = TXD (UART 115200 bauds)
+  D8..D13 = PB0..PB5 (broches 14-19)
+  A0..A5  = PC0..PC5 (broches 23-28), entrees ADC
+  VCC, GND, AVCC, AREF, RESET, XTAL : non simulees (laisser ou cabler)
+
+Circuit de demo (firmware/full_demo.c ou full_demo/full_demo.ino)
+  D2  : bouton vers GND (diode + source), appuye de 4 a 12 ms,
+        SANS resistance de tirage : c'est le pull-up interne qui tire a 5 V
+  D13 : LED allumee tant que le bouton est appuye
+  A0  : potentiometre, rampe 0,5 -> 4,5 V
+  D6  : PWM = A0/4, moyenne sur VAVG (filtre RC)
+  D1  : texte "A0 = 512  BTN = 1" -> terminal et uart_log.txt
+
+Utiliser le symbole officiel KiCad a la place
+  MCU_Microchip_ATmega:ATmega328P-P, champs de simulation :
+    Sim.Device  = SUBCKT
+    Sim.Library = atmega328p_full.lib
+    Sim.Name    = ATMEGA328P
+    Sim.Pins    = 2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0
+                  15=PB1 16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2
+                  26=PC3 27=PC4 28=PC5
+
+Changer de programme : modifier le chemin apres "hex" dans atmega328p_full.lib
+(ou regenerer : python3 tools/make_atmega328p_lib.py mon.hex /chemin/mcu_cosim.so)
+
+Guide detaille : README.md de ce dossier.
+Simulation : transitoire, pas 0.5u, duree 20m, "Sauvegarder tous les
+courants" decoche. Redemarrer KiCad apres recompilation de mcu_cosim.so.

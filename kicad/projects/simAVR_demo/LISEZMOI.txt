@@ -1,0 +1,17 @@
+simAVR_demo - ATmega328P emule (mcu_cosim + simavr) dans KiCad
+=================================================================
+
+Circuit
+  V1 (impulsion 0/5 V, 2 ms -> 5 ms) -> R1 1k + C1 100n -> PD2   (anti-rebond RC)
+  PB5 -> R2 330 -> D1 LED rouge -> GND                           (clignote a 1 kHz)
+  PB0 -> R3 10k -> GND                                           (recopie de PD2)
+
+Chemins utilises (a adapter si kisimavr est ailleurs) :
+  atmega328p_cosim.lib -> /home/paul/dev/kisimavr/build/mcu_cosim.so
+                          /home/paul/dev/kisimavr/firmware/blink.hex
+
+Utilisation
+  1. Ouvrir simAVR_demo.kicad_pro, puis le schema.
+  2. Simulateur : analyse transitoire, pas 1u, duree 10m.
+  3. Decocher "Sauvegarder tous les courants".
+  4. Lancer, puis sonder les labels PD2, PB5, PB0.
