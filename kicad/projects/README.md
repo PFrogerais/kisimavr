@@ -252,6 +252,12 @@ l'autre. Exemple complet : `ngspice/uart_rx_test.cir`.
 ## Étape 3 quater — La carte Arduino UNO (`Arduino_UNO`)
 
 Le projet reprend la partie ATmega328P du [schéma officiel de l'UNO R3](https://docs.arduino.cc/resources/schematics/A000066-schematics.pdf).
+La **feuille racine** ne contient qu'un bloc hiérarchique dessiné comme une
+UNO vue de dessus : chaque broche des connecteurs POWER, ANALOG IN, IOL et
+IOH est un label hiérarchique placé à sa position réelle. On câble ses
+propres composants directement sur ce bloc, comme sur une vraie carte ;
+double-cliquer sur le bloc ouvre le schéma de la carte
+(`arduino_uno_r3.kicad_sch`).
 Les références suivent ce schéma : ZU4 pour l'ATmega328P, U5A pour le
 LMV358 de la LED L, U3 pour l'ATmega16U2. Les blocs sont reliés par des
 étiquettes, et la feuille est au format A3. Voir `LISEZMOI.txt` du projet.

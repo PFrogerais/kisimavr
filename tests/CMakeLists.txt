@@ -308,10 +308,13 @@ endif()
 # SPICE netlist by KiCad itself and simulated by ngspice.
 find_program(KICAD_CLI kicad-cli)
 if(KICAD_CLI AND Python3_FOUND)
-    file(GLOB kicad_schematics ${PROJECT_SOURCE_DIR}/kicad/projects/*/*.kicad_sch)
+    # Root sheet of each project (sub-sheets are checked through it).
+    file(GLOB kicad_projects ${PROJECT_SOURCE_DIR}/kicad/projects/*/*.kicad_pro)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/kicad)
-    foreach(sch IN LISTS kicad_schematics)
-        get_filename_component(project ${sch} NAME_WE)
+    foreach(pro IN LISTS kicad_projects)
+        get_filename_component(project ${pro} NAME_WE)
+        get_filename_component(dir ${pro} DIRECTORY)
+        set(sch ${dir}/${project}.kicad_sch)
         add_test(NAME kicad.erc.${project}
             COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DSCH=${sch}
                     -DREPORT=${CMAKE_CURRENT_BINARY_DIR}/kicad/${project}.rpt

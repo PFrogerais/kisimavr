@@ -54,6 +54,11 @@ DATASHEETS = {
 SIM_ONLY = {"Simulation_SPICE:VPULSE", "Simulation_SPICE:VDC", "simAVR:USB_SERIE"}
 
 ROOT_UUID = str(uuid.uuid4())
+SHEET_UUID = str(uuid.uuid4())         # Sheet symbol of a sub-sheet (UNO project).
+SUB_UUID = str(uuid.uuid4())           # File uuid of that sub-sheet.
+INSTANCE_PATH = f"/{ROOT_UUID}"        # Sheet path of the symbols being written.
+HLABELS = []                           # Hierarchical labels: (name, x, y, angle)
+POWER_TIES = []                        # (hierarchical name, power net) to tie.
 
 
 def uid():
@@ -651,15 +656,20 @@ if VARIANT == "i2c":
     DIRECTIVES = [(".tran 0.2u 5m", 101.6, 144.78)]
 
 
-def build_stubbed(spec):
+def build_stubbed(spec, hier=None):
     """Parts from (lib_id, ref, value, X, Y, extra, {pin: net}).
 
     Every pin gets a 2.54 mm stub ending on a net label, or on a +5V / GND
     power symbol ("+5V!" / "GND!" also adds a PWR_FLAG); "NC" = no-connect
     flag; a label net ending with "!" also gets a PWR_FLAG (power input fed
     through a resistor); the key "*" gives the net of the pins not listed.
+    hier: {(ref, pin): name}: those pins also reach a hierarchical label
+    "name" at the end of a longer stub (power pins: only the hierarchical
+    label; POWER_TIES then gets (name, power net) to join them elsewhere).
+    Labels go to HLABELS.
     Returns PARTS, WIRES, LABELS, NO_CONNECTS.
     """
+    hier = hier or {}
     parts, wires, labels, ncs = [], [], [], []
     stub = 2.54
     count = {"pwr": 0, "flg": 0}
@@ -682,6 +692,22 @@ def build_stubbed(spec):
             # Wire away from the body: pin angle 0 -> left, 180 -> right,
             # 90 -> down (screen), 270 -> up.
             dx, dy = {0: (-1, 0), 180: (1, 0), 90: (0, 1), 270: (0, -1)}[pang]
+            hname = hier.get((ref, num))
+            if hname is not None:
+                # Long stub to a hierarchical label; the net name (local label
+                # or power symbol) stays next to the pin.
+                hx, hy = round(px + dx * 4 * stub, 2), round(py + dy * 4 * stub, 2)
+                HLABELS.append((hname, hx, hy, 180 if dx < 0 else 0))
+                if net in ("+5V", "GND"):
+                    wires.append(((px, py), (hx, hy)))
+                    POWER_TIES.append((hname, net))
+                else:
+                    # Two segments: the local label sits on their common end.
+                    lx, ly = round(px + dx * stub, 2), round(py + dy * stub, 2)
+                    wires.append(((px, py), (lx, ly)))
+                    wires.append(((lx, ly), (hx, hy)))
+                    labels.append((net, lx, ly, 180 if dx < 0 else 0))
+                continue
             ex, ey = round(px + dx * stub, 2), round(py + dy * stub, 2)
             wires.append(((px, py), (ex, ey)))
             flag = net.endswith("!")
@@ -808,11 +834,114 @@ if VARIANT == "uno":
         ("Composants exclus de la simulation : Y2, R1, C3, SW1, J1-J5", 43.18, 223.52),
         ("Sonder : D13, L13, D0_RX (RX), D1_TX (TX). Terminal : uart_log.txt", 43.18, 227.33),
     ]
-    DIRECTIVES = [(".tran 0.5u 10m", 43.18, 233.68)]
+    DIRECTIVES = []    # On the root sheet (Arduino_UNO.kicad_sch).
 
-    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(UNO_PARTS)
+    # The board is a sub-sheet: every header pin also reaches a
+    # hierarchical label, i.e. a pin of the "Arduino UNO R3" sheet symbol.
+    UNO_SUBFILE = "arduino_uno_r3.kicad_sch"
+    UNO_HEADERS = {
+        "J1": ["NC", "IOREF", "RESET", "3V3", "5V", "GND1", "GND2", "VIN"],
+        "J2": ["A0", "A1", "A2", "A3", "A4", "A5"],
+        "J3": ["D0_RX", "D1_TX", "D2", "D3", "D4", "D5", "D6", "D7"],
+        "J4": ["D8", "D9", "D10", "D11", "D12", "D13", "GND3", "AREF", "SDA", "SCL"],
+    }
+    UNO_HIER = {(ref, str(k + 1)): name for ref, names in UNO_HEADERS.items()
+                for k, name in enumerate(names) if name != "NC"}
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(UNO_PARTS, UNO_HIER)
+    # Power pins of the headers: hierarchical label tied to the power net.
+    for k, (hname, net) in enumerate(POWER_TIES):
+        tx, ty = 381.0, round(190.5 + 5.08 * k, 2)
+        HLABELS.append((hname, tx, ty, 180))
+        WIRES.append(((tx, ty), (round(tx + 5.08, 2), ty)))
+        PARTS.append(("power:+5V" if net == "+5V" else "power:GND", f"#PWR{90 + k}", net,
+                      round(tx + 5.08, 2), ty, {"_rot": 270 if net == "+5V" else 90}))
+    TEXTS.append(("Broches d'alimentation des connecteurs", 375.92, 184.15))
     JUNCTIONS = []
     NO_CONNECT_REF = None
+
+
+def uno_root_sheet():
+    """Root sheet of Arduino_UNO: the board as a sheet symbol shaped like an
+    UNO R3 (top view, USB on the left), header pins at their real positions
+    (scale 2.5: 0.1 inch = 6.35 mm)."""
+    x0, y0 = 63.5, 38.1                    # Upper left corner of the board.
+    w, h = 171.45, 133.35                  # 2.7 x 2.1 inches.
+
+    def bx(inch):
+        return round(x0 + inch * 63.5, 2)
+
+    def by(inch_from_bottom):
+        return round(y0 + h - inch_from_bottom * 63.5, 2)
+
+    top = (["SCL", "SDA", "AREF", "GND3", "D13", "D12", "D11", "D10", "D9", "D8"],
+           0.84)                           # IOH from 0.84 in, then IOL from 1.90 in.
+    pins = []
+    for k, name in enumerate(top[0]):
+        pins.append((name, bx(top[1] + 0.1 * k), y0, 90))
+    for k, name in enumerate(["D7", "D6", "D5", "D4", "D3", "D2", "D1_TX", "D0_RX"]):
+        pins.append((name, bx(1.90 + 0.1 * k), y0, 90))
+    for k, name in enumerate(["IOREF", "RESET", "3V3", "5V", "GND1", "GND2", "VIN"]):
+        pins.append((name, bx(1.14 + 0.1 * k), y0 + h, 270))    # NC at 1.04 in.
+    for k, name in enumerate(["A0", "A1", "A2", "A3", "A4", "A5"]):
+        pins.append((name, bx(1.94 + 0.1 * k), y0 + h, 270))
+
+    out = [f'(kicad_sch (version 20231120) (generator "eeschema") '
+           f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "A4")']
+    out.append(f'(title_block (title "Arduino UNO R3 (simulation kisimavr)") '
+               f'(comment 1 "Carte complete : feuille {UNO_SUBFILE}") '
+               f'(comment 2 "Cablez vos composants sur les broches du bloc"))')
+    out.append("(lib_symbols)")
+
+    def rect(xa, ya, xb, yb, dash=False):
+        kind = "dash" if dash else "default"
+        out.append(f'(rectangle (start {xa} {ya}) (end {xb} {yb}) '
+                   f'(stroke (width 0.254) (type {kind})) (fill (type none)) (uuid "{uid()}"))')
+
+    def text(t, x, y, size=1.27, just="left bottom"):
+        out.append(f'(text "{t}" (exclude_from_sim yes) (at {x} {y} 0) '
+                   f'(effects (font (size {size} {size})) (justify {just})) (uuid "{uid()}"))')
+
+    # Board details, inside the sheet: USB B, power jack, headers, MCU, reset.
+    rect(round(x0 - 6.35, 2), by(1.65), bx(0.45), by(1.17))          # USB B
+    text("USB", bx(0.0), by(1.39))
+    rect(round(x0 - 1.27, 2), by(0.55), bx(0.55), by(0.10))          # DC jack
+    text("7-12 V", bx(0.0), by(0.30))
+    for (first, n, y) in ((0.84, 10, by(2.05)), (1.90, 8, by(2.05)),
+                          (1.04, 8, by(0.05)), (1.94, 6, by(0.05))):
+        rect(round(bx(first) - 1.905, 2), round(y - 1.905, 2),
+             round(bx(first + 0.1 * (n - 1)) + 1.905, 2), round(y + 1.905, 2), dash=True)
+    rect(bx(1.30), by(1.05), bx(2.45), by(0.70))                     # ATmega328P DIP-28
+    text("ATmega328P", bx(1.62), by(0.83))
+    out.append(f'(circle (center {bx(0.55)} {by(1.90)}) (radius 2.54) '
+               f'(stroke (width 0.254) (type default)) (fill (type none)) (uuid "{uid()}"))')
+    text("RESET", round(bx(0.55) + 3.81, 2), round(by(1.90) + 1.27, 2))
+    text("ARDUINO UNO R3", bx(1.05), by(1.35), size=3.0)
+    text("DIGITAL (PWM ~ : D3 D5 D6 D9 D10 D11)", bx(1.30), round(y0 + 13.97, 2))
+    text("POWER", bx(1.04), round(y0 + h - 13.97, 2))
+    text("ANALOG IN", bx(1.94), round(y0 + h - 13.97, 2))
+
+    pin_txt = " ".join(
+        f'(pin "{n}" bidirectional (at {x} {y} {a}) '
+        f'(effects (font (size 1.27 1.27)) (justify {"right" if a == 90 else "left"})) '
+        f'(uuid "{uid()}"))' for (n, x, y, a) in pins)
+    out.append(
+        f'(sheet (at {x0} {y0}) (size {w} {h}) (fields_autoplaced yes) '
+        f'(stroke (width 0.254) (type solid)) (fill (color 0 0 0 0.0000)) (uuid "{SHEET_UUID}") '
+        f'(property "Sheetname" "Arduino UNO R3" (at {x0} {round(y0 - 0.7, 2)} 0) '
+        f'(effects (font (size 1.27 1.27)) (justify left bottom))) '
+        f'(property "Sheetfile" "{UNO_SUBFILE}" (at {x0} {round(y0 + h + 0.6, 2)} 0) '
+        f'(effects (font (size 1.27 1.27)) (justify left top))) '
+        f'{pin_txt} '
+        f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" (page "2")))))')
+    text("Simulation : transitoire 10 ms. Terminal simule : terminal.txt -> "
+         "tools/make_terminal_lib.py", 25.4, 190.5)
+    text("Sonder : /Arduino UNO R3/D13, L13, D0_RX, D1_TX (ou un net de cette feuille)",
+         25.4, 194.31)
+    out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 25.4 200.66 0) '
+               f'(effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "{uid()}"))')
+    out.append('(sheet_instances (path "/" (page "1")))')
+    out.append(")")
+    return "\n".join(out) + "\n"
 
 
 if VARIANT == "lcd":
@@ -959,13 +1088,13 @@ def placed_symbol(lib_id, ref, value, x, y, extra):
         f'(symbol (lib_id "{lib_id}") (at {x} {y} {rot}) (unit 1) '
         f'(exclude_from_sim {"yes" if nosim else "no"}) '
         f'(in_bom {board}) (on_board {board}) (dnp no) (uuid "{uid()}") {" ".join(props)} {pins} '
-        f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" '
+        f'(instances (project "{PROJECT}" (path "{INSTANCE_PATH}" '
         f'(reference "{ref}") (unit 1)))))')
 
 
-def schematic():
+def schematic(file_uuid=None, root=True):
     parts = [f'(kicad_sch (version 20231120) (generator "eeschema") '
-             f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "{PAPER}")']
+             f'(generator_version "8.0") (uuid "{file_uuid or ROOT_UUID}") (paper "{PAPER}")']
     if TITLE:
         comments = " ".join(f'(comment {i + 1} "{c}")' for i, c in enumerate(TITLE[1:]))
         parts.append(f'(title_block (title "{TITLE[0]}") {comments})')
@@ -994,6 +1123,10 @@ def schematic():
         just = "right bottom" if angle == 180 else "left bottom"
         parts.append(f'(label "{name}" (at {x} {y} {angle}) (fields_autoplaced yes) '
                      f'{font(justify=just)} (uuid "{uid()}"))')
+    for (name, x, y, angle) in HLABELS:
+        just = "right" if angle == 180 else "left"
+        parts.append(f'(hierarchical_label "{name}" (shape bidirectional) (at {x} {y} {angle}) '
+                     f'(fields_autoplaced yes) {font(justify=just)} (uuid "{uid()}"))')
     for (text, x, y) in TEXTS:
         parts.append(f'(text "{text}" (exclude_from_sim yes) (at {x} {y} 0) '
                      f'{font(justify="left bottom")} (uuid "{uid()}"))')
@@ -1002,7 +1135,8 @@ def schematic():
                      f'{font(justify="left bottom")} (uuid "{uid()}"))')
     for p in PARTS:
         parts.append(placed_symbol(*p))
-    parts.append('(sheet_instances (path "/" (page "1")))')
+    if root:
+        parts.append('(sheet_instances (path "/" (page "1")))')
     parts.append(")")
     return "\n".join(parts) + "\n"
 
@@ -1035,7 +1169,7 @@ def check():
         union(a, b)
         for p in (a, b):
             ends[p] = ends.get(p, 0) + 1
-    label_pts = {(round(l[1], 2), round(l[2], 2)) for l in LABELS}
+    label_pts = {(round(l[1], 2), round(l[2], 2)) for l in LABELS + HLABELS}
     for p, n in ends.items():
         if (p not in pts and n < 2 and p not in label_pts
                 and p not in [(round(j[0], 2), round(j[1], 2)) for j in JUNCTIONS]):
@@ -1045,6 +1179,9 @@ def check():
     # Same label name or same power symbol value: same net.
     for label in LABELS:
         union((round(label[1], 2), round(label[2], 2)), ("label", label[0]))
+    for label in HLABELS:
+        # Same hierarchical name on one sheet: same sheet pin, same net.
+        union((round(label[1], 2), round(label[2], 2)), ("hier", label[0]))
     for lib_id, _r, value, x, y, _e in PARTS:
         if LIB[lib_id].get("power") and lib_id != "power:PWR_FLAG":
             union((round(x, 2), round(y, 2)), ("power", value))
@@ -1139,13 +1276,24 @@ def write_uno_models():
 def main():
     check()
     os.makedirs(OUT, exist_ok=True)
-    sch = schematic()
+    sheets = [[ROOT_UUID, "Root"]]
+    if VARIANT == "uno":
+        global INSTANCE_PATH
+        INSTANCE_PATH = f"/{ROOT_UUID}/{SHEET_UUID}"
+        sub = schematic(SUB_UUID, root=False)
+        assert balanced(sub), "unbalanced s-expression"
+        with open(os.path.join(OUT, UNO_SUBFILE), "w") as f:
+            f.write(sub)
+        sch = uno_root_sheet()
+        sheets.append([SHEET_UUID, "Arduino UNO R3"])
+    else:
+        sch = schematic()
     assert balanced(sch), "unbalanced s-expression"
     with open(os.path.join(OUT, PROJECT + ".kicad_sch"), "w") as f:
         f.write(sch)
 
     pro = {"meta": {"filename": PROJECT + ".kicad_pro", "version": 1},
-           "sheets": [[ROOT_UUID, "Root"]]}
+           "sheets": sheets}
     with open(os.path.join(OUT, PROJECT + ".kicad_pro"), "w") as f:
         json.dump(pro, f, indent=2)
 

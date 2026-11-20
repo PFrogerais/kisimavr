@@ -3,7 +3,16 @@ Arduino_UNO - carte Arduino UNO R3 (partie ATmega328P) : blink + UART RX/TX
 
 Schema : d'apres le schema officiel Arduino A000066 (UNO R3),
 https://docs.arduino.cc/resources/schematics/A000066-schematics.pdf
-Feuille A3, blocs relies par etiquettes de nets (comme le schema officiel).
+
+Deux feuilles :
+  - Arduino_UNO.kicad_sch (racine) : la carte est un bloc hierarchique
+    dessine comme une UNO vue de dessus (USB a gauche), chaque broche des
+    connecteurs a sa place reelle : en haut SCL SDA AREF GND3 D13..D8 puis
+    D7..D2 D1_TX D0_RX ; en bas IOREF RESET 3V3 5V GND1 GND2 VIN puis A0..A5.
+    Cablez vos composants (LED, capteurs...) directement sur ces broches.
+  - arduino_uno_r3.kicad_sch (feuille de la carte, A3) : le schema complet,
+    blocs relies par etiquettes ; chaque broche de J1..J4 porte un label
+    hierarchique (GND1, GND2, GND3, IOREF et 5V sont relies aux nets GND / +5V).
 
 Modeles : generes par "cmake --build build --target demos" (tools/setup_demos.py) :
   - atmega328p_full.lib : ZU4 = ATmega328P (symbole et empreinte officiels),
