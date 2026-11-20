@@ -73,7 +73,7 @@ jobs:
           for p in Arduino_UNO RaspberryPi_Pico RaspberryPi_Pico2; do
               kicad-cli sch export svg -o svg/$p kicad/projects/$p/$p.kicad_sch || true
           done
-          tar czf - svg | base64 -w0 | sed 's/^/SVGB64|/'; echo
+          rm -f svg/*/*-*.svg; tar czf - svg | base64 -w 8000 | sed 's/^/SVGB64|/'
 
       - name: Cache simavr
         id: simavr-cache
