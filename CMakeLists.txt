@@ -76,6 +76,8 @@ if(KISIMAVR_RP2040)
         EXCLUDE_FROM_ALL
         SYSTEM)
     FetchContent_MakeAvailable(quickjs)
+    # Third-party C code: its warnings are not ours (newer GCC, -Werror).
+    target_compile_options(qjs PRIVATE -w -Wno-error)
     target_sources(mcu_cosim PRIVATE src/rp2040_device.cpp)
     target_link_libraries(mcu_cosim PRIVATE qjs)
     target_compile_definitions(mcu_cosim PRIVATE KISIMAVR_HAVE_RP2040=1)

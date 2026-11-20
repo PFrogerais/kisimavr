@@ -62,12 +62,9 @@ jobs:
         run: |
           dnf install -y --setopt=install_weak_deps=False kicad
           kicad-cli version
-          # Temporary: locate the official Raspberry Pi Pico symbol / footprint.
-          ls /usr/share/kicad/symbols | grep -i -E "mcu_module|rasp" || true
-          find /usr/share/kicad -iname "*pico*" | head -20 || true
-          f=$(ls -d /usr/share/kicad/symbols/MCU_Module* 2>/dev/null | head -1)
-          if [ -d "$f" ]; then ls "$f" | grep -i pico; for x in "$f"/*Pico*; do echo "=== $x"; cat "$x"; done | head -400; fi
-          if [ -f "$f" ]; then grep -n "RaspberryPi_Pico" "$f" | head; fi
+          # Temporary: dump the official Raspberry Pi Pico symbol.
+          awk '/^\t\(symbol "RaspberryPi_Pico"$/,/^\t\(symbol "RaspberryPi_Pico_Debug"$/' \
+              /usr/share/kicad/symbols/MCU_Module.kicad_sym | sed 's/^/PICOSYM|/' || true
 
       # After the tools: checkout then uses git.
       - uses: actions/checkout@v4
