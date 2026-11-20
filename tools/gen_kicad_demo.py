@@ -3,7 +3,8 @@
 """Generate the wired KiCad demo projects of kisimavr.
 
 Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DIR]
-  VARIANT: full or i2c (official ATmega328P-P, DIP-28), gpio, adc, uart
+  VARIANT: full or i2c (official ATmega328P-P, DIP-28), gpio, adc, uart,
+           uno (Arduino UNO R3 board around the ATmega328P, official schematic)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -18,7 +19,8 @@ import uuid
 
 VARIANT = sys.argv[3] if len(sys.argv) > 3 else "gpio"
 PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
-           "full": "simAVR_atmega328p", "i2c": "simAVR_i2c"}[VARIANT]
+           "full": "simAVR_atmega328p", "i2c": "simAVR_i2c",
+           "uno": "Arduino_UNO"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -31,12 +33,19 @@ FOOTPRINTS = {
     "Device:C": "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm",
     "Device:LED": "LED_THT:LED_D5.0mm",
     "Device:D": "Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal",
+    "Device:Resonator": "Crystal:Resonator_SMD_Murata_CSTxExxV-3Pin_3.0x1.1mm",
+    "Switch:SW_Push": "Button_Switch_THT:SW_PUSH_6mm",
+    "simAVR:LMV358": "Package_SO:VSSOP-8_3x3mm_P0.65mm",
+    "Connector_Generic:Conn_01x06": "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
+    "Connector_Generic:Conn_01x08": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
+    "Connector_Generic:Conn_01x10": "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
+    "Connector_Generic:Conn_02x03_Odd_Even": "Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Vertical",
 }
 DATASHEETS = {
     "MCU_Microchip_ATmega:ATmega328P-P": "http://ww1.microchip.com/downloads/en/DeviceDoc/ATmega328_P%20AVR%20MCU%20with%20picoPower%20Technology%20Data%20Sheet%2040001984A.pdf",
 }
 # Simulation-only parts: no footprint, not on the board, not in the BOM.
-SIM_ONLY = {"Simulation_SPICE:VPULSE", "Simulation_SPICE:VDC"}
+SIM_ONLY = {"Simulation_SPICE:VPULSE", "Simulation_SPICE:VDC", "simAVR:USB_SERIE"}
 
 ROOT_UUID = str(uuid.uuid4())
 
@@ -204,6 +213,85 @@ LIB = {
 }
 
 
+def _conn_1xn(n):
+    """Connector_Generic:Conn_01xNN: pins on the left, pin 1 on top."""
+    top = 2.54 * ((n - 1) // 2)
+    bottom = top - 2.54 * (n - 1)
+    return dict(
+        ref="J", value=f"Conn_01x{n:02d}",
+        body=f'(rectangle (start -2.54 {top + 1.27}) (end 1.27 {bottom - 1.27}) '
+             '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[(str(k + 1), f"Pin_{k + 1}", -5.08, round(top - 2.54 * k, 2), 0, "passive")
+              for k in range(n)],
+        pin_names=False)
+
+
+for _n in (6, 8, 10):
+    LIB[f"Connector_Generic:Conn_01x{_n:02d}"] = _conn_1xn(_n)
+
+LIB.update({
+    "Connector_Generic:Conn_02x03_Odd_Even": dict(
+        ref="J", value="Conn_02x03_Odd_Even",
+        body='(rectangle (start -2.54 3.81) (end 5.08 -3.81) '
+             '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[("1", "Pin_1", -5.08, 2.54, 0, "passive"), ("2", "Pin_2", 7.62, 2.54, 180, "passive"),
+              ("3", "Pin_3", -5.08, 0, 0, "passive"), ("4", "Pin_4", 7.62, 0, 180, "passive"),
+              ("5", "Pin_5", -5.08, -2.54, 0, "passive"), ("6", "Pin_6", 7.62, -2.54, 180, "passive")],
+        pin_names=False),
+    "Device:Resonator": dict(
+        ref="Y", value="Resonator",
+        body='(rectangle (start -0.762 1.778) (end 0.762 -1.778) '
+             '(stroke (width 0.254) (type default)) (fill (type none))) '
+             '(polyline (pts (xy -1.524 2.032) (xy -1.524 -2.032)) '
+             '(stroke (width 0.254) (type default)) (fill (type none))) '
+             '(polyline (pts (xy 1.524 2.032) (xy 1.524 -2.032)) '
+             '(stroke (width 0.254) (type default)) (fill (type none))) '
+             '(polyline (pts (xy -2.54 0) (xy -1.524 0)) '
+             '(stroke (width 0) (type default)) (fill (type none))) '
+             '(polyline (pts (xy 2.54 0) (xy 1.524 0)) '
+             '(stroke (width 0) (type default)) (fill (type none))) '
+             '(polyline (pts (xy -2.032 -2.54) (xy 2.032 -2.54)) '
+             '(stroke (width 0) (type dash)) (fill (type none)))',
+        pins=[("1", "1", -5.08, 0, 0, "passive"), ("2", "2", 0, -5.08, 90, "passive"),
+              ("3", "3", 5.08, 0, 180, "passive")],
+        pin_names=False,
+        description="Three pin ceramic resonator"),
+    "Switch:SW_Push": dict(
+        ref="SW", value="SW_Push",
+        body='(circle (center -2.032 0) (radius 0.508) '
+             '(stroke (width 0) (type default)) (fill (type none))) '
+             '(circle (center 2.032 0) (radius 0.508) '
+             '(stroke (width 0) (type default)) (fill (type none))) '
+             '(polyline (pts (xy -2.54 1.27) (xy 2.54 1.27)) '
+             '(stroke (width 0) (type default)) (fill (type none))) '
+             '(polyline (pts (xy 0 1.27) (xy 0 3.048)) '
+             '(stroke (width 0) (type default)) (fill (type none)))',
+        pins=[("1", "1", -5.08, 0, 0, "passive"), ("2", "2", 5.08, 0, 180, "passive")],
+        pin_names=False,
+        description="Push button switch, generic, two pins"),
+    # One op-amp of the dual LMV358 (unit A), power pins included.
+    "simAVR:LMV358": dict(
+        ref="U", value="LMV358",
+        body='(polyline (pts (xy -5.08 5.08) (xy 5.08 0) (xy -5.08 -5.08) (xy -5.08 5.08)) '
+             '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[("3", "+", -7.62, 2.54, 0, "input"), ("2", "-", -7.62, -2.54, 0, "input"),
+              ("1", "~", 7.62, 0, 180, "output"),
+              ("8", "V+", -2.54, 6.35, 270, "power_in"), ("4", "V-", -2.54, -6.35, 90, "power_in")],
+        pin_names=True,
+        description="Low-voltage rail-to-rail output op-amp (unit A of the LMV358)"),
+    # Simulation-only: the ATmega16U2 USB-serial converter and the PC
+    # terminal behind it (terminal.lib, tools/make_terminal_lib.py).
+    "simAVR:USB_SERIE": dict(
+        ref="U", value="USB_SERIE",
+        body='(rectangle (start -7.62 5.08) (end 7.62 -10.16) '
+            '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[("1", "TXD", 10.16, 2.54, 180, "output"), ("2", "RXD", 10.16, -2.54, 180, "input"),
+              ("3", "DTR", 10.16, -7.62, 180, "output"), ("4", "GND", 0, -12.7, 90, "power_in")],
+        pin_names=True,
+        description="Serial terminal: ATmega16U2 USB-serial converter + PC (simulation only)"),
+})
+
+
 def lib_symbol(lib_id, d):
     short = lib_id.split(":")[1]
     power = "(power) " if d.get("power") else ""
@@ -233,11 +321,22 @@ def lib_symbol(lib_id, d):
         f'(symbol "{short}_1_1" {" ".join(pins)}))')
 
 
+def pin_xy(X, Y, pin, rot=0):
+    """Schematic position and angle of a library pin, symbol rotated by rot (0/90/180/270)."""
+    px, py, ang = pin[2], pin[3], pin[4]
+    r = rot % 360
+    # Rotate the library point counter-clockwise (y up), then flip y.
+    for _ in range(r // 90):
+        px, py = -py, px
+    return round(X + px, 2), round(Y - py, 2), (ang + r) % 360
+
+
 # --------------------------------------------------------------------------
 # Placed parts: (lib_id, ref, value, X, Y, extra properties)
 # --------------------------------------------------------------------------
 
-LIBFILE = "atmega328p_full.lib" if VARIANT in ("full", "i2c") else "atmega328p_cosim.lib"
+LIBFILE = ("atmega328p_full.lib" if VARIANT in ("full", "i2c", "uno")
+           else "atmega328p_cosim.lib")
 LEDFILE = "led_models.lib"
 
 PARTS = [
@@ -482,8 +581,160 @@ if VARIANT == "i2c":
     DIRECTIVES = [(".tran 0.2u 5m", 101.6, 144.78)]
 
 
+PAPER = "A4"
+TITLE = None
+NO_CONNECTS = []
+TEXTS = []          # Comments: (text, x, y)
+
+if VARIANT == "uno":
+    # Arduino UNO R3 around the ATmega328P, after the official schematic
+    # (A000066). Every pin gets a 2.54 mm stub ending on a net label or a
+    # power symbol, so the blocks can be laid out freely.
+    PAPER = "A3"
+    TITLE = ("Arduino UNO R3 - partie ATmega328P (simulation kisimavr)",
+             "D'apres le schema officiel Arduino A000066 (UNO R3)",
+             "USB, ATmega16U2 et regulateurs : remplaces par U3 et V1 (simulation)")
+    UNOFILE = "uno_models.lib"
+    TERMFILE = "terminal.lib"
+    SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
+                "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
+    NOSIM = {"_nosim": True}
+    UNO_PARTS = [
+        # --- ATmega328P (ZU4 on the board) ---
+        ("MCU_Microchip_ATmega:ATmega328P-P", "ZU4", "ATmega328P-PU", 165.1, 111.76,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LIBFILE,
+          "Sim.Name": "ATMEGA328P", "Sim.Pins": SIM_PINS},
+         {"7": "+5V", "20": "+5V", "8": "GND", "21": "AREF", "1": "RESET",
+          "9": "XTAL1", "10": "XTAL2",
+          "14": "D8", "15": "D9", "16": "D10", "17": "D11", "18": "D12", "19": "D13",
+          "23": "A0", "24": "A1", "25": "A2", "26": "A3", "27": "A4", "28": "A5",
+          "2": "D0_RX", "3": "D1_TX", "4": "D2", "5": "D3", "6": "D4", "11": "D5",
+          "12": "D6", "13": "D7"}),
+        ("Device:C", "C1", "100n", 134.62, 53.34, {}, {"1": "+5V", "2": "GND"}),
+        ("Device:C", "C2", "100n", 144.78, 53.34, {}, {"1": "+5V", "2": "GND"}),
+        ("Device:C", "C3", "100n", 134.62, 91.44, NOSIM, {"1": "AREF", "2": "GND"}),
+        # --- 16 MHz ceramic resonator ---
+        ("Device:Resonator", "Y2", "CSTCE16M0V53-R0", 223.52, 63.5, NOSIM,
+         {"1": "XTAL1", "2": "GND", "3": "XTAL2"}),
+        ("Device:R", "R1", "1M", 223.52, 48.26, NOSIM, {"1": "XTAL1", "2": "XTAL2"}),
+        # --- Reset: pull-up, auto-reset capacitor from DTR, diode, button ---
+        ("Device:R", "R2", "10k", 50.8, 55.88, {}, {"1": "+5V", "2": "RESET"}),
+        ("Device:D", "D1", "CD1206-S01575", 63.5, 55.88,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE, "Sim.Name": "DSIG",
+          "Sim.Pins": "1=K 2=A", "_rot": 180},
+         {"1": "+5V", "2": "RESET"}),
+        ("Device:C", "C4", "100n", 81.28, 55.88, {}, {"1": "DTR", "2": "RESET"}),
+        ("Switch:SW_Push", "SW1", "RESET", 101.6, 66.04, NOSIM, {"1": "RESET", "2": "GND"}),
+        # --- LED "L" on D13, buffered by U5A (LMV358 follower) ---
+        ("simAVR:LMV358", "U5", "LMV358", 254.0, 111.76,
+         {"Sim.Device": "SUBCKT", "Sim.Library": UNOFILE, "Sim.Name": "LMV358_A",
+          "Sim.Pins": "3=INP 2=INN 1=OUT 8=VCC 4=VEE"},
+         {"3": "D13", "2": "L13", "1": "L13", "8": "+5V", "4": "GND"}),
+        ("Device:R", "R3", "1k", 274.32, 109.22, {}, {"1": "L13", "2": "L13_A"}),
+        ("Device:LED", "D2", "L (jaune)", 274.32, 124.46,
+         {"Sim.Device": "SUBCKT", "Sim.Library": UNOFILE, "Sim.Name": "LEDJAUNE",
+          "Sim.Pins": "1=K 2=A"},
+         {"2": "L13_A", "1": "GND"}),
+        # --- Power LED "ON" ---
+        ("Device:R", "R4", "1k", 292.1, 109.22, {}, {"1": "+5V", "2": "ON_A"}),
+        ("Device:LED", "D3", "ON (vert)", 292.1, 124.46,
+         {"Sim.Device": "SUBCKT", "Sim.Library": UNOFILE, "Sim.Name": "LEDVERTE",
+          "Sim.Pins": "1=K 2=A"},
+         {"2": "ON_A", "1": "GND"}),
+        # --- Serial link to the USB-serial converter (1k series resistors) ---
+        ("simAVR:USB_SERIE", "U3", "ATmega16U2 + PC", 50.8, 137.16,
+         {"Sim.Device": "SUBCKT", "Sim.Library": TERMFILE, "Sim.Name": "USB_SERIE",
+          "Sim.Pins": "1=TXD 2=RXD 3=DTR 4=GND"},
+         {"1": "USB_TX", "2": "USB_RX", "3": "DTR", "4": "GND"}),
+        ("Device:R", "R5", "1k", 83.82, 137.16, {}, {"1": "USB_TX", "2": "D0_RX"}),
+        ("Device:R", "R6", "1k", 99.06, 137.16, {}, {"1": "D1_TX", "2": "USB_RX"}),
+        # --- 5 V supply of the simulation (regulator NCP1117 / USB on the board) ---
+        ("Simulation_SPICE:VDC", "V1", "5V", 50.8, 190.5,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=5"},
+         {"1": "+5V!", "2": "GND!"}),
+        # --- Headers of the board ---
+        ("Connector_Generic:Conn_01x08", "J1", "POWER", 355.6, 55.88, NOSIM,
+         {"1": "NC", "2": "+5V", "3": "RESET", "4": "3V3", "5": "+5V", "6": "GND",
+          "7": "GND", "8": "VIN"}),
+        ("Connector_Generic:Conn_01x06", "J2", "ANALOG IN", 355.6, 86.36, NOSIM,
+         {str(k + 1): f"A{k}" for k in range(6)}),
+        ("Connector_Generic:Conn_01x08", "J3", "IOL", 355.6, 119.38, NOSIM,
+         {"1": "D0_RX", "2": "D1_TX", "3": "D2", "4": "D3", "5": "D4", "6": "D5",
+          "7": "D6", "8": "D7"}),
+        ("Connector_Generic:Conn_01x10", "J4", "IOH", 355.6, 157.48, NOSIM,
+         {"1": "D8", "2": "D9", "3": "D10", "4": "D11", "5": "D12", "6": "D13",
+          "7": "GND", "8": "AREF", "9": "A4", "10": "A5"}),
+        ("Connector_Generic:Conn_02x03_Odd_Even", "J5", "ICSP", 353.06, 198.12, NOSIM,
+         {"1": "D12", "2": "+5V", "3": "D13", "4": "D11", "5": "RESET", "6": "GND"}),
+    ]
+    TEXTS = [
+        ("ATmega328P (modele kisimavr, firmware uno_demo.hex)", 139.7, 66.04),
+        ("Decouplage", 134.62, 43.18),
+        ("Resonateur 16 MHz (non simule : horloge interne du modele)", 205.74, 40.64),
+        ("Reset : tirage 10k, reset auto par DTR, bouton (non simule)", 43.18, 43.18),
+        ("LED L sur D13, tamponnee par U5A (suiveur)", 241.3, 96.52),
+        ("LED ON", 287.02, 96.52),
+        ("Liaison serie : resistances 1k vers l'ATmega16U2", 43.18, 124.46),
+        ("U3 : convertisseur USB-serie + terminal du PC (simulation),", 43.18, 160.02),
+        ("texte envoye : terminal.txt -> tools/make_terminal_lib.py", 43.18, 163.83),
+        ("Alimentation 5 V de la simulation", 43.18, 177.8),
+        ("Connecteurs de la carte (non simules)", 337.82, 40.64),
+        ("Composants exclus de la simulation : Y2, R1, C3, SW1, J1-J5", 43.18, 223.52),
+        ("Sonder : D13, L13, D0_RX (RX), D1_TX (TX). Terminal : uart_log.txt", 43.18, 227.33),
+    ]
+    DIRECTIVES = [(".tran 0.5u 10m", 43.18, 233.68)]
+
+    # Build stubs, labels, power symbols and no-connects.
+    PARTS, WIRES, LABELS, JUNCTIONS = [], [], [], []
+    STUB = 2.54
+    _pwr = [0]
+    _flg = [0]
+
+    def _power(value, x, y, angle):
+        lib = "power:+5V" if value == "+5V" else "power:GND"
+        _pwr[0] += 1
+        PARTS.append((lib, f"#PWR{_pwr[0]:02d}", value, x, y, {"_rot": angle}))
+
+    for lib_id, ref, value, X, Y, extra, conn in UNO_PARTS:
+        PARTS.append((lib_id, ref, value, X, Y, extra))
+        seen = set()
+        for pin in LIB[lib_id]["pins"]:
+            num = pin[0]
+            px, py, pang = pin_xy(X, Y, pin, extra.get("_rot", 0))
+            if (px, py) in seen:
+                continue                 # Stacked pins (GND 8 and 22).
+            seen.add((px, py))
+            net = conn.get(num)
+            if net is None:
+                raise SystemExit(f"{ref} pin {num} not connected")
+            if net == "NC":
+                NO_CONNECTS.append((px, py))
+                continue
+            # Wire away from the body: pin angle 0 -> left, 180 -> right,
+            # 90 -> down (screen), 270 -> up.
+            dx, dy = {0: (-1, 0), 180: (1, 0), 90: (0, 1), 270: (0, -1)}[pang]
+            ex, ey = round(px + dx * STUB, 2), round(py + dy * STUB, 2)
+            WIRES.append(((px, py), (ex, ey)))
+            flag = net.endswith("!")
+            net = net.rstrip("!")
+            if net in ("+5V", "GND"):
+                # Symbol pointing away from the stub (rotation counter-clockwise).
+                up = {(0, -1): 0, (-1, 0): 90, (0, 1): 180, (1, 0): 270}[(dx, dy)]
+                _power(net, ex, ey, up if net == "+5V" else (up + 180) % 360)
+                if flag:
+                    _flg[0] += 1
+                    PARTS.append(("power:PWR_FLAG", f"#FLG{_flg[0]:02d}", "PWR_FLAG", ex, ey,
+                                  {"_rot": (up + 90) % 360 if net == "+5V" else (up + 270) % 360}))
+            else:
+                LABELS.append((net, ex, ey, 180 if dx < 0 else 0))
+    NO_CONNECT_REF = None
+
+
 def placed_symbol(lib_id, ref, value, x, y, extra):
     d = LIB[lib_id]
+    extra = dict(extra)
+    rot = extra.pop("_rot", 0)
+    nosim = extra.pop("_nosim", False)
     hide_ref = d.get("power", False)
     props = [
         f'(property "Reference" "{ref}" (at {x + 3.81} {y - 1.27} 0) '
@@ -500,7 +751,8 @@ def placed_symbol(lib_id, ref, value, x, y, extra):
     if d.get("power"):
         board = "yes" if lib_id != "power:PWR_FLAG" else "no"
     return (
-        f'(symbol (lib_id "{lib_id}") (at {x} {y} 0) (unit 1) (exclude_from_sim no) '
+        f'(symbol (lib_id "{lib_id}") (at {x} {y} {rot}) (unit 1) '
+        f'(exclude_from_sim {"yes" if nosim else "no"}) '
         f'(in_bom {board}) (on_board {board}) (dnp no) (uuid "{uid()}") {" ".join(props)} {pins} '
         f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" '
         f'(reference "{ref}") (unit 1)))))')
@@ -508,7 +760,10 @@ def placed_symbol(lib_id, ref, value, x, y, extra):
 
 def schematic():
     parts = [f'(kicad_sch (version 20231120) (generator "eeschema") '
-             f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "A4")']
+             f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "{PAPER}")']
+    if TITLE:
+        comments = " ".join(f'(comment {i + 1} "{c}")' for i, c in enumerate(TITLE[1:]))
+        parts.append(f'(title_block (title "{TITLE[0]}") {comments})')
     used_ids = {p[0] for p in PARTS}
     parts.append("(lib_symbols " + " ".join(lib_symbol(k, v) for k, v in LIB.items()
                                            if k in used_ids) + ")")
@@ -517,6 +772,8 @@ def schematic():
     for (a, b) in WIRES:
         parts.append(f'(wire (pts (xy {a[0]} {a[1]}) (xy {b[0]} {b[1]})) '
                      f'(stroke (width 0) (type default)) (uuid "{uid()}"))')
+    for (x, y) in NO_CONNECTS:
+        parts.append(f'(no_connect (at {x} {y}) (uuid "{uid()}"))')
     if globals().get("NO_CONNECT_REF"):
         used = {(round(x, 2), round(y, 2)) for a, b in WIRES for (x, y) in (a, b)}
         for lib_id, ref, _v, X, Y, _e in PARTS:
@@ -526,8 +783,14 @@ def schematic():
                 pt = (round(X + pin[2], 2), round(Y - pin[3], 2))
                 if pt not in used:
                     parts.append(f'(no_connect (at {pt[0]} {pt[1]}) (uuid "{uid()}"))')
-    for (name, x, y) in LABELS:
-        parts.append(f'(label "{name}" (at {x} {y} 0) (fields_autoplaced yes) '
+    for label in LABELS:
+        name, x, y = label[:3]
+        angle = label[3] if len(label) > 3 else 0
+        just = "right bottom" if angle == 180 else "left bottom"
+        parts.append(f'(label "{name}" (at {x} {y} {angle}) (fields_autoplaced yes) '
+                     f'{font(justify=just)} (uuid "{uid()}"))')
+    for (text, x, y) in TEXTS:
+        parts.append(f'(text "{text}" (exclude_from_sim yes) (at {x} {y} 0) '
                      f'{font(justify="left bottom")} (uuid "{uid()}"))')
     for (text, x, y) in DIRECTIVES:
         parts.append(f'(text "{text}" (exclude_from_sim no) (at {x} {y} 0) '
@@ -545,10 +808,11 @@ def schematic():
 
 def check():
     pts = {}
-    for lib_id, ref, _v, x, y, _e in PARTS:
+    for lib_id, ref, _v, x, y, extra in PARTS:
         for pin in LIB[lib_id]["pins"]:
-            num, name, px, py = pin[:4]
-            pts.setdefault((round(x + px, 2), round(y - py, 2)), []).append(f"{ref}.{name}")
+            px, py, _a = pin_xy(x, y, pin, extra.get("_rot", 0))
+            name = f"{ref}.{pin[1]}" if not LIB[lib_id].get("power") else f"<{_v}>"
+            pts.setdefault((px, py), []).append(name)
 
     parent = {}
 
@@ -566,17 +830,38 @@ def check():
         union(a, b)
         for p in (a, b):
             ends[p] = ends.get(p, 0) + 1
+    label_pts = {(round(l[1], 2), round(l[2], 2)) for l in LABELS}
     for p, n in ends.items():
-        if p not in pts and n < 2 and p not in [(round(j[0], 2), round(j[1], 2)) for j in JUNCTIONS]:
+        if (p not in pts and n < 2 and p not in label_pts
+                and p not in [(round(j[0], 2), round(j[1], 2)) for j in JUNCTIONS]):
             raise SystemExit(f"dangling wire end at {p}")
     for p in pts:
         find(p)
+    # Same label name or same power symbol value: same net.
+    for label in LABELS:
+        union((round(label[1], 2), round(label[2], 2)), ("label", label[0]))
+    for lib_id, _r, value, x, y, _e in PARTS:
+        if LIB[lib_id].get("power") and lib_id != "power:PWR_FLAG":
+            union((round(x, 2), round(y, 2)), ("power", value))
+    for lib_id, _r, value, x, y, _e in PARTS:
+        if lib_id == "power:PWR_FLAG":
+            if find((round(x, 2), round(y, 2))) == (round(x, 2), round(y, 2)) and \
+                    len(pts[(round(x, 2), round(y, 2))]) < 2:
+                raise SystemExit(f"PWR_FLAG at {x},{y} not connected")
     nets = {}
     for p, names in pts.items():
         nets.setdefault(find(p), []).extend(names)
-    for net in nets.values():
-        print("net:", sorted(net))
-    for _n, x, y in LABELS:
+    names_of = {}
+    for label in LABELS:
+        names_of.setdefault(find((round(label[1], 2), round(label[2], 2))), set()).add(label[0])
+    for root, members in nets.items():
+        title = ",".join(sorted(names_of.get(root, []))) or "-"
+        print(f"net {title}:", sorted(n for n in members if not n.startswith("<")))
+    for root, names in names_of.items():
+        if len(names) > 1:
+            raise SystemExit(f"labels {sorted(names)} short-circuited")
+    for label in LABELS:
+        _n, x, y = label[:3]
         on = any(min(a[0], b[0]) <= x <= max(a[0], b[0]) and min(a[1], b[1]) <= y <= max(a[1], b[1])
                  for a, b in WIRES)
         if not on:
@@ -594,6 +879,56 @@ def balanced(text):
             if depth < 0:
                 return False
     return depth == 0 and not in_str
+
+
+UNO_MODELS = """\
+* Models of the Arduino UNO demo (kisimavr).
+
+* One op-amp of the LMV358 (unit A), simple macro-model:
+* open-loop gain 1e5, gain-bandwidth 1 MHz (pole at 10 Hz), output clamped
+* to the rails (rail-to-rail output), ideal inputs.
+* Pins: non-inverting, inverting, output, V+, V-
+.subckt LMV358_A INP INN OUT VCC VEE
+B1 N1 0 V = max(min(1e5*(V(INP)-V(INN)), V(VCC)+1), V(VEE)-1)
+R1 N1 N2 1k
+C1 N2 0 15.9u
+B2 OUT 0 V = max(min(V(N2), V(VCC)), V(VEE))
+.ends LMV358_A
+
+* Yellow LED (LED "L"), about 1.8 V at 3 mA (pins: anode cathode)
+.subckt LEDJAUNE A K
+D1 A K DLEDJAUNE
+.model DLEDJAUNE D(IS=1e-18 RS=10 N=2 BV=5 IBV=10u CJO=10p)
+.ends LEDJAUNE
+
+* Green LED (LED "ON"), about 2.0 V at 3 mA (pins: anode cathode)
+.subckt LEDVERTE A K
+D1 A K DLEDVERTE
+.model DLEDVERTE D(IS=1e-19 RS=10 N=2 BV=5 IBV=10u CJO=10p)
+.ends LEDVERTE
+"""
+
+UNO_TERMINAL = r"""# Text sent by the PC terminal to the Arduino UNO (115200 bauds).
+# One line per send: <time> <text>   (escapes: \n \r \s \xHH)
+# After a change: python3 tools/make_terminal_lib.py terminal.txt -o terminal.lib
+2m Bonjour\n
+4.5m BLINK OFF\n
+7m BLINK ON\n
+"""
+
+
+def write_uno_models():
+    """uno_models.lib (op-amp, LEDs), terminal.txt (kept if present), terminal.lib."""
+    with open(os.path.join(OUT, UNOFILE), "w") as f:
+        f.write(UNO_MODELS)
+    script = os.path.join(OUT, "terminal.txt")
+    if not os.path.exists(script):
+        with open(script, "w") as f:
+            f.write(UNO_TERMINAL)
+    import subprocess
+    subprocess.run([sys.executable,
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "make_terminal_lib.py"),
+                    script, "-o", os.path.join(OUT, TERMFILE)], check=True)
 
 
 def main():
@@ -622,6 +957,9 @@ def main():
                 ".model D1N4148M D(IS=2.52n RS=0.568 N=1.752 BV=100 IBV=100u "
                 "CJO=4p M=0.4 TT=20n)\n"
                 ".ends DSIG\n")
+
+    if VARIANT == "uno":
+        write_uno_models()
 
     with open(sys.argv[2]) as f:
         lib = f.read()

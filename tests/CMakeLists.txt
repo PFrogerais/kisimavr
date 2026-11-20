@@ -158,6 +158,15 @@ kisimavr_test(runner.uart_rx_pin FIXTURE firmware
     EXPECT [[UART0< LED ON]] [[UART0> OK LED ON]] [[out1: 1 changes, 1 rising edges]]
     REJECT [[setup failed]] [[framing error]])
 
+# Arduino UNO demo: banner, command on the RXD pin, blinking stopped
+# (without the command, D13 would toggle every millisecond: ~8 changes).
+kisimavr_test(runner.uno_demo FIXTURE firmware
+    COMMAND ${RUN} -t 0.008 -u [[117647,BLINK\sOFF\n]] ${SO} -- hex ${FW}/uno_demo.hex
+            in PD0 out PD1 PB5
+    EXPECT [[UART0> Arduino UNO pret]] [[UART0< BLINK OFF]] [[UART0> OK BLINK OFF]]
+           [[out1: [1-3] changes]]
+    REJECT [[setup failed]] [[framing error]])
+
 # ---- Generated models ---------------------------------------------------------
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
@@ -176,6 +185,18 @@ if(Python3_FOUND)
         set_tests_properties(models.${name}_up_to_date PROPERTIES FIXTURES_SETUP model_${name})
         set_tests_properties(models.${name}_compare PROPERTIES FIXTURES_REQUIRED model_${name})
     endfunction()
+
+    # Terminal of the Arduino UNO project, rebuilt from its terminal.txt.
+    set(uno ${PROJECT_SOURCE_DIR}/kicad/projects/Arduino_UNO)
+    kisimavr_test(models.uno_terminal_up_to_date
+        COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tools/make_terminal_lib.py
+                ${uno}/terminal.txt -o ${CMAKE_CURRENT_BINARY_DIR}/models/terminal.lib
+        EXPECT [[written]])
+    add_test(NAME models.uno_terminal_compare
+        COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/models/terminal.lib
+                ${uno}/terminal.lib)
+    set_tests_properties(models.uno_terminal_up_to_date PROPERTIES FIXTURES_SETUP model_uno_terminal)
+    set_tests_properties(models.uno_terminal_compare PROPERTIES FIXTURES_REQUIRED model_uno_terminal)
 
     kisimavr_model_test(full_lib kicad/atmega328p_full.lib --hex ../firmware/full_demo.hex)
     kisimavr_model_test(i2c_lib ngspice/atmega328p_i2c.lib --hex ../firmware/i2c_lm75.hex
@@ -240,6 +261,51 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
     set_tests_properties(ngspice.uart_rx PROPERTIES LABELS ngspice)
 elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
+endif()
+
+# ---- KiCad projects (kicad-cli) -------------------------------------------------
+# ERC of every demo schematic, then the Arduino UNO schematic exported as a
+# SPICE netlist by KiCad itself and simulated by ngspice.
+find_program(KICAD_CLI kicad-cli)
+if(KICAD_CLI AND Python3_FOUND)
+    file(GLOB kicad_schematics ${PROJECT_SOURCE_DIR}/kicad/projects/*/*.kicad_sch)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/kicad)
+    foreach(sch IN LISTS kicad_schematics)
+        get_filename_component(project ${sch} NAME_WE)
+        add_test(NAME kicad.erc.${project}
+            COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DSCH=${sch}
+                    -DREPORT=${CMAKE_CURRENT_BINARY_DIR}/kicad/${project}.rpt
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_erc.cmake)
+        set_tests_properties(kicad.erc.${project} PROPERTIES LABELS kicad TIMEOUT 120)
+    endforeach()
+
+    if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
+        # Demo models with this machine's paths (as "cmake --build build --target demos").
+        kisimavr_test(kicad.demos_setup FIXTURE firmware
+            COMMAND ${Python3_EXECUTABLE} ${PROJECT_SOURCE_DIR}/tools/setup_demos.py --so ${SO}
+            EXPECT [[terminal\.lib]])
+        set_tests_properties(kicad.demos_setup PROPERTIES FIXTURES_SETUP demos LABELS kicad)
+
+        set(uno_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/Arduino_UNO.cir)
+        add_test(NAME kicad.uno_netlist
+            COMMAND ${KICAD_CLI} sch export netlist --format spice -o ${uno_net}
+                    ${PROJECT_SOURCE_DIR}/kicad/projects/Arduino_UNO/Arduino_UNO.kicad_sch)
+        set_tests_properties(kicad.uno_netlist PROPERTIES FIXTURES_SETUP uno_netlist
+                             LABELS kicad TIMEOUT 120)
+
+        kisimavr_test(ngspice.kicad_uno TIMEOUT 300
+            WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/Arduino_UNO
+            COMMAND ${NGSPICE} -b ${uno_net}
+            EXPECT [[UART0> Arduino UNO pret]]
+                   [[UART0< Bonjour]] [[UART0> Recu : Bonjour]]
+                   [[UART0< BLINK OFF]] [[UART0> OK BLINK OFF]]
+                   [[UART0< BLINK ON]] [[UART0> OK BLINK ON]]
+            REJECT [[setup failed]] [[mismatched]] [[framing error]] [[[Ee]rror]])
+        set_tests_properties(ngspice.kicad_uno PROPERTIES LABELS "ngspice;kicad"
+                             FIXTURES_REQUIRED "firmware;demos;uno_netlist")
+    endif()
+else()
+    message(STATUS "KiCad tests disabled: kicad-cli not found")
 endif()
 
 # ---- Output files never replace a file the plug-in did not write ----------------

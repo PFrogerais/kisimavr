@@ -1,0 +1,6 @@
+# Text sent by the PC terminal to the Arduino UNO (115200 bauds).
+# One line per send: <time> <text>   (escapes: \n \r \s \xHH)
+# After a change: python3 tools/make_terminal_lib.py terminal.txt -o terminal.lib
+2m Bonjour\n
+4.5m BLINK OFF\n
+7m BLINK ON\n

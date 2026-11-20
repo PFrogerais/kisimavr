@@ -1,0 +1,50 @@
+Arduino_UNO - carte Arduino UNO R3 (partie ATmega328P) : blink + UART RX/TX
+===========================================================================
+
+Schema : d'apres le schema officiel Arduino A000066 (UNO R3),
+https://docs.arduino.cc/resources/schematics/A000066-schematics.pdf
+Feuille A3, blocs relies par etiquettes de nets (comme le schema officiel).
+
+Modeles : generes par "cmake --build build --target demos" (tools/setup_demos.py) :
+  - atmega328p_full.lib : ZU4 = ATmega328P (symbole et empreinte officiels),
+                          firmware firmware/uno_demo.hex
+  - terminal.lib        : U3 = convertisseur USB-serie ATmega16U2 + terminal du PC
+  - uno_models.lib      : U5A = LMV358 (macro-modele), LED jaune et verte
+  - led_models.lib      : diode de reset D1
+
+Ce qui est simule :
+  - ZU4 (ATmega328P), decouplage C1/C2, alimentation +5V (V1, a la place
+    du regulateur NCP1117 et de l'USB)
+  - reset : R2 10k vers +5V, D1, C4 100n relie au DTR du 16U2 (DTR tenu a 5 V)
+  - LED "L" : D13 -> U5A (suiveur LMV358) -> R3 1k -> D2 (jaune)
+  - LED "ON" : R4 1k -> D3 (verte)
+  - liaison serie : U3 TXD -> R5 1k -> D0/RX ; D1/TX -> R6 1k -> U3 RXD
+Exclus de la simulation (presents pour le PCB) : resonateur Y2 16 MHz + R1 1M
+(l'horloge est un parametre du modele), C3 sur AREF, bouton SW1, connecteurs
+J1 POWER, J2 ANALOG IN, J3 IOL, J4 IOH, J5 ICSP.
+Non repris : USB, ATmega16U2 lui-meme, LED TX/RX (pilotees par le 16U2),
+regulateurs 5 V / 3,3 V, commutation VIN/USB (U5B).
+
+Firmware : firmware/uno_demo.c ou firmware/uno_demo/uno_demo.ino
+  - LED L clignote (demi-periode 1 ms pour la simulation, 500 ms sur la carte)
+  - "Arduino UNO pret" au demarrage, puis repond a chaque ligne recue :
+      BLINK OFF -> "OK BLINK OFF" (LED eteinte), BLINK ON -> "OK BLINK ON",
+      autre     -> "Recu : <ligne>"   (115200 bauds)
+
+Texte envoye par le PC : terminal.txt (instant + texte, \n = fin de ligne),
+  par defaut : 2 ms "Bonjour", 4,5 ms "BLINK OFF", 7 ms "BLINK ON".
+  Apres modification : python3 tools/make_terminal_lib.py terminal.txt -o terminal.lib
+  (ou "cmake --build build --target demos").
+
+Ou voir quoi ?
+  - Simulateur : sonder D13 et L13 (clignotement, arret a ~5 ms, reprise a ~7,5 ms),
+    D0_RX (trames recues, 0/5 V) et D1_TX (reponses), courant de D2.
+  - Terminal (KiCad lance depuis un terminal) :
+      [mcu_cosim] t=... s UART0< BLINK OFF        (recu par le MCU)
+      [mcu_cosim] t=... s UART0> OK BLINK OFF     (envoye par le MCU)
+  - uart_log.txt (ce dossier) : le texte envoye par le MCU
+  - trace.vcd (ce dossier) : chronogramme pour PulseView (decodeur UART)
+
+Simulation : transitoire, pas 0.5u, duree 10m,
+             "Sauvegarder tous les courants" decoche.
+Guide detaille : README.md du dossier parent.

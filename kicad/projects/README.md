@@ -17,13 +17,14 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `simAVR_adc` | `firmware/adc_pwm.c` | convertisseur SAR visible, PWM filtrée |
 | `simAVR_uart` | `firmware/uart_adc.c` | console série, trames sur TXD |
 | `simAVR_i2c` | `firmware/i2c_lm75.c` ou `i2c_lm75/i2c_lm75.ino` | bus I²C : capteur LM75, EEPROM 24C02, pull-ups 4,7 kΩ (symbole officiel) |
+| `Arduino_UNO` | `firmware/uno_demo.c` ou `uno_demo/uno_demo.ino` | carte UNO R3 d'après le schéma officiel : LED L (tampon LMV358), reset, liaison série 1 kΩ vers le 16U2, connecteurs ; blink + UART RX/TX |
 
 *Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la
 copie du symbole intégrée au schéma par celle de votre bibliothèque KiCad,
 sans changer le câblage ni le modèle de simulation.
 
-`simAVR_atmega328p` et `simAVR_i2c` utilisent le symbole et l'empreinte
-officiels de l'ATmega328P-P ; les trois autres utilisent des symboles
+`simAVR_atmega328p`, `simAVR_i2c` et `Arduino_UNO` utilisent le symbole et
+l'empreinte officiels de l'ATmega328P-P ; les trois autres utilisent des symboles
 simplifiés à 2–3 broches, faits uniquement pour la simulation.
 
 ---
@@ -219,6 +220,29 @@ Pour un programme qui lit le port série (`Serial.read`, `readStringUntil`) :
 un rang différent par MCU), mettre `Sim.Name` = `ATMEGA328P_A` sur l'un et
 `ATMEGA328P_B` sur l'autre, puis relier D1 (TXD) de l'un à D0 (RXD) de
 l'autre. Exemple complet : `ngspice/uart_rx_test.cir`.
+
+## Étape 3 quater — La carte Arduino UNO (`Arduino_UNO`)
+
+Le projet reprend la partie ATmega328P du [schéma officiel de l'UNO R3](https://docs.arduino.cc/resources/schematics/A000066-schematics.pdf).
+Les références suivent ce schéma : ZU4 pour l'ATmega328P, U5A pour le
+LMV358 de la LED L, U3 pour l'ATmega16U2. Les blocs sont reliés par des
+étiquettes, et la feuille est au format A3. Voir `LISEZMOI.txt` du projet.
+
+- **Ce qui est simulé** : le MCU, le reset (10 kΩ, diode, 100 nF vers DTR),
+  la LED L derrière son suiveur LMV358, la LED ON et la liaison série
+  (1 kΩ dans chaque sens).
+- **Le PC et l'ATmega16U2** sont remplacés par U3 (`terminal.lib`), qui
+  envoie de vraies trames sur RX. Le texte envoyé se règle dans
+  `terminal.txt`, puis on relance :
+  ```bash
+  python3 ~/dev/kisimavr/tools/make_terminal_lib.py terminal.txt -o terminal.lib
+  ```
+- **Exclus de la simulation**, mais gardés pour le PCB : le résonateur 16 MHz
+  et sa résistance de 1 MΩ, C3 sur AREF, le bouton RESET et les connecteurs.
+  KiCad les affiche avec la mention « exclu de la simulation ».
+- **Sondes utiles** : `D13` et `L13` (le clignotement, qui s'arrête vers
+  5 ms sur `BLINK OFF` et reprend vers 7,5 ms), `D0_RX` (ce que reçoit le
+  MCU) et `D1_TX` (ses réponses).
 
 ## Étape 4 — Passer au circuit imprimé
 

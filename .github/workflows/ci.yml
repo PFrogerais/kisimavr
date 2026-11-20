@@ -55,6 +55,14 @@ jobs:
               libasan libubsan which   # which: used by the simavr Makefiles
           ngspice -v | head -n 3
 
+      # kicad-cli: ERC of the demo projects and SPICE netlist of Arduino_UNO
+      # (release job only: the netlist is simulated by ngspice).
+      - name: Install KiCad
+        if: matrix.name == 'release'
+        run: |
+          dnf install -y --setopt=install_weak_deps=False kicad
+          kicad-cli version
+
       # After the tools: checkout then uses git.
       - uses: actions/checkout@v4
 

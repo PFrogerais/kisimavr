@@ -52,6 +52,16 @@ def main():
                     "--lm75temp", "20", "--lm75rate", "1000",
                     "--so", so, "-o", i2c], check=True)
 
+    # Arduino UNO board (official schematic): uno_demo firmware, and the
+    # terminal model rebuilt from terminal.txt (the text sent to RX).
+    uno = os.path.join(PROJECTS, "Arduino_UNO")
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_atmega328p_lib.py"),
+                    "--hex", os.path.join(ROOT, "firmware", "uno_demo.hex"),
+                    "--so", so, "-o", os.path.join(uno, "atmega328p_full.lib")], check=True)
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_terminal_lib.py"),
+                    os.path.join(uno, "terminal.txt"), "-o", os.path.join(uno, "terminal.lib")],
+                   check=True)
+
     # Small demos: repository model with its relative paths made absolute.
     with open(os.path.join(ROOT, "kicad", "atmega328p_cosim.lib")) as f:
         lib = f.read()

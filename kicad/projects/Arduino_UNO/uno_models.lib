@@ -1,0 +1,24 @@
+* Models of the Arduino UNO demo (kisimavr).
+
+* One op-amp of the LMV358 (unit A), simple macro-model:
+* open-loop gain 1e5, gain-bandwidth 1 MHz (pole at 10 Hz), output clamped
+* to the rails (rail-to-rail output), ideal inputs.
+* Pins: non-inverting, inverting, output, V+, V-
+.subckt LMV358_A INP INN OUT VCC VEE
+B1 N1 0 V = max(min(1e5*(V(INP)-V(INN)), V(VCC)+1), V(VEE)-1)
+R1 N1 N2 1k
+C1 N2 0 15.9u
+B2 OUT 0 V = max(min(V(N2), V(VCC)), V(VEE))
+.ends LMV358_A
+
+* Yellow LED (LED "L"), about 1.8 V at 3 mA (pins: anode cathode)
+.subckt LEDJAUNE A K
+D1 A K DLEDJAUNE
+.model DLEDJAUNE D(IS=1e-18 RS=10 N=2 BV=5 IBV=10u CJO=10p)
+.ends LEDJAUNE
+
+* Green LED (LED "ON"), about 2.0 V at 3 mA (pins: anode cathode)
+.subckt LEDVERTE A K
+D1 A K DLEDVERTE
+.model DLEDVERTE D(IS=1e-19 RS=10 N=2 BV=5 IBV=10u CJO=10p)
+.ends LEDVERTE
