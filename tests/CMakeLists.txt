@@ -174,6 +174,12 @@ kisimavr_test(runner.adc_pwm_high FIXTURE firmware
     EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period [0-9.]+ ms \([0-9.]+ Hz\), median period 0\.128[0-9]* ms]]
            [[out1: [0-9]+ changes, 1 rising edges]]
     REJECT [[setup failed]])
+# Fan: NTC divider at 0.5 V (hot): ENA (PD6) PWM at 976 Hz, IN1 high.
+kisimavr_test(runner.ventilo FIXTURE firmware
+    COMMAND ${RUN} -t 0.05 -a 0,0.5,0.5 ${SO} -- hex ${FW}/ventilo.hex out PD6 PD7 PB0 adc 0
+    EXPECT [[UART0> T = [0-9]+\.[0-9] C, moteur 100 %]]
+           [[out0: [1-9][0-9]+ changes, [0-9]+ rising edges, mean period 1\.02]]
+    REJECT [[setup failed]])
 kisimavr_test(runner.adc_pwm_low FIXTURE firmware
     COMMAND ${RUN} -t 0.02 -a 0,2,5 ${SO} -- hex ${FW}/adc_pwm.hex out PD6 PB5 adc 0
     EXPECT [[out1: [0-9]+ changes, 0 rising edges]]
