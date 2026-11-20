@@ -1,0 +1,32 @@
+* ATmega328P (Arduino UNO): HC-SR04 distance sensor and servomotor
+* Run from this folder:  ngspice radar_test.cir
+* Firmware: ../firmware/radar.hex (make -C ../firmware)
+* The obstacle comes from 40 cm closer at 100 cm/s; the servo turns from
+* 126 deg (40 cm) toward 0 deg (5 cm), one measure every 60 ms.
+
+* Models generated for this firmware:
+*   python3 ../tools/make_atmega328p_lib.py --relative --hex ../firmware/radar.hex \
+*       --so ../build/mcu_cosim.so --i2c= -o atmega328p_radar.lib
+*   python3 ../tools/make_module_lib.py hcsr04 --relative --dist 40 --rate -100 --log \
+*       --so ../build/mcu_cosim.so -o hcsr04.lib
+*   python3 ../tools/make_module_lib.py servo --relative --so ../build/mcu_cosim.so -o servo.lib
+.include atmega328p_radar.lib
+.include hcsr04.lib
+.include servo.lib
+
+*      D0  D1  D2  D3  D4  D5  D6  D7   D8   D9  D10  D11  D12  D13  A0  A1  A2  A3  A4  A5
+X1     nd0 txd nd2 nd3 nd4 nd5 nd6 trig echo sig nb2  nb3  nb4  nb5  na0 na1 na2 na3 na4 na5 ATMEGA328P
+
+*      VCC TRIG ECHO GND
+XSR    v5  trig echo 0   HCSR04
+*      SIG VCC GND ANGLE
+XM     sig v5  0   angle SERVO
+
+V5 v5 0 5
+Rtx txd 0 100k
+
+.control
+tran 2u 0.3
+plot v(angle) v(echo)*20 v(trig)*20+120
+.endc
+.end

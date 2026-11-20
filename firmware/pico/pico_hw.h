@@ -39,6 +39,17 @@
 #define SIO_OE_SET      0xd0000024u
 
 #define TIMERAWL        0x40054028u                  /* Microseconds.        */
+#define FUNC_PWM        4u
+
+/* ---- PWM: slice n, 1 MHz counter (125 MHz / 125) --------------------------- */
+#define PWM_CSR(n)      (0x40050000u + 0x14u * (n))
+#define PWM_DIV(n)      (PWM_CSR(n) + 0x04u)
+#define PWM_CC(n)       (PWM_CSR(n) + 0x0cu)
+#define PWM_TOP(n)      (PWM_CSR(n) + 0x10u)
+
+/* ---- ADC ------------------------------------------------------------------ */
+#define ADC_CS          0x4004c000u
+#define ADC_RESULT      0x4004c004u
 
 /* ---- UART0 -------------------------------------------------------------- */
 #define UART0           0x40034000u
@@ -115,6 +126,39 @@ static inline void delayUs(uint32_t us)
     }
 }
 
+/* ---- PWM on GPIO n: period in us (1 MHz counter) ----------------------------- */
+static inline void pwmInit(uint32_t gpio, uint32_t periodUs)
+{
+    const uint32_t slice = (gpio >> 1) & 7u;
+    REG(IO_CTRL(gpio)) = FUNC_PWM;
+    REG(PADS(gpio))    = 0u;
+    REG(PWM_DIV(slice)) = 125u << 4;                 /* 125 MHz / 125 = 1 MHz */
+    REG(PWM_TOP(slice)) = periodUs - 1u;
+    REG(PWM_CC(slice))  = 0u;
+    REG(PWM_CSR(slice)) = 1u;                        /* Enable                */
+}
+
+/* High time of GPIO n in us (channel A: even GPIO, B: odd GPIO). */
+static inline void pwmSet(uint32_t gpio, uint32_t highUs)
+{
+    const uint32_t slice = (gpio >> 1) & 7u;
+    const uint32_t cc = REG(PWM_CC(slice));
+    REG(PWM_CC(slice)) = (gpio & 1u) ? ((cc & 0xffffu) | (highUs << 16))
+                                     : ((cc & 0xffff0000u) | highUs);
+}
+
+/* ---- ADC: channel 0..3 = GP26..GP29, 12 bits ----------------------------------- */
+static inline uint32_t adcRead(uint32_t channel)
+{
+    REG(ADC_CS) = 1u | (channel << 12);
+    REG(ADC_CS) = 1u | (channel << 12) | (1u << 2);
+    while (!(REG(ADC_CS) & (1u << 8)))
+    {
+        /* About 2 us (12 us in the simulation). */
+    }
+    return REG(ADC_RESULT) & 0xfffu;
+}
+
 /* ---- UART0: 115200 bauds 8N1 on GP0 (TX) / GP1 (RX) ---------------------- */
 static inline void uartInit(void)
 {
@@ -149,6 +193,21 @@ static inline void uartHex(uint32_t value)
     static const char digits[] = "0123456789ABCDEF";
     uartPutc(digits[(value >> 4) & 0xFu]);
     uartPutc(digits[value & 0xFu]);
+}
+
+static inline void uartDec(uint32_t value)
+{
+    char buf[10];
+    uint32_t n = 0;
+    do
+    {
+        buf[n++] = (char)('0' + value % 10u);
+        value /= 10u;
+    } while (value != 0u);
+    while (n > 0u)
+    {
+        uartPutc(buf[--n]);
+    }
 }
 
 #endif /* PICO_HW_H */

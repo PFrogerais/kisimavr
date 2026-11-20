@@ -1,0 +1,39 @@
+* Raspberry Pi Pico (RP2040): fan regulation, NTC thermistor + L298N + DC motor
+* Run from this folder:  ngspice ventilo_test.cir
+* Firmware: ../firmware/pico/pico_ventilo.bin (make -C ../firmware/pico)
+* The NTC warms up from 20 degC at 100 degC/s (accelerated): the motor starts
+* at 25 degC (30 %) and reaches 100 % at 35 degC.
+
+* Model generated for this firmware:
+*   python3 ../tools/make_pico_lib.py --relative --fw ../firmware/pico/pico_ventilo.bin \
+*       --name ventilo --so ../build/mcu_cosim.so -o pico_ventilo.lib
+.include pico_ventilo.lib
+.include ../kicad/ntc.lib
+.include ../kicad/motor.lib
+
+*     GP0 GP1 GP2 GP3 GP4 GP5 GP6 GP7 GP8 GP9 GP10 GP11 GP12 GP13 GP14 GP15 GP16
+XP    txd rx  n2  n3  n4  n5  n6  n7  n8  n9  n10  n11  n12  n13  n14  n15  ena
+*     GP17 GP18 GP19 GP20 GP21 GP22 GP26 GP27 GP28 VBUS VSYS V3V3_EN V3V3 ADC_VREF RUN
++     in1  in2  n19  n20  n21  n22  ntc  n27  n28  vbus vsys en      v33  vref     run  PICO_VENTILO
+Rrx rx v33 10k
+
+* Divider: 10 kohm to 3.3 V, NTC to GND
+R1 v33 ntc 10k
+XT ntc 0 NTC10K params: T0=20 RATE=100
+C1 ntc 0 100n
+
+*      SENSE_A OUT1 OUT2 VS IN1 ENA IN2 GND VSS IN3 ENB IN4 OUT3 OUT4 SENSE_B
+XU2    0       m1   m2   v9 in1 ena in2 0   v5  0   0   0   o3   o4   0       L298N
+*      P  N  SPEED
+XM     m1 m2 speed MOTOR_DC
+
+V5 v5 0 5
+V9 v9 0 9
+Rtx txd 0 100k
+
+.control
+tran 0.5u 0.3
+meas tran vitesse avg v(speed) from=0.27 to=0.3
+plot v(speed) v(xt.temp)/10 v(ena)
+.endc
+.end

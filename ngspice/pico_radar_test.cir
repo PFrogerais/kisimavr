@@ -1,0 +1,40 @@
+* Raspberry Pi Pico (RP2040): HC-SR04 distance sensor and servomotor
+* Run from this folder:  ngspice radar_test.cir
+* Firmware: ../firmware/pico/pico_radar.bin (make -C ../firmware/pico)
+* ECHO (5 V) reaches GP3 through a 1k / 2k divider (3.3 V).
+* The obstacle comes from 40 cm closer at 100 cm/s; the servo turns from
+* 126 deg (40 cm) toward 0 deg (5 cm), one measure every 60 ms.
+
+* Models generated for this firmware:
+*   python3 ../tools/make_pico_lib.py --relative --fw ../firmware/pico/pico_radar.bin \
+*       --name radar --so ../build/mcu_cosim.so -o pico_radar.lib
+*   python3 ../tools/make_module_lib.py hcsr04 --relative --dist 40 --rate -100 --log \
+*       --so ../build/mcu_cosim.so -o hcsr04.lib
+*   python3 ../tools/make_module_lib.py servo --relative --so ../build/mcu_cosim.so -o servo.lib
+.include pico_radar.lib
+.include hcsr04.lib
+.include servo.lib
+
+*     GP0 GP1 GP2  GP3 GP4 GP5 GP6 GP7 GP8 GP9 GP10 GP11 GP12 GP13 GP14 GP15 GP16
+XP    txd rx  trig e33 n4  n5  n6  n7  n8  n9  n10  n11  n12  n13  n14  sig  n16
+*     GP17 GP18 GP19 GP20 GP21 GP22 GP26 GP27 GP28 VBUS VSYS V3V3_EN V3V3 ADC_VREF RUN
++     n17  n18  n19  n20  n21  n22  n26  n27  n28  vbus vsys en      v33  vref     run  PICO_RADAR
+
+* ECHO divider 1k / 2k: 5 V -> 3.3 V
+Re1 echo e33 1k
+Re2 e33 0 2k
+Rrx rx v33 10k
+
+*      VCC TRIG ECHO GND
+XSR    v5  trig echo 0   HCSR04
+*      SIG VCC GND ANGLE
+XM     sig v5  0   angle SERVO
+
+V5 v5 0 5
+Rtx txd 0 100k
+
+.control
+tran 2u 0.3
+plot v(angle) v(echo)*20 v(trig)*20+120
+.endc
+.end

@@ -322,6 +322,9 @@ if(Python3_FOUND)
                         --lm75temp 20 --lm75rate 1000)
     kisimavr_model_test(spi_lib ngspice/atmega328p_spi.lib --hex ../firmware/spi_595.hex --i2c=)
     kisimavr_model_test(lcd_mcu_lib ngspice/atmega328p_lcd.lib --hex ../firmware/lcd_demo.hex --i2c=)
+    kisimavr_model_test(radar_lib ngspice/atmega328p_radar.lib --hex ../firmware/radar.hex --i2c=)
+    kisimavr_model_test(ventilo_lib ngspice/atmega328p_ventilo.lib --hex ../firmware/ventilo.hex
+                        --i2c=)
     kisimavr_model_test(uart_a_lib ngspice/atmega328p_a.lib --name A
                         --hex ../firmware/uart_adc.hex --uartlog ../uart_log_a.txt --i2c=)
     kisimavr_model_test(uart_b_lib ngspice/atmega328p_b.lib --name B
@@ -429,6 +432,39 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                    [[UART0> SPI : envoye 02, relu 01]] [[UART0> SPI : envoye 04, relu 02]]
             REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
         set_tests_properties(ngspice.pico_spi PROPERTIES LABELS ngspice)
+        # Sensors and actuators: HC-SR04 + servo, NTC + L298N + DC motor, with an
+        # ATmega328P and with a Pico.
+        foreach(board IN ITEMS avr pico)
+            if(board STREQUAL "avr")
+                set(prefix "")
+                set(fixture firmware)
+                set(reject [[cannot open firmware]])
+            else()
+                set(prefix "pico_")
+                set(fixture firmware_pico)
+                set(reject [[RP2040: ]])
+            endif()
+            kisimavr_test(ngspice.${prefix}radar FIXTURE ${fixture} TIMEOUT 900
+                WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+                COMMAND ${NGSPICE} -b ${prefix}radar_test.cir
+                EXPECT [[UART0> Radar : HC-SR04 \+ servo]]
+                       [[HCSR04> 40\.0 cm \(echo 2332 us\)]]
+                       [[UART0> Distance = 40\.[0-9] cm, servo 12[5-7] deg]]
+                       [[SERVO> 12[5-7] deg \(pulse 18[3-5][0-9] us\)]]
+                       [[UART0> Distance = 2[0-9]\.[0-9] cm]]
+                REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[hors de portee]] ${reject})
+            set_tests_properties(ngspice.${prefix}radar PROPERTIES LABELS ngspice)
+            kisimavr_test(ngspice.${prefix}ventilo FIXTURE ${fixture} TIMEOUT 900
+                WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+                COMMAND ${NGSPICE} -b ${prefix}ventilo_test.cir
+                EXPECT [[UART0> Ventilateur : CTN \+ L298N]]
+                       [[UART0> T = 2[0-4]\.[0-9] C, moteur 0 %]]
+                       [[UART0> T = 3[0-4]\.[0-9] C, moteur [5-9][0-9] %]]
+                       [[UART0> T = 4[0-9]\.[0-9] C, moteur 100 %]]
+                       [[vitesse += +[3-7]\.[0-9]+e\+00]]
+                REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] ${reject})
+            set_tests_properties(ngspice.${prefix}ventilo PROPERTIES LABELS ngspice)
+        endforeach()
         # Pico 2 (RP2350, RISC-V cores): the same circuit.
         kisimavr_test(ngspice.pico2 FIXTURE firmware_pico2 TIMEOUT 600
             WORKDIR ${PROJECT_SOURCE_DIR}/ngspice

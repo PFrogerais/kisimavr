@@ -1,0 +1,36 @@
+* ATmega328P (Arduino UNO): fan regulation, NTC thermistor + L298N + DC motor
+* Run from this folder:  ngspice ventilo_test.cir
+* Firmware: ../firmware/ventilo.hex (make -C ../firmware)
+* The NTC warms up from 20 degC at 100 degC/s (accelerated): the motor starts
+* at 25 degC (30 %) and reaches 100 % at 35 degC.
+
+* Model generated for this firmware:
+*   python3 ../tools/make_atmega328p_lib.py --relative --hex ../firmware/ventilo.hex \
+*       --so ../build/mcu_cosim.so --i2c= -o atmega328p_ventilo.lib
+.include atmega328p_ventilo.lib
+.include ../kicad/ntc.lib
+.include ../kicad/motor.lib
+
+*      D0  D1  D2  D3  D4  D5  D6  D7  D8  D9  D10  D11  D12  D13  A0  A1  A2  A3  A4  A5
+X1     nd0 txd nd2 nd3 nd4 nd5 ena in1 in2 nb1 nb2  nb3  nb4  nb5  ntc na1 na2 na3 na4 na5 ATMEGA328P
+
+* Divider: 10 kohm to 5 V, NTC to GND
+R1 v5 ntc 10k
+XT ntc 0 NTC10K params: T0=20 RATE=100
+C1 ntc 0 100n
+
+*      SENSE_A OUT1 OUT2 VS IN1 ENA IN2 GND VSS IN3 ENB IN4 OUT3 OUT4 SENSE_B
+XU2    0       m1   m2   v9 in1 ena in2 0   v5  0   0   0   o3   o4   0       L298N
+*      P  N  SPEED
+XM     m1 m2 speed MOTOR_DC
+
+V5 v5 0 5
+V9 v9 0 9
+Rtx txd 0 100k
+
+.control
+tran 2u 0.3
+meas tran vitesse avg v(speed) from=0.27 to=0.3
+plot v(speed) v(xt.temp)/10 v(ena)
+.endc
+.end

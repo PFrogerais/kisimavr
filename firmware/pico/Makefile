@@ -6,7 +6,7 @@ CFLAGS   = --target=thumbv6m-none-eabi -mcpu=cortex-m0plus -Os -std=c11 \
            -ffreestanding -nostdlib -Wall -Wextra
 LDFLAGS  = -fuse-ld=lld -Wl,-T,rp2040_flash.ld -Wl,--gc-sections
 
-TARGETS = pico_demo.bin pico_i2c.bin pico_spi.bin
+TARGETS = pico_demo.bin pico_i2c.bin pico_spi.bin pico_radar.bin pico_ventilo.bin
 
 all: $(TARGETS)
 
