@@ -163,6 +163,7 @@ find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
     # Each repository model must be what the generator writes today.
     # kisimavr_model_test(name repository_file generator_args...)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/models)
     function(kisimavr_model_test name file)
         get_filename_component(base ${file} NAME)
         set(out ${CMAKE_CURRENT_BINARY_DIR}/models/${base})
@@ -182,7 +183,8 @@ if(Python3_FOUND)
     kisimavr_model_test(uart_a_lib ngspice/atmega328p_a.lib --name A
                         --hex ../firmware/uart_adc.hex --uartlog ../uart_log_a.txt --i2c=)
     kisimavr_model_test(uart_b_lib ngspice/atmega328p_b.lib --name B
-                        --hex ../firmware/uart_cmd.hex --uartlog ../uart_log_b.txt --i2c=)
+                        --hex ../firmware/uart_cmd.hex --uartlog ../uart_log_b.txt --i2c=
+                        --irreversible 2)
 endif()
 
 # ---- End to end through ngspice -------------------------------------------------

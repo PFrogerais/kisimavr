@@ -54,6 +54,8 @@ def parse_args():
                     help="mcu_cosim.so (default: ../build/mcu_cosim.so)")
     ap.add_argument("--uartlog", help="UART text file (default: next to the .lib)")
     ap.add_argument("--uartin", help="timed text sent to the UART receiver (default: none)")
+    ap.add_argument("--irreversible", type=int, default=1,
+                    help="d_cosim rank: each MCU of one netlist needs its own value (1, 2, ...)")
     ap.add_argument("--name", default="",
                     help="suffix of the sub-circuit and model names, e.g. B -> ATMEGA328P_B "
                          "(several MCUs in one schematic)")
@@ -140,6 +142,9 @@ def main():
     w(f'.model atmega328p_core d_cosim simulation="{so_file}"')
     w("+ sim_args=[" + wrap(args) + "]")
     w("+ delay=100n")
+    if a.irreversible != 1:
+        # Several co-simulated MCUs: ngspice needs a distinct rank for each.
+        w(f"+ irreversible={a.irreversible}")
     w("")
     w(".model m328_in  adc_bridge(in_low=1.5 in_high=3.0)")
     w(".model m328_lvl dac_bridge(out_low=0 out_high=5 out_undef=0 t_rise=10n t_fall=10n)")

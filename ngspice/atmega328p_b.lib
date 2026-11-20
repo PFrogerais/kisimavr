@@ -25,6 +25,7 @@
 + "PB4" "PB5" "PC0" "PC1" "PC2" "PC3" "PC4" "PC5" "adc" "0" "1" "2" "3" "4"
 + "5" "vref" "5" "adcbit" "1e-6" "uartlog" "../uart_log_b.txt"]
 + delay=100n
++ irreversible=2
 
 .model m328b_in  adc_bridge(in_low=1.5 in_high=3.0)
 .model m328b_lvl dac_bridge(out_low=0 out_high=5 out_undef=0 t_rise=10n t_fall=10n)

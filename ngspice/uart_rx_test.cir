@@ -8,7 +8,8 @@
 *   python3 ../tools/make_atmega328p_lib.py --relative --name A \
 *       --hex ../firmware/uart_adc.hex --so ../build/mcu_cosim.so \
 *       --uartlog ../uart_log_a.txt --i2c= -o atmega328p_a.lib
-*   (same with --name B, uart_cmd.hex, uart_log_b.txt)
+*   (same with --name B, uart_cmd.hex, uart_log_b.txt and --irreversible 2:
+*   each co-simulated MCU of one netlist needs its own d_cosim rank)
 
 .include atmega328p_a.lib
 .include atmega328p_b.lib
