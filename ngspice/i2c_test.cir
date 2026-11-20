@@ -24,7 +24,7 @@ Cscl scl 0 100p
 Rtx txd 0 100k
 
 .control
-tran 0.2u 4m
+tran 0.2u 6m
 plot v(sda) v(scl)+6
 plot v(sda) v(scl)+6 xlimit 0.3m 0.6m
 .endc
