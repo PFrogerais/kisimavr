@@ -19,6 +19,7 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `simAVR_i2c` | `firmware/i2c_lm75.c` ou `i2c_lm75/i2c_lm75.ino` | bus I²C : capteur LM75, EEPROM 24C02, pull-ups 4,7 kΩ (symbole officiel) |
 | `simAVR_spi` | `firmware/spi_595.c` ou `spi_595/spi_595.ino` | SPI maître : 74HC595 (symbole officiel, modèle XSPICE) et 8 LED en chenillard, relecture par MISO |
 | `simAVR_lcd` | `firmware/lcd_demo.c` ou `lcd_demo/lcd_demo.ino` | afficheur LCD 16x2 (symbole officiel WC1602A) en 4 bits, câblage `LiquidCrystal`, tension de A0 |
+| `simPICO` | `firmware/pico/pico_demo.c` (RP2040, bare-metal) | Raspberry Pi Pico (symbole officiel `MCU_Module:RaspberryPi_Pico`) : LED de la carte, bouton, ADC, UART avec terminal 3,3 V |
 | `Arduino_UNO` | `firmware/uno_demo.c` ou `uno_demo/uno_demo.ino` | carte UNO R3 d'après le schéma officiel : LED L (tampon LMV358), reset, liaison série 1 kΩ vers le 16U2, connecteurs ; blink + UART RX/TX |
 
 *Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la

@@ -6,7 +6,8 @@ Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DI
   VARIANT: full or i2c (official ATmega328P-P, DIP-28), gpio, adc, uart,
            uno (Arduino UNO R3 board around the ATmega328P, official schematic),
            spi (SPI master driving a 74HC595 and 8 LEDs, official symbols),
-           lcd (character LCD 16x2 HD44780 + voltage on A0, official symbols)
+           lcd (character LCD 16x2 HD44780 + voltage on A0, official symbols),
+           pico (Raspberry Pi Pico, RP2040: LED, button, ADC, UART terminal)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -24,7 +25,7 @@ VARIANT = sys.argv[3] if len(sys.argv) > 3 else "gpio"
 PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
            "full": "simAVR_atmega328p", "i2c": "simAVR_i2c",
            "uno": "Arduino_UNO", "spi": "simAVR_spi",
-           "lcd": "simAVR_lcd"}[VARIANT]
+           "lcd": "simAVR_lcd", "pico": "simPICO"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -42,12 +43,14 @@ FOOTPRINTS = {
     "simAVR:LMV358": "Package_SO:VSSOP-8_3x3mm_P0.65mm",
     "74xx:74HC595": "Package_DIP:DIP-16_W7.62mm",
     "Display_Character:WC1602A": "Display:WC1602A",
+    "MCU_Module:RaspberryPi_Pico": "Module:RaspberryPi_Pico_Common_Unspecified",
     "Connector_Generic:Conn_01x06": "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x08": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x10": "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
     "Connector_Generic:Conn_02x03_Odd_Even": "Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Vertical",
 }
 DATASHEETS = {
+    "MCU_Module:RaspberryPi_Pico": "https://datasheets.raspberrypi.com/pico/pico-datasheet.pdf",
     "MCU_Microchip_ATmega:ATmega328P-P": "http://ww1.microchip.com/downloads/en/DeviceDoc/ATmega328_P%20AVR%20MCU%20with%20picoPower%20Technology%20Data%20Sheet%2040001984A.pdf",
 }
 # Simulation-only parts: no footprint, not on the board, not in the BOM.
@@ -207,6 +210,14 @@ LIB = {
              '(stroke (width 0) (type default)) (fill (type none)))',
         pins=[("1", "+5V", 0, 0, 90, "power_in")],
         pin_names=False),
+    "power:+3V3": dict(
+        ref="#PWR", value="+3V3", power=True,
+        body='(polyline (pts (xy -0.762 1.27) (xy 0 2.54) (xy 0.762 1.27)) '
+             '(stroke (width 0) (type default)) (fill (type none))) '
+             '(polyline (pts (xy 0 0) (xy 0 2.54)) '
+             '(stroke (width 0) (type default)) (fill (type none)))',
+        pins=[("1", "+3V3", 0, 0, 90, "power_in")],
+        pin_names=False),
     "power:PWR_FLAG": dict(
         ref="#FLG", value="PWR_FLAG", power=True,
         body='(polyline (pts (xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) '
@@ -241,6 +252,58 @@ for _n in (6, 8, 10):
     LIB[f"Connector_Generic:Conn_01x{_n:02d}"] = _conn_1xn(_n)
 
 LIB.update({
+    # Official KiCad symbol MCU_Module:RaspberryPi_Pico (pins and outline
+    # taken from the KiCad 10 library).
+    "MCU_Module:RaspberryPi_Pico": dict(
+        ref="A", value="RaspberryPi_Pico", pin_length=3.81,
+        body='(rectangle (start -19.05 34.29) (end 19.05 -31.75) '
+             '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[
+              ("1", "GPIO0", -22.86, 15.24, 0, "bidirectional"),
+              ("2", "GPIO1", -22.86, 12.7, 0, "bidirectional"),
+              ("3", "GND", 0.0, -35.56, 90, "power_out"),
+              ("4", "GPIO2", -22.86, 10.16, 0, "bidirectional"),
+              ("5", "GPIO3", -22.86, 7.62, 0, "bidirectional"),
+              ("6", "GPIO4", -22.86, 5.08, 0, "bidirectional"),
+              ("7", "GPIO5", -22.86, 2.54, 0, "bidirectional"),
+              ("8", "GND", 0.0, -35.56, 90, "passive", True),
+              ("9", "GPIO6", -22.86, 0.0, 0, "bidirectional"),
+              ("10", "GPIO7", -22.86, -2.54, 0, "bidirectional"),
+              ("11", "GPIO8", -22.86, -5.08, 0, "bidirectional"),
+              ("12", "GPIO9", -22.86, -7.62, 0, "bidirectional"),
+              ("13", "GND", 0.0, -35.56, 90, "passive", True),
+              ("14", "GPIO10", -22.86, -10.16, 0, "bidirectional"),
+              ("15", "GPIO11", -22.86, -12.7, 0, "bidirectional"),
+              ("16", "GPIO12", -22.86, -15.24, 0, "bidirectional"),
+              ("17", "GPIO13", -22.86, -17.78, 0, "bidirectional"),
+              ("18", "GND", 0.0, -35.56, 90, "passive", True),
+              ("19", "GPIO14", -22.86, -20.32, 0, "bidirectional"),
+              ("20", "GPIO15", -22.86, -22.86, 0, "bidirectional"),
+              ("21", "GPIO16", 22.86, 12.7, 180, "bidirectional"),
+              ("22", "GPIO17", 22.86, 10.16, 180, "bidirectional"),
+              ("23", "GND", 0.0, -35.56, 90, "passive", True),
+              ("24", "GPIO18", 22.86, 7.62, 180, "bidirectional"),
+              ("25", "GPIO19", 22.86, 5.08, 180, "bidirectional"),
+              ("26", "GPIO20", 22.86, 2.54, 180, "bidirectional"),
+              ("27", "GPIO21", 22.86, 0.0, 180, "bidirectional"),
+              ("28", "GND", 0.0, -35.56, 90, "passive", True),
+              ("29", "GPIO22", 22.86, -2.54, 180, "bidirectional"),
+              ("30", "RUN", -22.86, 22.86, 0, "passive"),
+              ("31", "GPIO26_ADC0", 22.86, -12.7, 180, "bidirectional"),
+              ("32", "GPIO27_ADC1", 22.86, -15.24, 180, "bidirectional"),
+              ("33", "AGND", 22.86, -22.86, 180, "power_out"),
+              ("34", "GPIO28_ADC2", 22.86, -17.78, 180, "bidirectional"),
+              ("35", "ADC_VREF", 22.86, -7.62, 180, "power_in"),
+              ("36", "3V3", 5.08, 38.1, 270, "power_out"),
+              ("37", "3V3_EN", -22.86, 20.32, 0, "passive"),
+              ("38", "GND", 0.0, -35.56, 90, "passive", True),
+              ("39", "VSYS", -5.08, 38.1, 270, "power_in"),
+              ("40", "VBUS", 0.0, 38.1, 270, "power_out"),],
+        pin_names=True,
+        description="Versatile and inexpensive microcontroller module powered by RP2040 "
+                    "dual-core Arm Cortex-M0+ processor up to 133 MHz, 264kB SRAM, 2MB QSPI flash",
+        keywords="RP2040 M0+ usb",
+        fp_filters="RaspberryPi?Pico?Common* RaspberryPi?Pico?SMD*"),
     # Official KiCad symbol Display_Character:WC1602A (16x2 module, 16 pins).
     "Display_Character:WC1602A": dict(
         ref="DS", value="WC1602A",
@@ -374,7 +437,7 @@ def lib_symbol(lib_id, d):
     pins = []
     for pin in d["pins"]:
         num, name, x, y, ang, typ = pin[:6]
-        length = 0 if d.get("power") else 2.54
+        length = 0 if d.get("power") else d.get("pin_length", 2.54)
         hide = " hide" if (d.get("power") or (len(pin) > 6 and pin[6])) else ""
         pins.append(
             f'(pin {typ} line (at {x} {y} {ang}) (length {length}){hide} '
@@ -712,17 +775,17 @@ def build_stubbed(spec, hier=None):
             wires.append(((px, py), (ex, ey)))
             flag = net.endswith("!")
             net = net.rstrip("!")
-            if net in ("+5V", "GND"):
+            if net in ("+5V", "+3V3", "GND"):
                 # Symbol pointing away from the stub (rotation counter-clockwise).
                 up = {(0, -1): 0, (-1, 0): 90, (0, 1): 180, (1, 0): 270}[(dx, dy)]
+                positive = net != "GND"
                 count["pwr"] += 1
-                parts.append(("power:+5V" if net == "+5V" else "power:GND",
-                              f"#PWR{count['pwr']:02d}", net, ex, ey,
-                              {"_rot": up if net == "+5V" else (up + 180) % 360}))
+                parts.append((f"power:{net}", f"#PWR{count['pwr']:02d}", net, ex, ey,
+                              {"_rot": up if positive else (up + 180) % 360}))
                 if flag:
                     count["flg"] += 1
                     parts.append(("power:PWR_FLAG", f"#FLG{count['flg']:02d}", "PWR_FLAG", ex, ey,
-                                  {"_rot": (up + 90) % 360 if net == "+5V" else (up + 270) % 360}))
+                                  {"_rot": (up + 90) % 360 if positive else (up + 270) % 360}))
             else:
                 labels.append((net, ex, ey, 180 if dx < 0 else 0))
                 if flag:
@@ -955,6 +1018,58 @@ def uno_root_sheet():
     return "\n".join(out) + "\n"
 
 
+if VARIANT == "pico":
+    PICOFILE = "pico.lib"
+    TERMFILE = "terminal.lib"
+    PICO_SIM_PINS = ("1=GP0 2=GP1 4=GP2 5=GP3 6=GP4 7=GP5 9=GP6 10=GP7 11=GP8 12=GP9 "
+                     "14=GP10 15=GP11 16=GP12 17=GP13 19=GP14 20=GP15 21=GP16 22=GP17 "
+                     "24=GP18 25=GP19 26=GP20 27=GP21 29=GP22 30=RUN 31=GP26 32=GP27 "
+                     "34=GP28 35=ADC_VREF 36=V3V3 37=V3V3_EN 39=VSYS 40=VBUS")
+    PICO_PARTS = [
+        ("MCU_Module:RaspberryPi_Pico", "A1", "RaspberryPi_Pico", 127.0, 99.06,
+         {"Sim.Device": "SUBCKT", "Sim.Library": PICOFILE, "Sim.Name": "PICO",
+          "Sim.Pins": PICO_SIM_PINS},
+         {"*": "NC", "3": "GND", "33": "GND", "36": "+3V3",
+          "1": "TX", "2": "RX", "19": "BTN", "20": "SQ", "21": "LED", "31": "POT"}),
+        # GP16: LED through 330 ohm
+        ("Device:R", "R1", "330", 170.18, 83.82, {}, {"1": "LED", "2": "LED_A"}),
+        ("Device:LED", "D1", "LEDRED", 170.18, 99.06,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE, "Sim.Name": "LEDRED",
+          "Sim.Pins": "1=K 2=A"},
+         {"2": "LED_A", "1": "GND"}),
+        # GP26 (ADC0): divider on 3V3, as a potentiometer at one third of its course
+        ("Device:R", "R2", "10k", 185.42, 83.82, {}, {"1": "+3V3", "2": "POT"}),
+        ("Device:R", "R3", "4.7k", 185.42, 99.06, {}, {"1": "POT", "2": "GND"}),
+        ("Device:C", "C1", "10n", 198.12, 99.06, {}, {"1": "POT", "2": "GND"}),
+        # GP14: push-button, pressed from 3 ms to 6 ms (diode + pulse source)
+        ("Device:D", "D2", "DSIG", 60.96, 129.54,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE, "Sim.Name": "DSIG",
+          "Sim.Pins": "1=K 2=A"},
+         {"2": "BTN", "1": "BTN_K"}),
+        ("Simulation_SPICE:VPULSE", "V1", "BOUTON", 60.96, 147.32,
+         {"Sim.Device": "V", "Sim.Type": "PULSE", "Sim.Pins": "1=+ 2=-",
+          "Sim.Params": "y1=3.3 y2=0 td=3m tr=1u tf=1u tw=3m per=20m"},
+         {"1": "BTN_K", "2": "GND"}),
+        # USB-serial adapter (3.3 V) + PC terminal on UART0
+        ("simAVR:USB_SERIE", "U2", "USB-serie 3,3 V + PC", 50.8, 83.82,
+         {"Sim.Device": "SUBCKT", "Sim.Library": TERMFILE, "Sim.Name": "USB_SERIE",
+          "Sim.Pins": "1=TXD 2=RXD 3=DTR 4=GND"},
+         {"1": "RX", "2": "TX", "3": "NC", "4": "GND"}),
+    ]
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(PICO_PARTS)
+    JUNCTIONS = []
+    NO_CONNECT_REF = None
+    TEXTS = [
+        ("Raspberry Pi Pico (RP2040) emule par rp2040js dans le plug-in (firmware pico_demo.bin)",
+         25.4, 30.48),
+        ("GP25 : LED de la carte (dans le modele), GP15 : signal carre 1 kHz", 25.4, 34.29),
+        ("GP14 : bouton (appuye de 3 a 6 ms) -> GP16 : LED D1", 25.4, 38.1),
+        ("GP26 / ADC0 : pont R2 / R3 -> 1,06 V ; UART0 GP0 / GP1 a 115200 bauds", 25.4, 41.91),
+        ("Terminal : terminal.txt -> tools/make_terminal_lib.py --vhigh 3.3", 25.4, 45.72),
+    ]
+    DIRECTIVES = [(".tran 0.5u 12m", 25.4, 185.42)]
+
+
 if VARIANT == "lcd":
     SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
                 "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
@@ -1058,7 +1173,7 @@ def body_bottom_left(d):
 
 def is_ic(d):
     """Integrated circuits (MCU, logic, display...): reference "U" or "DS"."""
-    return not d.get("power") and d["ref"] in ("U", "DS")
+    return not d.get("power") and d["ref"] in ("U", "DS", "A")
 
 
 def field_positions(d, x, y):
@@ -1270,6 +1385,25 @@ UNO_TERMINAL = r"""# Text sent by the PC terminal to the Arduino UNO (115200 bau
 """
 
 
+PICO_TERMINAL = r"""# Text sent by the PC terminal to the Pico (UART0, 115200 bauds, 3.3 V).
+# One line per send: <time> <text>   (escapes: \n \r \s \xHH)
+# After a change: python3 tools/make_terminal_lib.py --vhigh 3.3 terminal.txt -o terminal.lib
+2m Bonjour Pico\n
+""".replace("\\\\", "\\")
+
+
+def write_pico_terminal():
+    """terminal.txt (kept if present) and terminal.lib, 3.3 V levels."""
+    script = os.path.join(OUT, "terminal.txt")
+    if not os.path.exists(script):
+        with open(script, "w") as f:
+            f.write(PICO_TERMINAL)
+    import subprocess
+    subprocess.run([sys.executable,
+                    os.path.join(os.path.dirname(os.path.abspath(__file__)), "make_terminal_lib.py"),
+                    "--vhigh", "3.3", script, "-o", os.path.join(OUT, "terminal.lib")], check=True)
+
+
 def write_uno_models():
     """uno_models.lib (op-amp, LEDs), terminal.txt (kept if present), terminal.lib."""
     with open(os.path.join(OUT, UNOFILE), "w") as f:
@@ -1328,6 +1462,8 @@ def main():
 
     if VARIANT == "uno":
         write_uno_models()
+    if VARIANT == "pico":
+        write_pico_terminal()
     if VARIANT == "spi":
         here = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(here, "..", "kicad", HC595FILE)) as f:

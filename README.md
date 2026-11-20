@@ -24,6 +24,7 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | I²C (TWI) | esclaves virtuels LM75 et EEPROM 24C02, journal des transactions, signaux SDA/SCL réels en drain ouvert |
 | SPI | maître sur les vraies broches (SCK, MOSI, MISO), 4 modes, ordre des bits, débit de SPCR ; esclaves = composants du schéma (modèle 74HC595 fourni) ; journal des octets |
 | Afficheur LCD | module 16x2 / 20x4 (HD44780) comme composant du schéma : écran affiché dans le terminal et un fichier, vérification des temps du datasheet |
+| Raspberry Pi Pico (RP2040) | composant `PICO` 3,3 V : rp2040js (Wokwi) exécuté par QuickJS dans le plug-in ; GPIO, PWM, UART (texte + trames), USB série (texte), ADC GP26–GP28 ; firmwares `.uf2` (Pico SDK, Arduino-pico), `.bin`, `.hex` |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
 
 ---
@@ -45,8 +46,13 @@ make -C simavr/simavr install RELEASE=1 DESTDIR=$HOME/.local
 cd kisimavr
 cmake -S . -B build && cmake --build build     # -> build/mcu_cosim.so
 make -C firmware                               # -> firmware/*.hex
+make -C firmware/pico                          # -> firmware/pico/*.bin (clang + lld)
 cmake --build build --target demos             # -> modèles .lib des projets KiCad
 ```
+
+- **RP2040** : CMake télécharge QuickJS-ng (version figée) à la
+  configuration. Hors ligne : `-DKISIMAVR_RP2040=OFF`. Les démos Pico
+  bare-metal se compilent avec `sudo dnf install clang lld llvm`.
 
 - Tests de non-régression : `ctest --test-dir build --output-on-failure`
   (firmwares compilés automatiquement ; le test de bout en bout ngspice
@@ -183,6 +189,7 @@ les essais en simulation.
 | `uart_cmd.c` / `uart_cmd/uart_cmd.ino` | `--uartin` ou RXD câblé | `uart_rx_test.cir` (2 MCU) | — | réception série : commandes `LED ON` / `LED OFF` |
 | `spi_595.c` / `spi_595/spi_595.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `spi_test.cir` | `simAVR_spi` (symboles officiels) | SPI maître : 74HC595, chenillard 8 LED, relecture par MISO |
 | `lcd_demo.c` / `lcd_demo/lcd_demo.ino` | `atmega328p_full.lib` + `lcd1602.lib` → `LCD1602` | `lcd_test.cir` | `simAVR_lcd` (symboles officiels) | afficheur 16x2 en 4 bits, tension de A0 |
+| `pico/pico_demo.c` (RP2040, clang) | `pico.lib` → `PICO` | `pico_test.cir` | `simPICO` (symbole officiel `RaspberryPi_Pico`) | LED, bouton, ADC, UART avec terminal simulé |
 | `uno_demo.c` / `uno_demo/uno_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | netlist exportée par `kicad-cli` | `Arduino_UNO` (schéma officiel UNO R3) | blink + UART RX/TX avec un terminal simulé (`terminal.txt`) |
 
 Les tests ngspice se lancent depuis `ngspice/` (chemins relatifs).
@@ -308,6 +315,37 @@ effacement, curseur, décalage, CGRAM). Il n'a pas de sortie.
   chaque composant co-simulé d'une netlist doit avoir le sien.
 
 Exemple : `ngspice/lcd_test.cir` et le projet `simAVR_lcd`.
+
+### 6.4 quater Raspberry Pi Pico (RP2040)
+
+Avec `"mcu" "rp2040"`, l'instance est un **Raspberry Pi Pico**. Le RP2040
+est émulé par [rp2040js](https://github.com/wokwi/rp2040js) (Wokwi, MIT),
+écrit en JavaScript. Le plug-in l'exécute lui-même avec un moteur
+**QuickJS** intégré : pas de Node.js, ce qui fonctionne aussi avec KiCad en
+Flatpak. Le temps de rp2040js n'avance qu'au rythme de ngspice.
+
+- **Firmware** : `.uf2` (Pico SDK, ou Arduino-pico : *Croquis → Exporter
+  les binaires compilés*), `.bin` (image de la flash) ou `.hex`. Le
+  démarrage passe par boot2 comme sur la carte ; la bootrom B1 est fournie.
+- **GPIO** (3,3 V) : sortie 50 Ω, pull-up et pull-down 50 kΩ, lecture de la
+  tension réelle (seuils 0,8 / 2,0 V). PWM (`analogWrite`) incluse.
+- **UART0 / UART1** : texte dans le terminal (`UART0> …`) et `uart_log.txt`,
+  trames reconstruites sur la broche TX (GP0 par défaut), trames du
+  circuit décodées sur RX (GP1). `Serial` d'Arduino-pico passe par l'USB :
+  son texte s'affiche (`USB> …`), sans trames ; `Serial1` = UART0.
+- **ADC** : GP26–GP28 (ADC0–2), convertisseur SAR 12 bits reconstruit dans
+  ngspice comme pour l'AVR (2 µs par conversion), Vref = 3,3 V.
+- **LED de la carte** : GP25, dans le modèle (470 Ω + LED verte).
+- **Modèle** : `tools/make_pico_lib.py --fw prog.uf2 -o pico.lib` ;
+  sous-circuit `PICO`, compatible avec le symbole officiel
+  `MCU_Module:RaspberryPi_Pico` (broches 1–40 de la carte ; masses
+  non simulées, comme pour l'ATmega).
+- **Vitesse** : QuickJS interprète le JavaScript, soit environ 1 s de calcul
+  pour 10 ms simulées quand le programme tourne en boucle active, beaucoup
+  moins quand il attend (`sleep_ms`, `delay` en WFI).
+
+Exemple : `firmware/pico/pico_demo.c` (bare-metal, sans SDK),
+`ngspice/pico_test.cir` et le projet `simPICO`.
 
 ### 6.5 UART0 et chronogrammes
 
@@ -449,6 +487,10 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 
 ## 10. Limites actuelles
 
+- RP2040 : pas de trames I²C / SPI sur les broches (registres émulés par
+  rp2040js, sans signaux) ; PIO à la cadence approximative de rp2040js ;
+  octets UART envoyés sans attente de FIFO (les trames suivent à la
+  vitesse de la ligne) ; un seul cœur suivi en temps (le second tourne).
 - SPI : AVR maître uniquement, sur PB5/PB3/PB4 (famille ATmega48/88/168/328).
 - I²C : AVR maître uniquement ; esclaves virtuels LM75 et 24C02 seulement
   (pas de composant I²C décrit dans le schéma) ; étirement d'horloge non
@@ -470,6 +512,9 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `src/spi_bus.*`, `src/spi_frame.*` | SPI maître : trames sur SCK/MOSI, lecture de MISO, journal ; chronologie des fronts (testée unitairement) |
 | `src/lcd_device.*`, `src/hd44780.*` | afficheur LCD co-simulé : entrées RS/E/D, écran, journal ; contrôleur HD44780 (testé unitairement) |
 | `tools/make_lcd_lib.py` | génère le modèle `LCD1602` (ou 20x4) pour un projet |
+| `src/rp2040_device.*`, `src/rp2040_config.*`, `rp2040/bridge.js` | RP2040 : QuickJS, pont JavaScript vers rp2040js (broches, UART, ADC) ; `sim_args` (testé unitairement) |
+| `third_party/rp2040js/` | rp2040js compilé en JavaScript (MIT) + bootrom B1 ; `tools/vendor_rp2040js.sh` le reconstruit |
+| `tools/make_pico_lib.py` | génère le modèle `PICO` pour un projet |
 | `kicad/74hc595.lib` | modèle XSPICE du 74HC595 (symbole officiel `74xx:74HC595`) |
 | `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
 | `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
@@ -479,7 +524,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `tools/make_atmega328p_lib.py` | génère le modèle `ATMEGA328P` pour un projet |
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
-| `kicad/projects/` | 8 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
+| `kicad/projects/` | 9 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
 | `tools/make_terminal_lib.py` | modèle SPICE d'un terminal série (trames sur TXD) depuis un fichier texte |
 | `tools/setup_demos.py` | écrit les `.lib` des projets de démo (chemins de la machine) |
 | `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |

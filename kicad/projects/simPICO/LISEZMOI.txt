@@ -1,0 +1,38 @@
+simPICO - Raspberry Pi Pico (RP2040) : LED, bouton, ADC, UART
+=============================================================
+
+Modeles : generes par "cmake --build build --target demos" (tools/setup_demos.py) :
+  - pico.lib     : A1 = Raspberry Pi Pico (symbole officiel MCU_Module:RaspberryPi_Pico,
+                   empreinte Module:RaspberryPi_Pico_Common_Unspecified),
+                   firmware firmware/pico/pico_demo.bin (make -C firmware/pico)
+  - terminal.lib : U2 = adaptateur USB-serie 3,3 V + terminal du PC
+  - led_models.lib : LED D1, diode D2
+
+Le RP2040 est emule par rp2040js (Wokwi) execute par QuickJS dans le plug-in
+mcu_cosim.so : rien a installer en plus (pas de Node.js).
+
+Cablage :
+  GP0 (TX) -> RXD de U2, GP1 (RX) <- TXD de U2 (115200 bauds)
+  GP14 : bouton (D2 + V1 : appuye de 3 a 6 ms), pull-up interne
+  GP15 : signal carre 1 kHz (label SQ)
+  GP16 : LED D1 via R1 330 Ohm, allumee pendant l'appui
+  GP26 (ADC0) : pont R2 10k / R3 4,7k sur 3V3 -> 1,06 V
+  GP25 : LED de la carte, dans le modele
+  3V3 (broche 36) : sortie 3,3 V du modele ; masses : noeud 0.
+
+Firmware : firmware/pico/pico_demo.c (bare-metal, sans SDK, clang + lld)
+  "Pico pret", puis "ADC0 = 1314 (1.06 V)" toutes les 4 ms,
+  et "Recu : <ligne>" pour chaque ligne recue.
+Avec le Pico SDK ou Arduino-pico : regenerer le modele avec le .uf2 :
+  python3 tools/make_pico_lib.py --fw mon_prog.uf2 -o pico.lib
+  (Arduino-pico : Serial = USB, affiche "USB> ..." ; Serial1 = GP0/GP1)
+
+Texte envoye par le PC : terminal.txt, puis
+  python3 tools/make_terminal_lib.py --vhigh 3.3 terminal.txt -o terminal.lib
+
+Ou voir quoi ?
+  - Terminal (KiCad lance depuis un terminal) : UART0> ... ; uart_log.txt
+  - Simulateur : sonder SQ, LED, BTN, TX, RX, POT
+
+Simulation : transitoire, pas 0.5u, duree 12m (environ 3 s de calcul).
+Guide detaille : README.md du dossier parent.

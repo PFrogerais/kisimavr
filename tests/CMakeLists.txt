@@ -416,6 +416,25 @@ if(KICAD_CLI AND Python3_FOUND)
         set_tests_properties(ngspice.kicad_spi PROPERTIES LABELS "ngspice;kicad"
                              FIXTURES_REQUIRED "firmware;demos;spi_netlist")
 
+        # Pico project: official symbol MCU_Module:RaspberryPi_Pico.
+        if(PICO_TESTS)
+            set(pico_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO.cir)
+            add_test(NAME kicad.pico_netlist
+                COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${pico_net}
+                        -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/simPICO/simPICO.kicad_sch
+                        -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+            set_tests_properties(kicad.pico_netlist PROPERTIES FIXTURES_SETUP pico_netlist
+                                 LABELS kicad TIMEOUT 120)
+            kisimavr_test(ngspice.kicad_pico TIMEOUT 600
+                WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/simPICO
+                COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO.raw ${pico_net}
+                EXPECT [[UART0> Pico pret]] [[UART0> Recu : Bonjour Pico]]
+                       [=[UART0> ADC0 = 1[23][0-9][0-9] \(1\.0[4-7] V\)]=]
+                REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
+            set_tests_properties(ngspice.kicad_pico PROPERTIES LABELS "ngspice;kicad"
+                                 FIXTURES_REQUIRED "firmware_pico;demos;pico_netlist")
+        endif()
+
         # LCD project: the display is a second co-simulated part.
         set(lcd_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simAVR_lcd.cir)
         add_test(NAME kicad.lcd_netlist

@@ -66,6 +66,16 @@ def main():
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_lcd_lib.py"),
                     "--so", so, "-o", os.path.join(lcd, "lcd1602.lib")], check=True)
 
+    # Raspberry Pi Pico (RP2040) demo: bare-metal firmware built by
+    # "make -C firmware/pico", terminal at 3.3 V.
+    pico = os.path.join(PROJECTS, "simPICO")
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_pico_lib.py"),
+                    "--fw", os.path.join(ROOT, "firmware", "pico", "pico_demo.bin"),
+                    "--so", so, "-o", os.path.join(pico, "pico.lib")], check=True)
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_terminal_lib.py"),
+                    "--vhigh", "3.3", os.path.join(pico, "terminal.txt"),
+                    "-o", os.path.join(pico, "terminal.lib")], check=True)
+
     # Arduino UNO board (official schematic): uno_demo firmware, and the
     # terminal model rebuilt from terminal.txt (the text sent to RX).
     uno = os.path.join(PROJECTS, "Arduino_UNO")
