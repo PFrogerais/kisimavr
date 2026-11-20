@@ -5,16 +5,16 @@ Circuit
   V1 (rampe 1 -> 4 V en 20 ms) -> R1 10k + C1 10n -> ADC0
   TXD (PD1) -> R2 100k -> GND   (trames serie visibles dans le simulateur)
 
-Firmware : /home/paul/dev/kisimavr/firmware/uart_adc.hex
-           (cd ~/dev/kisimavr/firmware && make)
+Firmware : <kisimavr>/firmware/uart_adc.hex
+           (cd <kisimavr>/firmware && make)
            -> "Hello STI2D !" puis "ADC0 = 512 (2500 mV)" en boucle, 115200 bauds
 
 Ou lire le texte ?
   1. Terminal : lancer KiCad depuis un terminal ; les lignes s'affichent
      sous la forme  [mcu_cosim] t=0.002345 s UART0> ADC0 = 307 (1499 mV)
-  2. Fichier   : /home/paul/dev/kisimavr/uart_log.txt
-                 (suivi en direct : tail -f ~/dev/kisimavr/uart_log.txt)
-  3. Chronogramme : /home/paul/dev/kisimavr/uart_trace.vcd
+  2. Fichier   : <kisimavr>/uart_log.txt
+                 (suivi en direct : tail -f <kisimavr>/uart_log.txt)
+  3. Chronogramme : <kisimavr>/uart_trace.vcd
      PulseView : Fichier -> Importer -> Value Change Dump (facteur de
      sous-echantillonnage 10 a 100), puis decodeur "UART",
      RX = PD1, 115200 bauds, 8N1.

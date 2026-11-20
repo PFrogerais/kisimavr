@@ -6,9 +6,9 @@ Circuit
   PB5 -> R2 330 -> D1 LED rouge -> GND                           (clignote a 1 kHz)
   PB0 -> R3 10k -> GND                                           (recopie de PD2)
 
-Chemins utilises (a adapter si kisimavr est ailleurs) :
-  atmega328p_cosim.lib -> /home/paul/dev/kisimavr/build/mcu_cosim.so
-                          /home/paul/dev/kisimavr/firmware/blink.hex
+Chemins utilises (ecrits par tools/setup_demos.py) :
+  atmega328p_cosim.lib -> <kisimavr>/build/mcu_cosim.so
+                          <kisimavr>/firmware/blink.hex
 
 Utilisation
   1. Ouvrir simAVR_demo.kicad_pro, puis le schema.

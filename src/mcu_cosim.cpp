@@ -194,7 +194,7 @@ std::string toLower(std::string s)
 
 /**
  * KiCad's simulator lower-cases the strings of the netlist, sim_args
- * included: "/home/paul/Arduino/Blink.hex" arrives as ".../arduino/blink.hex".
+ * included: "/home/me/Arduino/Blink.hex" arrives as ".../arduino/blink.hex".
  * Rebuild the real path, one component at a time, ignoring case.
  */
 std::string resolvePath(const std::string &path)

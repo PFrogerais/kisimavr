@@ -54,3 +54,20 @@ target_link_libraries(cosim_runner PRIVATE ${CMAKE_DL_LIBS})
 target_compile_options(cosim_runner PRIVATE -Wall -Wextra -Wpedantic)
 
 install(TARGETS mcu_cosim LIBRARY DESTINATION lib/ngspice)
+
+# ---- KiCad demo models (absolute paths of this machine) ----------------------
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_FOUND)
+    add_custom_target(demos
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/setup_demos.py
+                --so $<TARGET_FILE:mcu_cosim>
+        DEPENDS mcu_cosim
+        COMMENT "Writing the .lib models of kicad/projects/")
+endif()
+
+# ---- Tests (ctest) ----------------------------------------------------------
+option(KISIMAVR_TESTS "Build the regression tests" ON)
+if(KISIMAVR_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

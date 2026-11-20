@@ -6,8 +6,8 @@ Circuit
   PD6 (PWM ~7.8 kHz, rapport cyclique = ADC/1024) -> R4 10k + C2 100n -> VAVG
   PB5 -> R2 330 -> LED : allumee quand ADC0 >= 2,5 V
 
-Firmware : /home/paul/dev/kisimavr/firmware/adc_pwm.hex
-           (cd ~/dev/kisimavr/firmware && make)
+Firmware : <kisimavr>/firmware/adc_pwm.hex
+           (cd <kisimavr>/firmware && make)
 
 Utilisation
   1. Ouvrir simAVR_adc.kicad_pro puis le schema.

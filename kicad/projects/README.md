@@ -36,11 +36,16 @@ git clone https://github.com/PFrogerais/kisimavr.git
 cd kisimavr
 cmake -S . -B build && cmake --build build     # -> build/mcu_cosim.so
 make -C firmware                               # -> firmware/*.hex
+cmake --build build --target demos             # -> kicad/projects/*/*.lib
 ```
 
-> Les `.lib` fournis contiennent des chemins **absolus** vers
-> `/home/paul/dev/kisimavr`. Si votre dossier est ailleurs, passez
-> directement à l'étape 2 pour les régénérer.
+> Les modèles `.lib` des démos contiennent des chemins **absolus** propres à
+> votre machine : ils ne sont pas dans git, la cible `demos` (ou
+> `python3 tools/setup_demos.py`) les écrit. Seuls les `.lib` sont
+> réécrits, vos schémas ne sont pas touchés. À relancer après un
+> déplacement du dossier. Si le chemin du `.so` contient des majuscules,
+> `python3 tools/setup_demos.py --so /opt/kisimavr/mcu_cosim.so`
+> (KiCad met la netlist en minuscules).
 
 ## Étape 1 — Ouvrir la démo et simuler
 
@@ -201,5 +206,6 @@ de programmation (ISP ou FTDI), vrai bouton poussoir et vrai potentiomètre
 | Champ `Sim.Pins` refusé / broches manquantes | coller la chaîne `Sim.Pins` ci-dessus dans les propriétés du symbole |
 | Simulation interminable | `delay()` longs dans le programme : 1 s de `delay` = 1 s simulée |
 
-Les projets de ce dossier sont produits par `tools/gen_kicad_demo.py`
+Les modèles `.lib` des projets sont écrits par `tools/setup_demos.py`.
+Les schémas ont été produits une première fois par `tools/gen_kicad_demo.py`
 (`python3 tools/gen_kicad_demo.py <dossier> <lib source> full|gpio|adc|uart --kisimavr <chemin>`).

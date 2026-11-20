@@ -42,15 +42,20 @@ make -C simavr/simavr install RELEASE=1 DESTDIR=$HOME/.local
 cd kisimavr
 cmake -S . -B build && cmake --build build     # -> build/mcu_cosim.so
 make -C firmware                               # -> firmware/*.hex
+cmake --build build --target demos             # -> modèles .lib des projets KiCad
 ```
 
+- Tests de non-régression : `ctest --test-dir build --output-on-failure`
+  (firmwares compilés automatiquement ; le test de bout en bout ngspice
+  n'est actif que si le dossier de build est `build/`).
 - ngspice **≥ 42** est requis (modèle `d_cosim`) : `ngspice -v`.
 - Le `.so` mémorise l'emplacement de `libsimavr.so` (RPATH) : pas besoin
   de `LD_LIBRARY_PATH`, y compris depuis KiCad.
 - Debian/Ubuntu : `sudo apt install cmake g++ libelf-dev gcc-avr avr-libc ngspice`,
   puis simavr comme ci-dessus (ou `libsimavr-dev` s'il est disponible).
 - simavr ailleurs : `cmake -S . -B build -DSIMAVR_INCLUDE_DIRS=<dossier de sim_avr.h> -DSIMAVR_LIBRARIES=<libsimavr.so>`.
-- Après un déplacement du dossier : `rm -rf build` puis reconfigurer.
+- Après un déplacement du dossier : `rm -rf build`, reconfigurer, puis
+  relancer la cible `demos` (chemins absolus des projets de démo).
 
 ## 2. Premier essai (ngspice seul)
 
@@ -302,11 +307,13 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `src/mcu_cosim.cpp` | le plug-in (pont simavr ↔ d_cosim) |
 | `include/cosim_abi.h` | copie binaire-compatible de `ngspice/cosim.h` |
 | `tools/main.cpp` | `cosim_runner` : test sans ngspice |
+| `tests/` | tests `ctest` (plug-in via `cosim_runner`, erreurs de configuration, modèle généré, ngspice) |
 | `tools/make_atmega328p_lib.py` | génère le modèle `ATMEGA328P` pour un projet |
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
 | `kicad/projects/` | 4 projets KiCad de démo + guide pas à pas (`README.md`) |
-| `tools/gen_kicad_demo.py` | génère ces projets |
+| `tools/setup_demos.py` | écrit les `.lib` des projets de démo (chemins de la machine) |
+| `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |
 | `firmware/` | firmwares de démo (C) et `full_demo/full_demo.ino` (Arduino) |
 | `ngspice/` | netlists de test autonomes |
 
