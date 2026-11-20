@@ -17,8 +17,30 @@ env:
 
 jobs:
   build-test:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: release
+            build_type: Release
+            cxx_flags: -Werror
+            linker_flags: ""
+            ctest_args: ""
+          # AddressSanitizer + UBSan on the plug-in, the runner and the unit
+          # tests. ngspice itself is not instrumented, so it cannot load an
+          # ASan plug-in: the ngspice test is excluded here.
+          - name: sanitizers
+            build_type: Debug
+            cxx_flags: -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
+            linker_flags: -fsanitize=address,undefined
+            ctest_args: --label-exclude ngspice
+    env:
+      # simavr (not instrumented) frees little at exit: leaks are not checked.
+      ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      UBSAN_OPTIONS: print_stacktrace=1
     steps:
       - uses: actions/checkout@v4
 
@@ -49,10 +71,15 @@ jobs:
       # build/ (not another folder): ngspice/full_test.cir loads
       # ../build/mcu_cosim.so, so the ngspice test is only enabled there.
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-Werror
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          "-DCMAKE_CXX_FLAGS=${{ matrix.cxx_flags }}"
+          "-DCMAKE_EXE_LINKER_FLAGS=${{ matrix.linker_flags }}"
+          "-DCMAKE_MODULE_LINKER_FLAGS=${{ matrix.linker_flags }}"
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure ${{ matrix.ctest_args }}
