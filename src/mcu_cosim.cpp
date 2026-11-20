@@ -50,6 +50,8 @@
  *
  * With "device" "i2c" the instance is a set of I2C slaves on SDA / SCL
  * (LM75, 24C02, LCD with a PCF8574 backpack; see i2c_slave_device.h).
+ * With "device" "hcsr04" / "servo": an HC-SR04 ultrasonic sensor or an RC
+ * servomotor (see sensor_devices.h).
  * With "device" "hd44780" the instance is a character LCD instead of an
  * MCU (see lcd_device.h): 11 inputs RS RW E D0..D7, keys cols, rows,
  * lcdlog, name.
@@ -80,6 +82,7 @@
 #include "cosim_abi.h"
 #include "i2c_slave_device.h"
 #include "lcd_device.h"
+#include "sensor_devices.h"
 #include "mcu_bridge.h"
 #include "rp2040_config.h"
 #ifdef KISIMAVR_HAVE_RP2040
@@ -168,6 +171,30 @@ COSIM_EXPORT void Cosim_setup(co_info *info)
         if (ok)
         {
             bridge = std::make_unique<kisimavr::I2cSlaveDevice>(i2c);
+        }
+    }
+    else if (kisimavr::deviceKind(args) == "hcsr04")
+    {
+        // HC-SR04 ultrasonic sensor: TRIG in, ECHO out.
+        kisimavr::HcSr04Config sr;
+        ok = kisimavr::parseHcSr04Config(args, sr);
+        info->in_count  = 1;
+        info->out_count = 1;
+        if (ok)
+        {
+            bridge = std::make_unique<kisimavr::HcSr04Device>(sr);
+        }
+    }
+    else if (kisimavr::deviceKind(args) == "servo")
+    {
+        // RC servomotor: SIG in, angle (8 bits) out.
+        kisimavr::ServoConfig servo;
+        ok = kisimavr::parseServoConfig(args, servo);
+        info->in_count  = 1;
+        info->out_count = kisimavr::ServoDevice::kBits;
+        if (ok)
+        {
+            bridge = std::make_unique<kisimavr::ServoDevice>(servo);
         }
     }
     else if (kisimavr::isDeviceConfig(args))

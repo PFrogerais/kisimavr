@@ -66,6 +66,14 @@ jobs:
       # After the tools: checkout then uses git.
       - uses: actions/checkout@v4
 
+      - name: Dump KiCad symbols (temporary)
+        if: matrix.name == 'release'
+        run: |
+          python3 tools/dump_kicad_symbol.py Driver_Motor:L298N Motor:Motor_DC Motor:Motor_Servo \
+              Device:Thermistor_NTC Connector_Generic:Conn_01x04 Device:R_Potentiometer \
+              | sed 's/^/KSYM|/' || true
+          python3 tools/dump_kicad_symbol.py --list Sensor_Distance | sed 's/^/KLIST|/' || true
+
       - name: Cache simavr
         id: simavr-cache
         uses: actions/cache@v4

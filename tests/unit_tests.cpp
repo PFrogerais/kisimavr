@@ -12,6 +12,7 @@
  * Usage: unit_tests <scratch directory>
  */
 
+#include <cmath>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -22,6 +23,7 @@
 #include "config.h"
 #include "i2c_devices.h"
 #include "i2c_slave_device.h"
+#include "sensor_devices.h"
 #include "paths.h"
 #include "hd44780.h"
 #include "lcd_device.h"
@@ -617,6 +619,56 @@ void testI2cSlaveBus()
     CHECK(log.size() == 5u && log[0] == "0x48 W 00" && log[1] == "0x48 R 19 80");
 }
 
+bool near(double a, double b, double eps)
+{
+    return std::fabs(a - b) <= eps;
+}
+
+void testSensors()
+{
+    std::printf("HC-SR04, servo\n");
+    HcSr04Config sc;
+    CHECK(parseHcSr04Config({ "device", "hcsr04", "dist", "34.3", "rate", "-10" }, sc));
+    CHECK(sc.dist == 34.3 && sc.rate == -10.0);
+    HcSr04Config sbad;
+    CHECK(!parseHcSr04Config({ "device", "hcsr04", "dist", "x" }, sbad));
+    sc.rate = 0.0;
+    HcSr04 sr(sc);
+    CHECK(sr.trig(true, 0.0));
+    CHECK(!sr.trig(false, 5e-6));                        // 5 us: too short
+    CHECK(sr.nextChange(1e-3) < 0.0);
+    CHECK(sr.trig(true, 1e-3));
+    CHECK(sr.trig(false, 1.012e-3));                     // 12 us
+    CHECK(near(sr.echoStart(), 1.262e-3, 1e-9));
+    CHECK(near(sr.echoWidth(), 2e-3, 1e-9));             // 34.3 cm: 2 ms
+    CHECK(!sr.echo(1.2e-3) && sr.echo(2e-3) && !sr.echo(3.3e-3));
+    CHECK(near(sr.nextChange(2e-3), 3.262e-3, 1e-9));
+    HcSr04Config far;
+    far.dist = 500.0;
+    HcSr04 sf(far);
+    sf.trig(true, 0.0);
+    sf.trig(false, 20e-6);
+    CHECK(near(sf.echoWidth(), 38e-3, 1e-9));            // Out of range
+
+    ServoConfig vc;
+    CHECK(parseServoConfig({ "device", "servo", "min", "1000", "max", "2000", "speed", "600" },
+                           vc));
+    ServoConfig vbad;
+    CHECK(!parseServoConfig({ "device", "servo", "min", "2000", "max", "1000" }, vbad));
+    Servo sv(vc);
+    CHECK(sv.degree(0.0) == 90);
+    sv.sig(true, 0.0);
+    sv.sig(false, 2e-3);                                 // 2 ms: 180 deg
+    CHECK(near(sv.target(), 180.0, 1e-9));
+    CHECK(near(sv.angle(2e-3 + 0.1), 150.0, 1e-6));      // 600 deg/s
+    CHECK(sv.degree(2e-3 + 0.2) == 180);
+    const double c = sv.nextChange(2e-3);
+    CHECK(c > 2e-3 && c < 2e-3 + 1.0 / 600.0 && sv.degree(c) == 91);
+    sv.sig(true, 1.0);
+    sv.sig(false, 1.0 + 100e-6);                         // 100 us: ignored
+    CHECK(near(sv.target(), 180.0, 1e-9));
+}
+
 void testRp2040Config()
 {
     CHECK(parseGpio("GP25") == 25 && parseGpio("gp0") == 0 && parseGpio("29") == 29);
@@ -674,6 +726,7 @@ int main(int argc, char *argv[])
     testLcdDevice();
     testRp2040Config();
     testI2cSlaveBus();
+    testSensors();
     testResolvePath(dir);
     testContentChecks();
     testVcd(dir);
