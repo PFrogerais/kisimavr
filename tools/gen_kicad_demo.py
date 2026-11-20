@@ -1326,8 +1326,8 @@ if VARIANT == "pico2board":
     u1 = {num: gpio_net[g] for num, g in gpio_pins.items()}
     u1.update({"1": "+3V3", "11": "+3V3", "20": "+3V3", "30": "+3V3", "38": "+3V3",
                "45": "+3V3", "53": "+3V3", "54": "+3V3", "49": "+3V3",
-               "6": "1V1", "23": "1V1", "39": "1V1", "50": "1V1", "48": "VREG_LX",
-               "46": "VREG_AVDD", "47": "GND", "44": "ADC_VREF!", "61": "GND",
+               "6": "1V1!", "23": "1V1", "39": "1V1", "50": "1V1", "48": "VREG_LX",
+               "46": "VREG_AVDD!", "47": "GND", "44": "ADC_VREF!", "61": "GND",
                "21": "XIN", "22": "XOUT", "24": "SWCLK", "25": "SWDIO", "26": "RUN",
                "51": "USB_DM", "52": "USB_DP", "55": "QSPI_SD3", "56": "QSPI_SCLK",
                "57": "QSPI_SD0", "58": "QSPI_SD2", "59": "QSPI_SD1", "60": "QSPI_SS"})
