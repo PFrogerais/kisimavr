@@ -1,0 +1,37 @@
+* Complete ATmega328P model: button with internal pull-up, LED, ADC, PWM, UART
+* Run from this folder:  ngspice full_test.cir
+* Firmware: ../firmware/full_demo.hex (make -C ../firmware)
+
+.include ../kicad/atmega328p_full.lib
+
+* Arduino-style wiring: X1 pins in subcircuit order
+*      D0  D1  D2  D3 D4 D5 D6  D7 D8 D9 D10 D11 D12 D13 A0 A1 A2 A3 A4 A5
+X1     nd0 txd btn nd3 nd4 nd5 pwm nd7 nb0 nb1 nb2 nb3 nb4 led a0 na1 na2 na3 na4 na5 ATMEGA328P
+
+* Push-button on D2 to GND, pressed from 4 ms to 12 ms (no external pull-up)
+Sbtn btn 0 press 0 SWBTN
+Vpress press 0 PULSE(0 1 4m 1u 1u 8m 40m)
+.model SWBTN sw(vt=0.5 vh=0.1 ron=10 roff=1e9)
+
+* Potentiometer on A0: 0.5 V -> 4.5 V ramp
+Vpot pot 0 PWL(0 0.5 20m 4.5)
+Rpot pot a0 10k
+
+* LED on D13
+R13 led ledk 330
+D13 ledk 0 LEDRED
+.model LEDRED D(IS=93.2p RS=42m N=3.73 BV=4 IBV=10u CJO=2.97p VJ=0.75 M=0.333 TT=4.32u)
+
+* PWM on D6, averaged by an RC low-pass
+Rf pwm vavg 10k
+Cf vavg 0 100n
+
+* UART receiver input impedance on D1
+Rtx txd 0 100k
+
+.control
+tran 0.5u 20m
+plot v(btn) v(led)+6 v(a0)+12 v(vavg)+12
+plot v(txd) xlimit 2m 2.3m
+.endc
+.end

@@ -1,0 +1,21 @@
+* ATmega328P UART co-simulation: ADC0 reading printed at 115200 bauds
+* Run from this folder:  ngspice uart_test.cir
+* The text appears in this terminal ("UART0> ...") and in ../uart_log.txt;
+* ../uart_trace.vcd can be opened in PulseView (UART decoder, 115200 bauds).
+
+.include ../kicad/atmega328p_cosim.lib
+
+* "Potentiometer": 1 V -> 4 V ramp over 20 ms
+Vpot pot 0 PWL(0 1 20m 4)
+Rpot pot a0 10k
+Ca0  a0 0 10n
+
+Xmcu a0 txd ATMEGA328P_UART
+Rload txd 0 100k
+
+.control
+tran 0.5u 20m
+plot v(a0) v(txd)+6
+plot v(txd) xlimit 2m 2.3m
+.endc
+.end

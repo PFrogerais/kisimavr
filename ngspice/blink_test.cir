@@ -1,0 +1,25 @@
+* ATmega328P (simavr) driving an LED - ngspice d_cosim test
+* Run from this folder:  ngspice blink_test.cir
+
+.include ../kicad/atmega328p_cosim.lib
+
+* Push-button on PD2: high from 2 ms to 5 ms, RC filtered
+Vbtn btn 0 PULSE(0 5 2m 1u 1u 3m 6m)
+Rbtn btn pd2 1k
+Cbtn pd2 0 100n
+
+* Microcontroller
+Xmcu pd2 pb5 pb0 ATMEGA328P_COSIM
+
+* Red LED on PB5 (Arduino D13), load on PB0
+R1 pb5 led 330
+D1 led 0 LEDRED
+.model LEDRED D(IS=93.2p RS=42m N=3.73 BV=4 IBV=10u CJO=2.97p VJ=0.75 M=0.333 TT=4.32u)
+R2 pb0 0 10k
+
+.control
+tran 1u 10m
+plot v(pd2) v(pb0)+6 v(pb5)+12
+plot (v(pb5)-v(led))/330*1000 ylabel 'I_LED (mA)'
+.endc
+.end

@@ -1,0 +1,27 @@
+* ATmega328P SAR ADC co-simulation: potentiometer ramp -> PWM
+* Run from this folder:  ngspice adc_test.cir
+
+.include ../kicad/atmega328p_cosim.lib
+
+* "Potentiometer": 0 -> 5 V ramp over 20 ms, through its 10k source resistance
+Vpot pot 0 PWL(0 0 20m 5)
+Rpot pot a0 10k
+Ca0  a0 0 10n
+
+Xmcu a0 pd6 pb5 ATMEGA328P_ADC
+
+* PWM output averaged by an RC low-pass (fc ~ 160 Hz)
+Rf pd6 vavg 10k
+Cf vavg 0 100n
+
+* LED on PB5
+R1 pb5 led 330
+D1 led 0 LEDRED
+.model LEDRED D(IS=93.2p RS=42m N=3.73 BV=4 IBV=10u CJO=2.97p VJ=0.75 M=0.333 TT=4.32u)
+
+.control
+tran 0.5u 20m
+plot v(a0) v(vavg) v(pb5)
+plot v(a0) v(xmcu.vdac) xlimit 10m 10.05m
+.endc
+.end
