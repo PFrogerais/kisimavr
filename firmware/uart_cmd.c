@@ -14,20 +14,42 @@
  *   LED OFF  -> D13 low,        answers "OK LED OFF"
  *   other    -> answers "Recu : <line>"
  *
+ * Received bytes are stored by the RX interrupt in a ring buffer, as the
+ * Arduino Serial class does: the USART itself only holds 2 bytes, so a
+ * polling loop busy sending an answer would lose the next incoming line.
+ *
  * Build: make uart_cmd.hex  (avr-gcc, F_CPU = 16 MHz)
  */
 
+#include <avr/interrupt.h>
 #include <avr/io.h>
 #include <stdint.h>
 #include <string.h>
 
 #define LINE_MAX 40u
+#define RX_SIZE  64u                        /* Power of two. */
+
+static volatile uint8_t s_rxBuffer[RX_SIZE];
+static volatile uint8_t s_rxHead;           /* Written by the ISR only. */
+static volatile uint8_t s_rxTail;           /* Written by main only. */
+
+ISR(USART_RX_vect)
+{
+    const uint8_t byte = UDR0;
+    const uint8_t next = (uint8_t)((s_rxHead + 1u) & (RX_SIZE - 1u));
+
+    if (next != s_rxTail)                    /* Drop the byte when full. */
+    {
+        s_rxBuffer[s_rxHead] = byte;
+        s_rxHead = next;
+    }
+}
 
 static void uartInit(void)
 {
     UCSR0A = _BV(U2X0);                      /* 16 MHz / 8 / 17 = ~115200 bauds. */
     UBRR0  = 16;
-    UCSR0B = _BV(RXEN0) | _BV(TXEN0);
+    UCSR0B = _BV(RXCIE0) | _BV(RXEN0) | _BV(TXEN0);
     UCSR0C = _BV(UCSZ01) | _BV(UCSZ00);      /* 8N1 */
 }
 
@@ -50,11 +72,13 @@ static void uartPuts(const char *s)
 
 static char uartGetc(void)
 {
-    while (!(UCSR0A & _BV(RXC0)))
+    while (s_rxTail == s_rxHead)
     {
-        /* Wait for a received byte. */
+        /* Wait for the ISR to store a byte. */
     }
-    return (char)UDR0;
+    const char c = (char)s_rxBuffer[s_rxTail];
+    s_rxTail = (uint8_t)((s_rxTail + 1u) & (RX_SIZE - 1u));
+    return c;
 }
 
 static void execute(const char *line)
@@ -84,6 +108,7 @@ int main(void)
 
     DDRB |= _BV(DDB5);
     uartInit();
+    sei();
     uartPuts("Pret\r\n");
 
     for (;;)
