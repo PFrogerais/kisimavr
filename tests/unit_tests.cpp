@@ -520,6 +520,19 @@ void testRp2040Config()
     CHECK(!parseRp2040Config({ "mcu", "rp2040", "fw", "a", "io", "GP1", "GP1" }, bad));
     CHECK(!parseRp2040Config({ "mcu", "rp2040", "fw", "a", "adc", "4" }, bad));
     CHECK(!parseRp2040Config({ "mcu", "rp2040", "fw", "a", "foo", "1" }, bad));
+    CHECK(cfg.chip == "rp2040" && cfg.arch.empty());
+
+    // RP2350 (Pico 2): same keys, plus "arch".
+    CHECK(isRp2040Config({ "mcu", "rp2350", "fw", "a.uf2" }));
+    Rp2040Config c2;
+    CHECK(parseRp2040Config({ "mcu", "RP2350", "fw", "a.bin", "arch", "riscv", "io", "GP25" }, c2));
+    CHECK(c2.chip == "rp2350" && c2.arch == "riscv" && c2.ios.size() == 1u);
+    Rp2040Config c3;
+    CHECK(parseRp2040Config({ "mcu", "rp2350", "fw", "a.uf2" }, c3) && c3.arch.empty());
+    Rp2040Config bad2;
+    CHECK(!parseRp2040Config({ "mcu", "rp2350", "fw", "a", "arch", "x86" }, bad2));
+    Rp2040Config bad3;
+    CHECK(!parseRp2040Config({ "mcu", "rp2040", "fw", "a", "arch", "arm" }, bad3));
 }
 
 int main(int argc, char *argv[])

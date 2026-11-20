@@ -102,6 +102,33 @@ if(PICO_CLANG AND PICO_LLD AND PICO_OBJCOPY AND KISIMAVR_RP2040)
                [[out8: 2[0-9] changes, [0-9]+ rising edges, mean period (0\.99|1\.00)]]
                [[out4: [1-9][0-9]+ changes]]
         REJECT [[setup failed]] [[RP2040: ]])
+    # Pico 2 (RP2350): the same demo for both core architectures, booted by
+    # the A2 bootrom from its IMAGE_DEF block.
+    add_test(NAME firmware_pico2 COMMAND ${MAKE_PROGRAM} -C ${FW}/pico2
+             PICO_CC=${PICO_CLANG} PICO_OBJCOPY=${PICO_OBJCOPY})
+    set_tests_properties(firmware_pico2 PROPERTIES FIXTURES_SETUP firmware_pico2)
+    foreach(arch IN ITEMS riscv arm)
+        if(arch STREQUAL "riscv")
+            set(banner "RISC-V")
+        else()
+            set(banner "ARM")
+        endif()
+        kisimavr_test(runner.pico2_${arch} FIXTURE firmware_pico2 TIMEOUT 300
+            COMMAND ${RUN} -t 0.012 -u [[115200,Bonjour\n]] ${SO} -- mcu rp2350
+                    fw ${FW}/pico2/pico2_demo_${arch}.bin io GP1 GP0 GP25
+            EXPECT "rp2350 ${arch} \\(rp2350js in QuickJS\\)" "UART0> Pico 2 pret \\(${banner}\\)"
+                   [[UART0> Recu : Bonjour]] [[UART0> ADC0 = ]]
+                   [[out8: 2[0-9] changes, [0-9]+ rising edges, mean period (0\.99|1\.00)]]
+                   [[out4: [1-9][0-9]+ changes]]
+            REJECT [[setup failed]] [[RP2350: ]])
+    endforeach()
+    # An RP2040 image has no IMAGE_DEF block: reported.
+    kisimavr_test(runner.pico2_rp2040_image FIXTURE firmware_pico TIMEOUT 120
+        COMMAND ${RUN} -t 0.0001 ${SO} -- mcu rp2350 fw ${FW}/pico/pico_demo.bin io GP25
+        EXPECT [[RP2350: no IMAGE_DEF block]])
+    kisimavr_test(args.pico2_bad_arch
+        COMMAND ${RUN} -t 0.001 ${SO} -- mcu rp2350 fw x.uf2 arch x86 io GP25
+        EXPECT [[invalid arch 'x86']] [[setup failed]])
     kisimavr_test(args.pico_missing_fw
         COMMAND ${RUN} -t 0.001 ${SO} -- mcu rp2040 io GP25
         EXPECT [[missing firmware]] [[setup failed]])

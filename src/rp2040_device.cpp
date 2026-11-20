@@ -6,7 +6,8 @@
 
 /**
  * @file rp2040_device.cpp
- * @brief RP2040 (Raspberry Pi Pico) co-simulated with rp2040js in QuickJS.
+ * @brief RP2040 / RP2350 (Raspberry Pi Pico / Pico 2) co-simulated with
+ *        rp2040js / rp2350js in QuickJS.
  */
 
 #include "rp2040_device.h"
@@ -104,11 +105,11 @@ JSValue jsPrint(JSContext *ctx, JSValueConst /*self*/, int argc, JSValueConst *a
 }
 
 /** Print the pending JS exception (message and stack). */
-void printException(JSContext *ctx, const char *what)
+void printException(JSContext *ctx, const char *chip, const char *what)
 {
     JSValue exc = JS_GetException(ctx);
     const char *msg = JS_ToCString(ctx, exc);
-    std::fprintf(stderr, "%s RP2040: %s: %s\n", kTag, what, msg != nullptr ? msg : "?");
+    std::fprintf(stderr, "%s %s: %s: %s\n", kTag, chip, what, msg != nullptr ? msg : "?");
     JS_FreeCString(ctx, msg);
     JSValue stack = JS_GetPropertyStr(ctx, exc, "stack");
     if (!JS_IsUndefined(stack))
@@ -156,27 +157,36 @@ Rp2040Device::~Rp2040Device()
     }
 }
 
+const char *Rp2040Device::label() const
+{
+    return m_cfg.chip == "rp2350" ? "RP2350" : "RP2040";
+}
+
 void Rp2040Device::fail(const char *what)
 {
-    printException(m_js->ctx, what);
+    printException(m_js->ctx, label(), what);
     m_ok = false;
 }
 
 bool Rp2040Device::start()
 {
     m_cfg.fwPath = resolvePath(m_cfg.fwPath);
-    std::string bridge = m_cfg.bridgePath.empty() ? pluginDir() + "/../rp2040/bridge.js"
+    const bool rp2350 = m_cfg.chip == "rp2350";
+    const char *defaultBridge = rp2350 ? "/../rp2040/rp2350_bridge.js" : "/../rp2040/bridge.js";
+    std::string bridge = m_cfg.bridgePath.empty() ? pluginDir() + defaultBridge
                                                   : resolvePath(m_cfg.bridgePath);
     std::string firmware;
     if (!readFile(m_cfg.fwPath, firmware) || firmware.empty())
     {
-        std::fprintf(stderr, "%s RP2040: cannot read firmware '%s'\n", kTag, m_cfg.fwPath.c_str());
+        std::fprintf(stderr, "%s %s: cannot read firmware '%s'\n", kTag, label(),
+                     m_cfg.fwPath.c_str());
         return false;
     }
     std::string bridgeSource;
     if (!readFile(bridge, bridgeSource))
     {
-        std::fprintf(stderr, "%s RP2040: cannot read '%s' (key \"bridge\")\n", kTag, bridge.c_str());
+        std::fprintf(stderr, "%s %s: cannot read '%s' (key \"bridge\")\n", kTag, label(),
+                     bridge.c_str());
         return false;
     }
     if (!m_cfg.uartLog.empty())
@@ -191,7 +201,7 @@ bool Rp2040Device::start()
     JSContext *ctx = m_js->ctx;
     JS_SetModuleLoaderFunc(m_js->rt, nullptr, loadModule, nullptr);
 
-    // kisimPrint() and a minimal console for rp2040js.
+    // kisimPrint() and a minimal console for the emulator.
     JSValue global = JS_GetGlobalObject(ctx);
     JS_SetPropertyStr(ctx, global, "kisimPrint", JS_NewCFunction(ctx, jsPrint, "kisimPrint", 1));
     JSValue console = JS_NewObject(ctx);
@@ -201,7 +211,7 @@ bool Rp2040Device::start()
     }
     JS_SetPropertyStr(ctx, global, "console", console);
 
-    // import { Rp2040Bridge } from bridge.js
+    // import { Rp2040Bridge } from bridge.js (Rp2350Bridge from rp2350_bridge.js)
     JSValue func = JS_Eval(ctx, bridgeSource.c_str(), bridgeSource.size(), bridge.c_str(),
                            JS_EVAL_TYPE_MODULE | JS_EVAL_FLAG_COMPILE_ONLY);
     if (JS_IsException(func))
@@ -233,7 +243,7 @@ bool Rp2040Device::start()
     JS_FreeValue(ctx, done);
 
     JSValue ns = JS_GetModuleNamespace(ctx, module);
-    JSValue ctor = JS_GetPropertyStr(ctx, ns, "Rp2040Bridge");
+    JSValue ctor = JS_GetPropertyStr(ctx, ns, rp2350 ? "Rp2350Bridge" : "Rp2040Bridge");
     JS_FreeValue(ctx, ns);
     JSValue ios = JS_NewArray(ctx);
     for (size_t i = 0; i < m_cfg.ios.size(); ++i)
@@ -245,10 +255,12 @@ bool Rp2040Device::start()
     {
         JS_SetPropertyUint32(ctx, adc, static_cast<uint32_t>(i), JS_NewInt32(ctx, m_cfg.adc[i]));
     }
-    JSValue args[2] = { ios, adc };
-    m_js->bridge = JS_CallConstructor(ctx, ctor, 2, args);
+    JSValue arch = JS_NewString(ctx, m_cfg.arch.c_str());
+    JSValue args[3] = { ios, adc, arch };
+    m_js->bridge = JS_CallConstructor(ctx, ctor, 3, args);
     JS_FreeValue(ctx, ios);
     JS_FreeValue(ctx, adc);
+    JS_FreeValue(ctx, arch);
     JS_FreeValue(ctx, ctor);
     JS_FreeValue(ctx, global);
     if (JS_IsException(m_js->bridge))
@@ -274,7 +286,17 @@ bool Rp2040Device::start()
 
     m_lastOut.assign(rp2040OutputCount(m_cfg), 0);
     m_ok = true;
-    std::fprintf(stderr, "%s rp2040 (rp2040js in QuickJS) running %s (%zu io, %zu ADC)\n", kTag,
+    std::string chip = m_cfg.chip;
+    if (rp2350)
+    {
+        JSValue a = JS_GetPropertyStr(ctx, m_js->bridge, "arch");
+        const char *archName = JS_ToCString(ctx, a);
+        chip += std::string(" ") + (archName != nullptr ? archName : "?");
+        JS_FreeCString(ctx, archName);
+        JS_FreeValue(ctx, a);
+    }
+    std::fprintf(stderr, "%s %s (%s in QuickJS) running %s (%zu io, %zu ADC)\n", kTag,
+                 chip.c_str(), rp2350 ? "rp2350js" : "rp2040js",
                  m_cfg.fwPath.c_str(), m_cfg.ios.size(), m_cfg.adc.size());
     return true;
 }
@@ -423,7 +445,7 @@ void Rp2040Device::step(co_info *info)
     info->vtime = std::min(when, target);
     if (m_cfg.log)
     {
-        std::fprintf(stderr, "%s t=%.9f RP2040 pins changed\n", kTag, info->vtime);
+        std::fprintf(stderr, "%s t=%.9f %s pins changed\n", kTag, info->vtime, label());
     }
 }
 

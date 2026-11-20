@@ -45,7 +45,8 @@
  *   log   1 to print pin activity on stderr (default 0)
  *
  * With "mcu" "rp2040" the instance is a Raspberry Pi Pico (rp2040js run by
- * QuickJS, see rp2040_device.h and rp2040_config.h).
+ * QuickJS, see rp2040_device.h and rp2040_config.h), with "mcu" "rp2350" a
+ * Raspberry Pi Pico 2 (rp2350js, Hazard3 RISC-V or Cortex-M33 cores).
  *
  * With "device" "hd44780" the instance is a character LCD instead of an
  * MCU (see lcd_device.h): 11 inputs RS RW E D0..D7, keys cols, rows,
@@ -136,7 +137,7 @@ COSIM_EXPORT void Cosim_setup(co_info *info)
     bool ok = false;
     if (kisimavr::isRp2040Config(args))
     {
-        // Raspberry Pi Pico: rp2040js in QuickJS.
+        // Raspberry Pi Pico / Pico 2: rp2040js / rp2350js in QuickJS.
         kisimavr::Rp2040Config rp;
         ok = kisimavr::parseRp2040Config(args, rp);
         info->in_count  = kisimavr::rp2040InputCount(rp);

@@ -6,10 +6,11 @@
 
 /**
  * @file rp2040_device.h
- * @brief RP2040 (Raspberry Pi Pico) co-simulated with rp2040js in QuickJS.
+ * @brief RP2040 / RP2350 (Raspberry Pi Pico / Pico 2) co-simulated in QuickJS.
  *
- * rp2040js (third_party/rp2040js, JavaScript) runs inside the plug-in on an
- * embedded QuickJS engine, through rp2040/bridge.js: no Node.js process,
+ * rp2040js (third_party/rp2040js) or rp2350js (third_party/rp2350js), in
+ * JavaScript, run inside the plug-in on an embedded QuickJS engine, through
+ * rp2040/bridge.js or rp2040/rp2350_bridge.js: no Node.js process,
  * so it also works with KiCad as a Flatpak. Each d_cosim step runs the
  * emulator up to vtime, or up to the first pin change.
  */
@@ -48,6 +49,7 @@ private:
     bool call(const char *method, int argc, const double *argv, std::vector<double> *result);
     void printLines(bool final);
     void fail(const char *what);
+    const char *label() const;    // "RP2040" or "RP2350"
 
     Rp2040Config          m_cfg;
     Js                   *m_js = nullptr;

@@ -6,7 +6,7 @@
 
 /**
  * @file rp2040_config.cpp
- * @brief sim_args of an RP2040 instance.
+ * @brief sim_args of an RP2040 / RP2350 instance.
  */
 
 #include "rp2040_config.h"
@@ -27,7 +27,7 @@ bool isKey(const std::string &word)
 {
     const std::string k = toLower(word);
     return k == "mcu" || k == "fw" || k == "io" || k == "adc" || k == "uartlog" ||
-           k == "bridge" || k == "log";
+           k == "bridge" || k == "log" || k == "arch";
 }
 
 } // namespace
@@ -36,7 +36,8 @@ bool isRp2040Config(const std::vector<std::string> &args)
 {
     for (size_t i = 0; i + 1 < args.size(); ++i)
     {
-        if (toLower(args[i]) == "mcu" && toLower(args[i + 1]) == "rp2040")
+        if (toLower(args[i]) == "mcu" &&
+            (toLower(args[i + 1]) == "rp2040" || toLower(args[i + 1]) == "rp2350"))
         {
             return true;
         }
@@ -119,9 +120,31 @@ bool parseRp2040Config(const std::vector<std::string> &args, Rp2040Config &cfg)
             }
         }
         const std::string &value = values.front();
-        if (key == "mcu" && toLower(value) != "rp2040")
+        if (key == "mcu")
         {
-            ok = false;
+            const std::string chip = toLower(value);
+            if (chip == "rp2040" || chip == "rp2350")
+            {
+                cfg.chip = chip;
+            }
+            else
+            {
+                ok = false;
+            }
+        }
+        else if (key == "arch")
+        {
+            const std::string arch = toLower(value);
+            if (arch == "riscv" || arch == "arm")
+            {
+                cfg.arch = arch;
+            }
+            else
+            {
+                std::fprintf(stderr, "%s RP2350: invalid arch '%s' (riscv or arm)\n", kTag,
+                             value.c_str());
+                ok = false;
+            }
         }
         else if (key == "fw")
         {
@@ -140,6 +163,11 @@ bool parseRp2040Config(const std::vector<std::string> &args, Rp2040Config &cfg)
             cfg.log = value != "0";
         }
         i = j;
+    }
+    if (!cfg.arch.empty() && cfg.chip != "rp2350")
+    {
+        std::fprintf(stderr, "%s RP2040: key \"arch\" is for the RP2350 only\n", kTag);
+        ok = false;
     }
     if (cfg.fwPath.empty())
     {
