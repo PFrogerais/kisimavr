@@ -99,7 +99,7 @@ if(PICO_CLANG AND PICO_LLD AND PICO_OBJCOPY AND KISIMAVR_RP2040)
                 fw ${FW}/pico/pico_demo.bin io GP1 GP0 GP25
         EXPECT [[rp2040 \(rp2040js in QuickJS\)]] [[UART0> Pico pret]]
                [[UART0> Recu : Bonjour]] [[UART0> ADC0 = ]]
-               [[out8: 2[0-9] changes, [0-9]+ rising edges, mean period 0\.99]]
+               [[out8: 2[0-9] changes, [0-9]+ rising edges, mean period (0\.99|1\.00)]]
                [[out4: [1-9][0-9]+ changes]]
         REJECT [[setup failed]] [[RP2040: ]])
     kisimavr_test(args.pico_missing_fw

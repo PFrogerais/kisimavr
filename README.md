@@ -334,8 +334,11 @@ Flatpak. Le temps de rp2040js n'avance qu'au rythme de ngspice.
   trames reconstruites sur la broche TX (GP0 par défaut), trames du
   circuit décodées sur RX (GP1). `Serial` d'Arduino-pico passe par l'USB :
   son texte s'affiche (`USB> …`), sans trames ; `Serial1` = UART0.
-- **ADC** : GP26–GP28 (ADC0–2), convertisseur SAR 12 bits reconstruit dans
-  ngspice comme pour l'AVR (2 µs par conversion), Vref = 3,3 V.
+- **ADC** : GP26–GP29 (ADC0–3), convertisseur SAR 12 bits reconstruit dans
+  ngspice comme pour l'AVR, Vref = 3,3 V. Une étape par microseconde pour
+  laisser ngspice calculer le comparateur : une conversion dure 12 µs (2 µs
+  sur la puce), et le pas de simulation maximal doit rester ≤ 0,5 µs
+  (`.tran 0.5u …`).
 - **LED de la carte** : GP25, dans le modèle (470 Ω + LED verte).
 - **Puce seule** : `make_pico_lib.py --chip` donne le sous-circuit `RP2040`
   (GPIO0–GPIO29, symbole officiel `MCU_RaspberryPi:RP2040`), utilisé par le

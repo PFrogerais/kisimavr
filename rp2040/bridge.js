@@ -22,7 +22,10 @@ import { bootromB1 } from '../third_party/rp2040js/bootrom.js';
 
 const FLASH_BASE = 0x10000000;
 const FUNC_UART = 2;
-const SAR_STEP_NS = 150;            // 12 steps + settling = 2 us, as the RP2040
+// One SAR step per microsecond: ngspice must compute the comparator after
+// each DAC change, and its time step is up to 0.5 us in the demos
+// (".tran 0.5u ..."). A conversion takes 12 us instead of 2 us on the chip.
+const SAR_STEP_NS = 1000;
 const TIMER_SLICE = 1024;           // Instructions between two runs of setTimeout() callbacks
 
 // rp2040js runs its PIO with setTimeout(): those callbacks are run from the
