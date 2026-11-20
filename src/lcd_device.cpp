@@ -136,8 +136,8 @@ LcdDevice::LcdDevice(LcdConfig cfg)
             std::fprintf(m_file, "# kisimavr LCD %dx%d\n", m_cfg.cols, m_cfg.rows);
         }
     }
-    std::fprintf(stderr, "%s %s: HD44780 %dx%d (RS RW E D0..D7)\n", kTag, m_cfg.name.c_str(),
-                 m_cfg.cols, m_cfg.rows);
+    std::fprintf(stderr, "%s %s: HD44780 %dx%d (%s)\n", kTag, m_cfg.name.c_str(),
+                 m_cfg.cols, m_cfg.rows, m_cfg.wiring.c_str());
 }
 
 LcdDevice::~LcdDevice()
@@ -218,7 +218,12 @@ void LcdDevice::fallingEdge(double t)
     {
         bus = static_cast<uint8_t>(bus | (m_level[kD0 + k] ? (1u << k) : 0u));
     }
-    m_lcd.strobe(m_level[kRs], m_level[kRw], bus, t);
+    write(m_level[kRs], m_level[kRw], bus, t);
+}
+
+void LcdDevice::write(bool rs, bool rw, uint8_t bus, double t)
+{
+    m_lcd.strobe(rs, rw, bus, t);
     report(m_lcd.warnings());
     m_lcd.warnings().clear();
     m_lastWrite = t;

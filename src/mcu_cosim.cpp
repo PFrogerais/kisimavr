@@ -48,6 +48,8 @@
  * QuickJS, see rp2040_device.h and rp2040_config.h), with "mcu" "rp2350" a
  * Raspberry Pi Pico 2 (rp2350js, Hazard3 RISC-V or Cortex-M33 cores).
  *
+ * With "device" "i2c" the instance is a set of I2C slaves on SDA / SCL
+ * (LM75, 24C02, LCD with a PCF8574 backpack; see i2c_slave_device.h).
  * With "device" "hd44780" the instance is a character LCD instead of an
  * MCU (see lcd_device.h): 11 inputs RS RW E D0..D7, keys cols, rows,
  * lcdlog, name.
@@ -76,6 +78,7 @@
 #include "common.h"
 #include "config.h"
 #include "cosim_abi.h"
+#include "i2c_slave_device.h"
 #include "lcd_device.h"
 #include "mcu_bridge.h"
 #include "rp2040_config.h"
@@ -154,6 +157,18 @@ COSIM_EXPORT void Cosim_setup(co_info *info)
                      kisimavr::kTag);
         ok = false;
 #endif
+    }
+    else if (kisimavr::isI2cSlaveConfig(args))
+    {
+        // I2C slaves (LM75, 24C02, LCD with PCF8574) on SDA / SCL.
+        kisimavr::I2cBusConfig i2c;
+        ok = kisimavr::parseI2cSlaveConfig(args, i2c);
+        info->in_count  = kisimavr::I2cSlaveDevice::kInputs;
+        info->out_count = kisimavr::I2cSlaveDevice::kOutputs;
+        if (ok)
+        {
+            bridge = std::make_unique<kisimavr::I2cSlaveDevice>(i2c);
+        }
     }
     else if (kisimavr::isDeviceConfig(args))
     {

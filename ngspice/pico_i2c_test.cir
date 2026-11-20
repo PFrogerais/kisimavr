@@ -1,0 +1,36 @@
+* Raspberry Pi Pico (RP2040): I2C bus with an LM75 and an LCD 16x2 I2C (PCF8574)
+* Run from this folder:  ngspice pico_i2c_test.cir
+* Firmware: ../firmware/pico/pico_i2c.bin (make -C ../firmware/pico)
+* The I2C frames are electrical: GP4 = SDA, GP5 = SCL (open drain, 100 kHz),
+* 4.7 kohm pull-ups to 3.3 V; the slaves pull SDA low for ACK and data.
+
+* Models generated for this firmware:
+*   python3 ../tools/make_pico_lib.py --relative --fw ../firmware/pico/pico_i2c.bin \
+*       --name i2c --so ../build/mcu_cosim.so -o pico_i2c.lib
+*   python3 ../tools/make_i2c_lib.py --relative --lm75 0x48 --lcd 0x27 --log \
+*       --so ../build/mcu_cosim.so -o i2c_slaves.lib
+.include pico_i2c.lib
+.include i2c_slaves.lib
+
+*     GP0 GP1 GP2 GP3 GP4 GP5 GP6 GP7 GP8 GP9 GP10 GP11 GP12 GP13 GP14 GP15 GP16
+XP    tx  rx  n2  n3  sda scl n6  n7  n8  n9  n10  n11  n12  n13  n14  n15  n16
+*     GP17 GP18 GP19 GP20 GP21 GP22 GP26 GP27 GP28 VBUS VSYS V3V3_EN V3V3 ADC_VREF RUN
++     n17  n18  n19  n20  n21  n22  n26  n27  n28  vbus vsys en      v33  vref     run  PICO_I2C
+
+*      GND VCC SDA SCL
+XI2C   0   v33 sda scl I2C_SLAVES
+
+* Pull-ups of the bus, and the capacitance of the wires (about 50 pF)
+Rsda sda v33 4.7k
+Rscl scl v33 4.7k
+Csda sda 0 50p
+Cscl scl 0 50p
+* UART: receiver load on TX, RX idle high
+Rtx tx 0 100k
+Rrx rx v33 10k
+
+.control
+tran 0.5u 30m
+plot v(scl) v(sda)+4 xlimit 0 1m
+.endc
+.end

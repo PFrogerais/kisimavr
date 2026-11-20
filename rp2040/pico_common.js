@@ -15,7 +15,9 @@
 //
 // The emulators run on a SimulationClock: time only moves when run() ticks it.
 
+const FUNC_SPI = 1;
 const FUNC_UART = 2;
+const FUNC_I2C = 3;
 // One SAR step per microsecond: ngspice must compute the comparator after
 // each DAC change, and its time step is up to 0.5 us in the demos
 // (".tran 0.5u ..."). A conversion takes 12 us instead of 2 us on the chip.
@@ -178,6 +180,282 @@ class RxDecoder {
   }
 }
 
+// ---- Bus sequences on the pins ------------------------------------------------
+
+/**
+ * Runs one generator at a time on the emulator clock: the generator yields
+ * delays in ns; done(result) is called when it returns.
+ */
+class Sequencer {
+  constructor(clock) {
+    this.gen = null;
+    this.done = null;
+    this.alarm = createAlarm(clock, () => this.next());
+  }
+
+  get busy() {
+    return this.gen !== null;
+  }
+
+  run(gen, done) {
+    this.gen = gen;
+    this.done = done;
+    this.next();
+  }
+
+  next() {
+    const r = this.gen.next();
+    if (r.done) {
+      const done = this.done;
+      this.gen = null;
+      this.done = null;
+      done(r.value);
+    } else {
+      this.alarm.schedule(r.value);
+    }
+  }
+}
+
+/**
+ * I2C master of the chip on its pins (open drain): START, address, bytes,
+ * ACK bits and STOP as SDA / SCL edges with the SCL timing of the
+ * controller; ACK and read bits are the SDA levels of the circuit; clock
+ * stretching is honoured. Without an SDA and an SCL "io" pin, every
+ * address is NACKed (as without a slave).
+ */
+class I2cMaster {
+  constructor(bridge, index) {
+    this.bridge = bridge;
+    this.index = index;
+    this.i2c = bridge.mcu.i2c[index];
+    this.seq = new Sequencer(bridge.clock);
+    this.sda = -1;
+    this.scl = -1;
+    const i2c = this.i2c;
+    i2c.onStart = (restart) => this.go(this.start(restart), () => i2c.completeStart());
+    i2c.onConnect = (address, mode) =>
+      this.go(this.writeByte(((address & 0x7f) << 1) | (mode ? 1 : 0)), (ack) => i2c.completeConnect(ack));
+    i2c.onWriteByte = (value) => this.go(this.writeByte(value), (ack) => i2c.completeWrite(ack));
+    i2c.onReadByte = (ack) => this.go(this.readByte(ack), (value) => i2c.completeRead(value));
+    i2c.onStop = () => this.go(this.stop(), () => i2c.completeStop());
+  }
+
+  /** SDA / SCL "io" pins of this controller (function I2C), or -1. */
+  findPins() {
+    const { bridge, index } = this;
+    this.sda = -1;
+    this.scl = -1;
+    for (const n of bridge.ios) {
+      if (bridge.mcu.gpio[n].functionSelect === FUNC_I2C && ((n >> 1) & 1) === index) {
+        if (n % 2 === 0) {
+          this.sda = n;
+        } else {
+          this.scl = n;
+        }
+      }
+    }
+    return this.sda >= 0 && this.scl >= 0;
+  }
+
+  go(gen, done) {
+    if (this.sda < 0 || this.scl < 0) {
+      if (!this.findPins()) {
+        done(false);           // No bus in the circuit: NACK / 0x00.
+        return;
+      }
+    }
+    this.seq.run(gen, done);
+  }
+
+  get tLow() {
+    const counts = this.i2c.sclLowPeriod;
+    return counts >= 8 ? (counts * 1e9) / this.bridge.mcu.clkSys : 4700;
+  }
+
+  get tHigh() {
+    const counts = this.i2c.sclHighPeriod;
+    return counts >= 6 ? (counts * 1e9) / this.bridge.mcu.clkSys : 4000;
+  }
+
+  get hold() {
+    return Math.min(500, this.tLow / 4);
+  }
+
+  /** Drive pin n low (true) or release it. */
+  drive(n, low) {
+    if (this.bridge.i2cLow[n] !== low) {
+      this.bridge.i2cLow[n] = low;
+      this.bridge.dirty = true;
+    }
+  }
+
+  line(n) {
+    return !this.bridge.i2cLow[n] && this.bridge.inputs[n];
+  }
+
+  *releaseScl() {
+    this.drive(this.scl, false);
+    for (let k = 0; k < 4000 && !this.bridge.inputs[this.scl]; ++k) {
+      yield 250;               // Rise time, or a slave stretching the clock.
+    }
+  }
+
+  /** One clock with SCL low on entry and on exit; returns SDA at mid-high. */
+  *clock(release) {
+    this.drive(this.sda, !release);
+    yield this.tLow - this.hold;
+    yield* this.releaseScl();
+    yield this.tHigh / 2;
+    const bit = this.line(this.sda);
+    yield this.tHigh / 2;
+    this.drive(this.scl, true);
+    yield this.hold;
+    return bit;
+  }
+
+  *start(restart) {
+    // Both lines high (repeated START: from the end of a byte, SCL low)...
+    this.drive(this.sda, false);
+    if (restart) {
+      yield this.tLow - this.hold;
+    }
+    yield* this.releaseScl();
+    yield this.tHigh;
+    // ...then SDA falls while SCL is high.
+    this.drive(this.sda, true);
+    yield this.tHigh;
+    this.drive(this.scl, true);
+    yield this.hold;
+  }
+
+  *writeByte(value) {
+    for (let k = 7; k >= 0; --k) {
+      yield* this.clock(((value >> k) & 1) === 1);
+    }
+    const nack = yield* this.clock(true);
+    return !nack;
+  }
+
+  *readByte(ack) {
+    let value = 0;
+    for (let k = 0; k < 8; ++k) {
+      value = (value << 1) | ((yield* this.clock(true)) ? 1 : 0);
+    }
+    yield* this.clock(!ack);
+    return value;
+  }
+
+  *stop() {
+    this.drive(this.sda, true);
+    yield this.tLow - this.hold;
+    yield* this.releaseScl();
+    yield this.tHigh;
+    this.drive(this.sda, false);
+    yield this.tLow;           // Bus free time.
+  }
+}
+
+/**
+ * SPI master of the chip on its pins: SCK, TX (MOSI) and CSn driven with
+ * the clock rate, mode (CPOL / CPHA) and frame size of the controller; RX
+ * (MISO) read from the circuit. Without an SCK "io" pin, the frame is
+ * exchanged at once and reads 0.
+ */
+class SpiMaster {
+  constructor(bridge, index) {
+    this.bridge = bridge;
+    this.index = index;
+    this.spi = bridge.mcu.spi[index];
+    this.seq = new Sequencer(bridge.clock);
+    this.sck = null;           // Level driven on SCK (null: idle level = CPOL)
+    this.tx = false;
+    this.cs = true;
+    this.spi.onTransmit = (value) => this.transmit(value);
+  }
+
+  get cpol() {
+    return (this.spi.control0 & (1 << 6)) !== 0;
+  }
+
+  get cpha() {
+    return (this.spi.control0 & (1 << 7)) !== 0;
+  }
+
+  /** Pin of a role (0 RX, 1 CSn, 2 SCK, 3 TX) among the "io" pins, or -1. */
+  pin(role) {
+    const { bridge, index } = this;
+    for (const n of bridge.ios) {
+      if (bridge.mcu.gpio[n].functionSelect === FUNC_SPI && n % 4 === role &&
+          ((n >> 3) & 1) === index) {
+        return n;
+      }
+    }
+    return -1;
+  }
+
+  /** level | oe << 1 for a driven role, or -1 for RX. */
+  word(role) {
+    switch (role) {
+      case 1:
+        return (this.cs ? 1 : 0) | 2;
+      case 2:
+        return ((this.sck === null ? this.cpol : this.sck) ? 1 : 0) | 2;
+      case 3:
+        return (this.tx ? 1 : 0) | 2;
+      default:
+        return -1;
+    }
+  }
+
+  set(field, value) {
+    if (this[field] !== value) {
+      this[field] = value;
+      this.bridge.dirty = true;
+    }
+  }
+
+  transmit(value) {
+    if (this.pin(2) < 0) {
+      this.spi.completeTransmit(0);
+      return;
+    }
+    this.seq.run(this.frame(value), (rx) => this.spi.completeTransmit(rx));
+  }
+
+  *frame(value) {
+    const freq = this.spi.clockFrequency;
+    const half = freq > 0 ? 5e8 / freq : 500;
+    const bits = this.spi.dataBits;
+    const rx = this.pin(0);
+    const { cpol, cpha } = this;
+    let result = 0;
+    this.set('sck', cpol);
+    this.set('cs', false);
+    yield half;
+    for (let k = bits - 1; k >= 0; --k) {
+      const bit = ((value >> k) & 1) === 1;
+      if (!cpha) {
+        this.set('tx', bit);
+        yield half;
+        result = (result << 1) | (rx >= 0 && this.bridge.inputs[rx] ? 1 : 0);
+        this.set('sck', !cpol);
+        yield half;
+        this.set('sck', cpol);
+      } else {
+        this.set('sck', !cpol);
+        this.set('tx', bit);
+        yield half;
+        result = (result << 1) | (rx >= 0 && this.bridge.inputs[rx] ? 1 : 0);
+        this.set('sck', cpol);
+        yield half;
+      }
+    }
+    yield half;
+    this.set('cs', true);
+    return result;
+  }
+}
+
 // ---- The bridge ------------------------------------------------------------
 
 /**
@@ -234,6 +512,11 @@ export class PicoBridge {
       };
     });
 
+    // I2C and SPI controllers: signals on their pins.
+    this.i2cLow = new Array(mcu.gpio.length).fill(false);
+    this.i2cMasters = [0, 1].map((k) => new I2cMaster(this, k));
+    this.spiMasters = [0, 1].map((k) => new SpiMaster(this, k));
+
     // USB serial (Serial of Arduino-pico): text only.
     this.cdc = new USBCDC(mcu.usbCtrl);
     this.cdc.onSerialData = (buffer, length) => {
@@ -275,6 +558,13 @@ export class PicoBridge {
         return (this.tx[uart].level ? 1 : 0) | 2;        // TX: driven
       }
       return pu | pd;                                     // RX, CTS, RTS: input
+    }
+    if (g.functionSelect === FUNC_I2C) {
+      return this.i2cLow[n] ? 2 : pu | pd;               // Open drain
+    }
+    if (g.functionSelect === FUNC_SPI) {
+      const w = this.spiMasters[(n >> 3) & 1].word(n % 4);
+      return w >= 0 ? w : pu | pd;                        // RX: input
     }
     const s = this.pinStates;
     switch (g.value) {

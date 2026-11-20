@@ -1,0 +1,50 @@
+* Raspberry Pi Pico (RP2040): SPI master driving a 74HC595 (8 LEDs chaser)
+* Run from this folder:  ngspice pico_spi_test.cir
+* Firmware: ../firmware/pico/pico_spi.bin (make -C ../firmware/pico)
+* The SPI frames are electrical: GP18 (SCK) -> SRCLK, GP19 (TX) -> SER,
+* GP17 -> RCLK (latch), and QH' -> GP16 (RX) reads the previous byte back.
+* The 74HC595 is powered at 3.3 V by the Pico.
+
+* Model generated for this firmware:
+*   python3 ../tools/make_pico_lib.py --relative --fw ../firmware/pico/pico_spi.bin \
+*       --name spi --so ../build/mcu_cosim.so -o pico_spi.lib
+.include pico_spi.lib
+.include ../kicad/74hc595.lib
+
+*     GP0 GP1 GP2 GP3 GP4 GP5 GP6 GP7 GP8 GP9 GP10 GP11 GP12 GP13 GP14 GP15 GP16
+XP    tx  rx  n2  n3  n4  n5  n6  n7  n8  n9  n10  n11  n12  n13  n14  n15  miso
+*     GP17 GP18 GP19 GP20 GP21 GP22 GP26 GP27 GP28 VBUS VSYS V3V3_EN V3V3 ADC_VREF RUN
++     rclk sck  mosi n20  n21  n22  n26  n27  n28  vbus vsys en      v33  vref     run  PICO_SPI
+
+*      QB QC QD QE QF QG QH GND QH'  ~SRCLR SRCLK RCLK ~OE SER  QA VCC
+XU2    qb qc qd qe qf qg qh 0   miso v33    sck   rclk 0   mosi qa v33 74HC595
+
+* LEDs through 220 ohm on QA..QH
+.model dled D(IS=1e-18 RS=10 N=2)
+RA qa la 220
+DA la 0 dled
+RB qb lb 220
+DB lb 0 dled
+RC qc lc 220
+DC lc 0 dled
+RD qd ld 220
+DD ld 0 dled
+RE qe le 220
+DE le 0 dled
+RF qf lf 220
+DF lf 0 dled
+RG qg lg 220
+DG lg 0 dled
+RH qh lh 220
+DH lh 0 dled
+
+* UART: receiver load on TX, RX idle high
+Rtx tx 0 100k
+Rrx rx v33 10k
+
+.control
+tran 0.2u 10m
+plot v(qa) v(qb)+4 v(qc)+8 v(qd)+12 v(qe)+16 v(qf)+20 v(qg)+24 v(qh)+28
+plot v(sck) v(mosi)+4 v(rclk)+8 v(miso)+12 xlimit 0 20u
+.endc
+.end

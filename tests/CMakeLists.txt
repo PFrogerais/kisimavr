@@ -129,6 +129,17 @@ if(PICO_CLANG AND PICO_LLD AND PICO_OBJCOPY AND KISIMAVR_RP2040)
     kisimavr_test(args.pico2_bad_arch
         COMMAND ${RUN} -t 0.001 ${SO} -- mcu rp2350 fw x.uf2 arch x86 io GP25
         EXPECT [[invalid arch 'x86']] [[setup failed]])
+    # I2C / SPI demos without their buses in the "io" list: NACK, zeros.
+    kisimavr_test(runner.pico_i2c_nobus FIXTURE firmware_pico TIMEOUT 300
+        COMMAND ${RUN} -t 0.003 ${SO} -- mcu rp2040 fw ${FW}/pico/pico_i2c.bin io GP0
+        EXPECT [[UART0> LM75 : pas de reponse \(NACK\)]]
+        REJECT [[setup failed]] [[RP2040: ]])
+    kisimavr_test(runner.pico_spi FIXTURE firmware_pico TIMEOUT 300
+        COMMAND ${RUN} -t 0.003 ${SO} -- mcu rp2040 fw ${FW}/pico/pico_spi.bin
+                io GP0 GP16 GP17 GP18 GP19
+        EXPECT [[UART0> SPI : envoye 02, relu 00]]
+               [[out12: 4[0-9] changes]]
+        REJECT [[setup failed]] [[RP2040: ]])
     kisimavr_test(args.pico_missing_fw
         COMMAND ${RUN} -t 0.001 ${SO} -- mcu rp2040 io GP25
         EXPECT [[missing firmware]] [[setup failed]])
@@ -271,6 +282,17 @@ if(Python3_FOUND)
     set_tests_properties(models.pico2_up_to_date PROPERTIES FIXTURES_SETUP model_pico2)
     set_tests_properties(models.pico2_compare PROPERTIES FIXTURES_REQUIRED model_pico2)
 
+    # I2C slaves model.
+    kisimavr_test(models.i2c_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
+        COMMAND ${Python3_EXECUTABLE} make_i2c_lib.py --relative --so ../build/mcu_cosim.so
+                --lm75 0x48 --lcd 0x27 --log -o ${CMAKE_CURRENT_BINARY_DIR}/models/i2c_slaves.lib
+        EXPECT [[written]])
+    add_test(NAME models.i2c_compare
+        COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/models/i2c_slaves.lib
+                ${PROJECT_SOURCE_DIR}/ngspice/i2c_slaves.lib)
+    set_tests_properties(models.i2c_up_to_date PROPERTIES FIXTURES_SETUP model_i2c)
+    set_tests_properties(models.i2c_compare PROPERTIES FIXTURES_REQUIRED model_i2c)
+
     # Character LCD model.
     kisimavr_test(models.lcd1602_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
         COMMAND ${Python3_EXECUTABLE} make_lcd_lib.py --relative --so ../build/mcu_cosim.so
@@ -387,6 +409,25 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                    [[UART0> VSYS = 0.00 V, USB : non]]
             REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
         set_tests_properties(ngspice.pico PROPERTIES LABELS ngspice)
+        # Pico I2C: LM75 and LCD I2C (PCF8574) slaves decoded bit by bit from
+        # the SDA / SCL voltages, ACK and data bits pulled low by them.
+        kisimavr_test(ngspice.pico_i2c FIXTURE firmware_pico TIMEOUT 900
+            WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+            COMMAND ${NGSPICE} -b pico_i2c_test.cir
+            EXPECT [[I2C slaves on SDA / SCL: LM75 0x48, PCF8574 0x27]]
+                   [[I2C> 0x48 W 00]] [[I2C> 0x48 R 19 80]]
+                   [[UART0> LM75 : T = 25.5 C]] [[UART0> LCD : ecrit]]
+                   [=[LCD> \[Pico I2C        \] \[T = 25.5 C      \]]=]
+            REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]] [[NACK]])
+        set_tests_properties(ngspice.pico_i2c PROPERTIES LABELS ngspice)
+        # Pico SPI: 74HC595 at 3.3 V, QH' read back on GP16.
+        kisimavr_test(ngspice.pico_spi FIXTURE firmware_pico TIMEOUT 900
+            WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+            COMMAND ${NGSPICE} -b pico_spi_test.cir
+            EXPECT [[UART0> Pico SPI : 74HC595, chenillard]]
+                   [[UART0> SPI : envoye 02, relu 01]] [[UART0> SPI : envoye 04, relu 02]]
+            REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
+        set_tests_properties(ngspice.pico_spi PROPERTIES LABELS ngspice)
         # Pico 2 (RP2350, RISC-V cores): the same circuit.
         kisimavr_test(ngspice.pico2 FIXTURE firmware_pico2 TIMEOUT 600
             WORKDIR ${PROJECT_SOURCE_DIR}/ngspice

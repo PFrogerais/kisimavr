@@ -43,6 +43,7 @@ struct LcdConfig
     int         rows = 2;
     std::string logPath;
     std::string name = "LCD";
+    std::string wiring = "RS RW E D0..D7";    // Shown in the start-up message.
 };
 
 /** True when sim_args select a device instead of an MCU ("device" key). */
@@ -61,6 +62,10 @@ public:
 
     void step(co_info *info) override;
     void input(co_info *info, unsigned int index, const Digital_t *value) override;
+
+    /** One transfer (E falling edge at time t) without the input pins:
+     *  used by the I2C LCD module (PCF8574 backpack). */
+    void write(bool rs, bool rw, uint8_t bus, double t);
 
     /** Print the screen if it changed and is stable at time t. */
     void flush(double t, bool force);

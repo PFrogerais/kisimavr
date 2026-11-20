@@ -8,11 +8,18 @@
 * RCLK rising: the 8 stages are copied to the outputs QA..QH.
 * ~SRCLR low: clears the shift stages. ~OE low: outputs driven; high:
 * outputs released (high impedance, 1 Mohm to GND).
-* Levels: 5 V supply, CMOS input thresholds 1.5 / 3.5 V, outputs 0 / 5 V
-* through 50 ohm (about the HC output resistance), 15 ns propagation.
+* Levels follow the supply (2 to 6 V, e.g. 5 V or 3.3 V): CMOS input
+* thresholds 30 % / 70 % of VCC, outputs 0 / VCC through 50 ohm (about the
+* HC output resistance), 15 ns propagation.
 .subckt 74HC595 QB QC QD QE QF QG QH VSS QHS SRCLR_N SRCLK RCLK OE_N SER QA VCC
-* Inputs
-aIn [SER SRCLK RCLK SRCLR_N OE_N] [d_ser d_srclk d_rclk d_srclrn d_oen] hc595_in
+* Inputs, scaled to a 5 V supply: thresholds 1.5 / 3.5 V of 5 V = 30 / 70 % of VCC
+Bvs vs 0 V = max(V(VCC,VSS), 1)
+Bser n_ser 0 V = V(SER,VSS) * 5 / V(vs)
+Bsrclk n_srclk 0 V = V(SRCLK,VSS) * 5 / V(vs)
+Brclk n_rclk 0 V = V(RCLK,VSS) * 5 / V(vs)
+Bclr n_clr 0 V = V(SRCLR_N,VSS) * 5 / V(vs)
+Boe n_oe 0 V = V(OE_N,VSS) * 5 / V(vs)
+aIn [n_ser n_srclk n_rclk n_clr n_oe] [d_ser d_srclk d_rclk d_srclrn d_oen] hc595_in
 aClr d_srclrn d_clr hc595_inv
 aEn  d_oen d_en hc595_inv
 * Shift register: d_dff data clk set reset out nout
@@ -44,16 +51,17 @@ aG6 [l6 d_en] g6 hc595_and
 aG7 [l7 d_en] g7 hc595_and
 aOut [g0 g1 g2 g3 g4 g5 g6 g7 s7] [qa_i qb_i qc_i qd_i qe_i qf_i qg_i qh_i qhs_i] hc595_out
 aOe  [d_en d_en d_en d_en d_en d_en d_en d_en] [ea eb ec ed ee ef eg eh] hc595_out
-* 50 ohm when enabled, 1 Mohm when released: resistor value = control voltage
-BRa qa_i QA I = (V(qa_i)-V(QA)) / (50 + (1 - V(ea)/5) * 1e6)
-BRb qb_i QB I = (V(qb_i)-V(QB)) / (50 + (1 - V(eb)/5) * 1e6)
-BRc qc_i QC I = (V(qc_i)-V(QC)) / (50 + (1 - V(ec)/5) * 1e6)
-BRd qd_i QD I = (V(qd_i)-V(QD)) / (50 + (1 - V(ed)/5) * 1e6)
-BRe qe_i QE I = (V(qe_i)-V(QE)) / (50 + (1 - V(ee)/5) * 1e6)
-BRf qf_i QF I = (V(qf_i)-V(QF)) / (50 + (1 - V(ef)/5) * 1e6)
-BRg qg_i QG I = (V(qg_i)-V(QG)) / (50 + (1 - V(eg)/5) * 1e6)
-BRh qh_i QH I = (V(qh_i)-V(QH)) / (50 + (1 - V(eh)/5) * 1e6)
-RQHS qhs_i QHS 50
+* 50 ohm when enabled, 1 Mohm when released: resistor value = control voltage;
+* level 0 / 5 V of the bridge scaled to 0 / VCC
+BRa qa_i QA I = (V(qa_i)*V(vs)/5+V(VSS)-V(QA)) / (50 + (1 - V(ea)/5) * 1e6)
+BRb qb_i QB I = (V(qb_i)*V(vs)/5+V(VSS)-V(QB)) / (50 + (1 - V(eb)/5) * 1e6)
+BRc qc_i QC I = (V(qc_i)*V(vs)/5+V(VSS)-V(QC)) / (50 + (1 - V(ec)/5) * 1e6)
+BRd qd_i QD I = (V(qd_i)*V(vs)/5+V(VSS)-V(QD)) / (50 + (1 - V(ed)/5) * 1e6)
+BRe qe_i QE I = (V(qe_i)*V(vs)/5+V(VSS)-V(QE)) / (50 + (1 - V(ee)/5) * 1e6)
+BRf qf_i QF I = (V(qf_i)*V(vs)/5+V(VSS)-V(QF)) / (50 + (1 - V(ef)/5) * 1e6)
+BRg qg_i QG I = (V(qg_i)*V(vs)/5+V(VSS)-V(QG)) / (50 + (1 - V(eg)/5) * 1e6)
+BRh qh_i QH I = (V(qh_i)*V(vs)/5+V(VSS)-V(QH)) / (50 + (1 - V(eh)/5) * 1e6)
+BRqhs qhs_i QHS I = (V(qhs_i)*V(vs)/5+V(VSS)-V(QHS)) / 50
 * Supply: a small load so that VCC and GND are never floating
 RVCC VCC VSS 100k
 .model hc595_in  adc_bridge(in_low=1.5 in_high=3.5)

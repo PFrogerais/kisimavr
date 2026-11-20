@@ -21,6 +21,7 @@
 
 #include "config.h"
 #include "i2c_devices.h"
+#include "i2c_slave_device.h"
 #include "paths.h"
 #include "hd44780.h"
 #include "lcd_device.h"
@@ -500,6 +501,122 @@ void testLcdDevice()
     CHECK(dev.controller().lines()[0][0] == 'A');
 }
 
+/** Bit-level I2C master driving an I2cSlaveBus (open drain: wired AND). */
+struct I2cWire
+{
+    I2cSlaveBus &bus;
+    double t = 0.0;
+    bool sdaMaster = true;
+
+    bool line() const { return sdaMaster && !bus.pullLow(); }
+    void tick() { t += 5e-6; }
+    void setSda(bool level)
+    {
+        sdaMaster = level;
+        bus.sda(line(), t);
+    }
+    void setScl(bool level)
+    {
+        bus.scl(level, t);
+        bus.sda(line(), t);    // The slave may change SDA after SCL falls.
+    }
+    void start()
+    {
+        setSda(true);
+        setScl(true);
+        tick();
+        setSda(false);
+        tick();
+        setScl(false);
+    }
+    void stop()
+    {
+        setSda(false);
+        tick();
+        setScl(true);
+        tick();
+        setSda(true);
+        tick();
+    }
+    bool clock(bool bit, bool &read)
+    {
+        setSda(bit);
+        tick();
+        setScl(true);
+        read = line();
+        tick();
+        setScl(false);
+        return read;
+    }
+    bool writeByte(uint8_t v)
+    {
+        bool r = false;
+        for (int k = 7; k >= 0; --k)
+        {
+            clock(((v >> k) & 1u) != 0u, r);
+        }
+        clock(true, r);
+        return !r;    // ACK = SDA low.
+    }
+    uint8_t readByte(bool ack)
+    {
+        uint8_t v = 0;
+        bool r = false;
+        for (int k = 0; k < 8; ++k)
+        {
+            clock(true, r);
+            v = static_cast<uint8_t>((v << 1) | (r ? 1u : 0u));
+        }
+        clock(!ack, r);
+        return v;
+    }
+};
+
+void testI2cSlaveBus()
+{
+    std::printf("I2C slave bus\n");
+    I2cBusConfig cfg;
+    CHECK(isI2cSlaveConfig({ "device", "i2c", "lm75", "0x48" }));
+    CHECK(parseI2cSlaveConfig({ "device", "i2c", "lm75", "0x48", "eeprom", "0x50",
+                                "temp", "25.5" }, cfg));
+    CHECK(cfg.slaves.size() == 2u && cfg.temp0 == 25.5);
+    I2cBusConfig bad;
+    CHECK(!parseI2cSlaveConfig({ "device", "i2c", "lm75", "0x48", "eeprom", "0x48" }, bad));
+    I2cBusConfig none;
+    CHECK(!parseI2cSlaveConfig({ "device", "i2c" }, none));
+
+    I2cSlaveBus bus(makeI2cTargets(cfg));
+    I2cWire m{ bus };
+    // LM75: pointer 0, then read 2 bytes: 25.5 degC = 0x19 0x80.
+    m.start();
+    CHECK(m.writeByte(0x48 << 1));
+    CHECK(m.writeByte(0x00));
+    m.start();                                    // Repeated START
+    CHECK(m.writeByte((0x48 << 1) | 1));
+    CHECK(m.readByte(true) == 0x19);
+    CHECK(m.readByte(false) == 0x80);
+    m.stop();
+    // Nobody at 0x30: NACK.
+    m.start();
+    CHECK(!m.writeByte(0x30 << 1));
+    m.stop();
+    // EEPROM: write 0xA5 at 0x10, read it back.
+    m.start();
+    CHECK(m.writeByte(0x50 << 1));
+    CHECK(m.writeByte(0x10));
+    CHECK(m.writeByte(0xA5));
+    m.stop();
+    m.start();
+    CHECK(m.writeByte(0x50 << 1));
+    CHECK(m.writeByte(0x10));
+    m.start();
+    CHECK(m.writeByte((0x50 << 1) | 1));
+    CHECK(m.readByte(false) == 0xA5);
+    m.stop();
+    const auto log = bus.takeLog();
+    CHECK(log.size() == 5u && log[0] == "0x48 W 00" && log[1] == "0x48 R 19 80");
+}
+
 void testRp2040Config()
 {
     CHECK(parseGpio("GP25") == 25 && parseGpio("gp0") == 0 && parseGpio("29") == 29);
@@ -556,6 +673,7 @@ int main(int argc, char *argv[])
     testHd44780();
     testLcdDevice();
     testRp2040Config();
+    testI2cSlaveBus();
     testResolvePath(dir);
     testContentChecks();
     testVcd(dir);
