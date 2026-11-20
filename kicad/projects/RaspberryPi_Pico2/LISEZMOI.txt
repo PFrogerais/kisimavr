@@ -24,7 +24,7 @@ le RT6150B (absent de la bibliotheque) est dessine.
 Deux feuilles :
   - RaspberryPi_Pico2.kicad_sch (racine) : la Pico 2 vue de dessus (USB en
     haut), bloc hierarchique ; broches 1..20 a gauche, 21..40 a droite, SWD en
-    bas, a leur position reelle (echelle 3). Chaque broche porte un label de
+    bas, a leur position reelle (echelle 2). Chaque broche porte un label de
     meme nom : cablez vos composants sur ces labels (GP0, GP15, 3V3, GND3...).
   - pico2_board.kicad_sch (A3) : la carte. J0 = bord de carte 40 broches,
     J2 = SWD ; chaque broche porte un label hierarchique (GND3..GND38, AGND,

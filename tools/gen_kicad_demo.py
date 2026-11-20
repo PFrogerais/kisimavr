@@ -1546,7 +1546,7 @@ def pico_root_sheet(pico2=False):
     rect(bx(24.13), by(110.49), bx(39.37), by(116.84))               # Crystal
     text("12 MHz", bx(27.94), by(114.3))
     text(board, bx(16.51 if pico2 else 19.05), by(132.08), size=1.5)
-    text("DEBUG", bx(27.94), by(146.05))
+    text("DEBUG", bx(6.35), by(149.86))
 
     # Each sheet pin: short wire and a label of the same name.
     for (n, x, y, a) in pins:
