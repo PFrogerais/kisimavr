@@ -1533,12 +1533,12 @@ def pico_root_sheet(pico2=False):
     def by(mm):
         return snap(y0 + mm * 2 / 3)
 
-    rect(bx(21.59), by(-3.81), bx(41.91), by(13.97))                 # micro-USB
+    rect(bx(21.59), by(0), bx(41.91), by(13.97))                 # micro-USB
     text("USB", bx(27.94), by(8.89))
     rect(bx(11.43), by(22.86), bx(20.32), by(31.75))                 # BOOTSEL
     text("BOOTSEL", bx(10.16), by(35.56))
-    rect(bx(46.99), by(17.78), bx(50.8), by(21.59))                  # LED
-    text("LED (GP25)", bx(41.91), by(16.51))
+    rect(bx(38.1), by(19.05), bx(43.18), by(22.86))                  # LED
+    text("LED (GP25)", bx(33.02), by(17.78))
     rect(bx(19.05), by(55.88), bx(44.45), by(81.28))                 # RP2040
     text(chip, bx(26.67), by(69.85), size=1.5)
     rect(bx(21.59), by(91.44), bx(41.91), by(101.6))                 # Flash
@@ -1562,7 +1562,7 @@ def pico_root_sheet(pico2=False):
         out.append(f'(label "{n}" (at {ex} {ey} {a}) (fields_autoplaced yes) '
                    f'(effects (font (size 1.27 1.27)) (justify {just})) (uuid "{uid()}"))')
 
-    side_just = {180: "left", 0: "right", 270: "right"}
+    side_just = {180: "left", 0: "right", 270: "left"}
     pin_txt = " ".join(
         f'(pin "{n}" bidirectional (at {x} {y} {a}) '
         f'(effects (font (size 1.27 1.27)) (justify {side_just[a]})) '
