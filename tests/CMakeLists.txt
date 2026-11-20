@@ -296,7 +296,7 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
         WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
         COMMAND ${NGSPICE} -b lcd_test.cir
         EXPECT [[LCD: HD44780 16x2]]
-               [[LCD> \[Bonjour STI2D   \] \[A0 = [0-4]\.[0-9][0-9] V     \]]]
+               [=[LCD> \[Bonjour STI2D   \] \[A0 = [0-4]\.[0-9][0-9] V     \]]=]
         REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[warning]] [[Segmentation]])
     set_tests_properties(ngspice.lcd PROPERTIES LABELS ngspice)
 elseif(NGSPICE_OK)
@@ -373,7 +373,7 @@ if(KICAD_CLI AND Python3_FOUND)
         kisimavr_test(ngspice.kicad_lcd TIMEOUT 300
             WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/simAVR_lcd
             COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/simAVR_lcd.raw ${lcd_net}
-            EXPECT [[LCD> \[Bonjour STI2D   \] \[A0 = [0-4]\.[0-9][0-9] V     \]]]
+            EXPECT [=[LCD> \[Bonjour STI2D   \] \[A0 = [0-4]\.[0-9][0-9] V     \]]=]
             REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[warning]])
         set_tests_properties(ngspice.kicad_lcd PROPERTIES LABELS "ngspice;kicad"
                              FIXTURES_REQUIRED "firmware;demos;lcd_netlist")
