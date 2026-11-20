@@ -275,8 +275,8 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
         EXPECT [[UART0> SPI 74HC595 : chenillard]]
                [[SPI> MOSI 01 \| MISO 00]]
                [[SPI> MOSI 04 \| MISO 02]]
-               [[UART0> Q = 08  relu = 04]]
-               [[UART0> Q = 80  relu = 40]]
+               [[UART0> Q = 08 +relu = 04]]
+               [[UART0> Q = 80 +relu = 40]]
         REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[during a transfer]])
     set_tests_properties(ngspice.spi PROPERTIES LABELS ngspice)
 elseif(NGSPICE_OK)
@@ -337,7 +337,7 @@ if(KICAD_CLI AND Python3_FOUND)
         kisimavr_test(ngspice.kicad_spi TIMEOUT 300
             WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/simAVR_spi
             COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/simAVR_spi.raw ${spi_net}
-            EXPECT [[SPI> MOSI 02 \| MISO 01]] [[UART0> Q = 10  relu = 08]]
+            EXPECT [[SPI> MOSI 02 \| MISO 01]] [[UART0> Q = 10 +relu = 08]]
             REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[during a transfer]])
         set_tests_properties(ngspice.kicad_spi PROPERTIES LABELS "ngspice;kicad"
                              FIXTURES_REQUIRED "firmware;demos;spi_netlist")

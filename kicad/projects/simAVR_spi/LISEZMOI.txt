@@ -28,6 +28,6 @@ Ou voir quoi ?
   - uart_log.txt (ce dossier) : le texte du firmware
   - trace.vcd (ce dossier) : chronogramme, decodeur SPI de PulseView
 
-Simulation : transitoire, pas 0.5u, duree 18m,
+Simulation : transitoire, pas 0.5u, duree 20m,
              "Sauvegarder tous les courants" decoche.
 Guide detaille : README.md du dossier parent.

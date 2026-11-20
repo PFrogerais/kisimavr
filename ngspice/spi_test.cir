@@ -41,7 +41,7 @@ DH lh 0 dled
 Rtx txd 0 100k
 
 .control
-tran 0.5u 18m
+tran 0.5u 20m
 plot v(qa) v(qb)+6 v(qc)+12 v(qd)+18 v(qe)+24 v(qf)+30 v(qg)+36 v(qh)+42
 plot v(sck) v(mosi)+6 v(rclk)+12 v(miso)+18 xlimit 0 30u
 .endc

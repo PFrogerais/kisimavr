@@ -811,7 +811,7 @@ if VARIANT == "spi":
         ("Sonder : SCK, MOSI, RCLK, MISO (zoom sur 20 us), QA..QH", 25.4, 41.91),
         ("Alimentation 5 V de la simulation", 22.86, 147.32),
     ]
-    DIRECTIVES = [(".tran 0.5u 18m", 25.4, 185.42)]
+    DIRECTIVES = [(".tran 0.5u 20m", 25.4, 185.42)]
 
 
 def placed_symbol(lib_id, ref, value, x, y, extra):
