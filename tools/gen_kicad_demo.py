@@ -920,6 +920,15 @@ def uno_root_sheet():
     text("POWER", bx(1.04), round(y0 + h - 13.97, 2))
     text("ANALOG IN", bx(1.94), round(y0 + h - 13.97, 2))
 
+    # Each sheet pin: short wire and a label of the same name, to wire the
+    # user's parts by name (an unconnected sheet pin is an ERC error).
+    for (n, x, y, a) in pins:
+        ey = round(y - 5.08, 2) if a == 90 else round(y + 5.08, 2)
+        out.append(f'(wire (pts (xy {x} {y}) (xy {x} {ey})) '
+                   f'(stroke (width 0) (type default)) (uuid "{uid()}"))')
+        out.append(f'(label "{n}" (at {x} {ey} {a}) (fields_autoplaced yes) '
+                   f'(effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "{uid()}"))')
+
     pin_txt = " ".join(
         f'(pin "{n}" bidirectional (at {x} {y} {a}) '
         f'(effects (font (size 1.27 1.27)) (justify {"right" if a == 90 else "left"})) '
@@ -935,6 +944,8 @@ def uno_root_sheet():
         f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" (page "2")))))')
     text("Simulation : transitoire 10 ms. Terminal simule : terminal.txt -> "
          "tools/make_terminal_lib.py", 25.4, 190.5)
+    text("Chaque broche porte un label : placer le meme label sur un composant pour le relier",
+         25.4, 186.69)
     text("Sonder : /Arduino UNO R3/D13, L13, D0_RX, D1_TX (ou un net de cette feuille)",
          25.4, 194.31)
     out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 25.4 200.66 0) '
