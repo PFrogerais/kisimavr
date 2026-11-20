@@ -24,7 +24,8 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | I²C (TWI) | esclaves virtuels LM75 et EEPROM 24C02, journal des transactions, signaux SDA/SCL réels en drain ouvert |
 | SPI | maître sur les vraies broches (SCK, MOSI, MISO), 4 modes, ordre des bits, débit de SPCR ; esclaves = composants du schéma (modèle 74HC595 fourni) ; journal des octets |
 | Afficheur LCD | module 16x2 / 20x4 (HD44780) comme composant du schéma : écran affiché dans le terminal et un fichier, vérification des temps du datasheet |
-| Raspberry Pi Pico (RP2040) | composant `PICO` 3,3 V : rp2040js (Wokwi) exécuté par QuickJS dans le plug-in ; GPIO, PWM, UART (texte + trames), USB série (texte), ADC GP26–GP28 ; firmwares `.uf2` (Pico SDK, Arduino-pico), `.bin`, `.hex` |
+| Raspberry Pi Pico (RP2040) | composant `PICO` 3,3 V : rp2040js (Wokwi) exécuté par QuickJS dans le plug-in ; GPIO, PWM, UART (texte + trames), I²C et SPI maîtres (signaux réels), USB série (texte), ADC GP26–GP28 ; firmwares `.uf2` (Pico SDK, Arduino-pico), `.bin`, `.hex` |
+| Modules I²C | composant `I2C_…` câblé sur SDA / SCL : capteur LM75, EEPROM 24C02, afficheur LCD 16x2 I²C (PCF8574), décodés bit à bit depuis les tensions, ACK et données en drain ouvert ; pour tout maître (Pico, ATmega, sources) |
 | Raspberry Pi Pico 2 (RP2350) | composant `PICO2`, même brochage : rp2350js dans QuickJS, cœurs RISC-V (Hazard3) ou Arm (Cortex-M33) selon le firmware, démarrage par la bootrom A2 ; mêmes GPIO, UART, ADC |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
 
@@ -358,6 +359,25 @@ Flatpak. Le temps de rp2040js n'avance qu'au rythme de ngspice.
 Exemple : `firmware/pico/pico_demo.c` (bare-metal, sans SDK),
 `ngspice/pico_test.cir` et le projet `simPICO`.
 
+- **I²C** (maître) : sur les broches de fonction I²C de la liste `io`
+  (SDA = GP pair, SCL = GP impair, ex. GP4 / GP5), en drain ouvert, au
+  débit réglé par le firmware (`i2c_init(i2c0, 100000)`, `Wire`). START,
+  adresse, ACK, données et STOP sont de vrais fronts ; les ACK et les bits
+  lus sont les tensions du circuit, et l'étirement d'horloge est respecté.
+  Il faut les pull-ups dans le schéma (4,7 kΩ).
+- **SPI** (maître) : SCK, TX (MOSI) et CSn pilotés au débit, au mode
+  (CPOL / CPHA) et à la taille de trame du firmware ; RX (MISO) lu dans le
+  circuit. Esclaves = composants du schéma (74HC595 fourni).
+- **Modules I²C** : `tools/make_i2c_lib.py --lm75 0x48 --lcd 0x27 -o i2c.lib`
+  écrit un sous-circuit à 4 broches (GND VCC SDA SCL) ; chaque module décode
+  le bus et répond comme le vrai (`--eeprom` pour une 24C02, `--temp` /
+  `--rate` pour le LM75, `--log` pour le journal `I2C> 0x48 R 19 80`).
+  L'écran du LCD s'affiche dans le terminal (`LCD> [...]`) et `lcd_log.txt`.
+
+Exemples : `firmware/pico/pico_i2c.c` et `pico_spi.c`,
+`ngspice/pico_i2c_test.cir`, `ngspice/pico_spi_test.cir`, projets
+`simPICO_i2c` et `simPICO_spi`.
+
 ### 6.4 quinquies Raspberry Pi Pico 2 (RP2350)
 
 Avec `"mcu" "rp2350"`, l'instance est une **Raspberry Pi Pico 2**. Le RP2350
@@ -524,8 +544,8 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 
 ## 10. Limites actuelles
 
-- RP2040 : pas de trames I²C / SPI sur les broches (registres émulés par
-  rp2040js, sans signaux) ; PIO à la cadence approximative de rp2040js ;
+- RP2040 : I²C et SPI en maître seulement (pas de mode esclave) ; PIO à la
+  cadence approximative de rp2040js ;
   octets UART envoyés sans attente de FIFO (les trames suivent à la
   vitesse de la ligne) ; un seul cœur suivi en temps (le second tourne).
 - RP2350 : mêmes limites que le RP2040 ; émulation Arm (Cortex-M33) encore
@@ -557,6 +577,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `rp2040/rp2350_bridge.js`, `rp2040/pico_common.js` | RP2350 : pont vers rp2350js ; code commun aux deux ponts (broches, UART, USB, ADC) |
 | `third_party/rp2350js/` | rp2350js compilé en JavaScript (MIT) + bootroms ; `tools/vendor_rp2350js.sh` le reconstruit |
 | `tools/make_pico_lib.py` | génère le modèle `PICO` / `PICO2` (ou la puce `RP2040` / `RP2350`) pour un projet |
+| `src/i2c_slave_device.*`, `tools/make_i2c_lib.py` | modules I²C du circuit (LM75, 24C02, LCD PCF8574) décodés bit à bit ; leur modèle SPICE |
 | `kicad/74hc595.lib` | modèle XSPICE du 74HC595 (symbole officiel `74xx:74HC595`) |
 | `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
 | `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
@@ -567,7 +588,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
 | `tools/kicad_symbols/`, `tools/dump_kicad_symbol.py` | symboles officiels KiCad 10 utilisés par la carte Pico, et l'outil qui les extrait |
-| `kicad/projects/` | 13 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
+| `kicad/projects/` | 15 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
 | `tools/make_terminal_lib.py` | modèle SPICE d'un terminal série (trames sur TXD) depuis un fichier texte |
 | `tools/setup_demos.py` | écrit les `.lib` des projets de démo (chemins de la machine) |
 | `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |
