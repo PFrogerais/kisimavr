@@ -544,6 +544,31 @@ if(KICAD_CLI AND Python3_FOUND)
             set_tests_properties(ngspice.kicad_picoboard PROPERTIES LABELS "ngspice;kicad"
                                  FIXTURES_REQUIRED "firmware_pico;demos;picoboard_netlist")
 
+            # Pico I2C / SPI masters (simPICO_i2c, simPICO_spi).
+            foreach(bus IN ITEMS i2c spi)
+                set(bus_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO_${bus}.cir)
+                add_test(NAME kicad.pico_${bus}_netlist
+                    COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${bus_net}
+                            -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/simPICO_${bus}/simPICO_${bus}.kicad_sch
+                            -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+                set_tests_properties(kicad.pico_${bus}_netlist PROPERTIES
+                                     FIXTURES_SETUP pico_${bus}_netlist LABELS kicad TIMEOUT 120)
+                if(bus STREQUAL "i2c")
+                    set(expect [=[UART0> LM75 : T = 25\.5 C]=]
+                               [=[LCD> \[Pico I2C        \] \[T = 25\.5 C      \]]=])
+                else()
+                    set(expect [[UART0> SPI : envoye 04, relu 02]])
+                endif()
+                kisimavr_test(ngspice.kicad_pico_${bus} TIMEOUT 900
+                    WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/simPICO_${bus}
+                    COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO_${bus}.raw
+                            ${bus_net}
+                    EXPECT ${expect}
+                    REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]] [[NACK]])
+                set_tests_properties(ngspice.kicad_pico_${bus} PROPERTIES LABELS "ngspice;kicad"
+                    FIXTURES_REQUIRED "firmware_pico;demos;pico_${bus}_netlist")
+            endforeach()
+
             # Pico 2 (RP2350, RISC-V cores): the same two projects.
             set(pico2_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO2.cir)
             add_test(NAME kicad.pico2_netlist

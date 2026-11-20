@@ -82,6 +82,23 @@ def main():
                     "--so", so, "-o", os.path.join(PROJECTS, "RaspberryPi_Pico", "rp2040.lib")],
                    check=True)
 
+    # Pico I2C / SPI masters: bare-metal firmwares of firmware/pico; I2C
+    # modules LM75 (25.5 degC) and LCD 16x2 I2C, one d_cosim rank each.
+    tools = os.path.join(ROOT, "tools")
+    for project, fw, name in (("simPICO_i2c", "pico_i2c.bin", "i2c"),
+                              ("simPICO_spi", "pico_spi.bin", "spi")):
+        subprocess.run([sys.executable, os.path.join(tools, "make_pico_lib.py"),
+                        "--fw", os.path.join(ROOT, "firmware", "pico", fw), "--name", name,
+                        "--so", so, "-o", os.path.join(PROJECTS, project, f"pico_{name}.lib")],
+                       check=True)
+    i2c = os.path.join(PROJECTS, "simPICO_i2c")
+    subprocess.run([sys.executable, os.path.join(tools, "make_i2c_lib.py"), "--name", "lm75",
+                    "--lm75", "0x48", "--temp", "25.5", "--log", "--irreversible", "11",
+                    "--so", so, "-o", os.path.join(i2c, "i2c_lm75.lib")], check=True)
+    subprocess.run([sys.executable, os.path.join(tools, "make_i2c_lib.py"), "--name", "lcd",
+                    "--lcd", "0x27", "--irreversible", "12",
+                    "--so", so, "-o", os.path.join(i2c, "i2c_lcd.lib")], check=True)
+
     # Raspberry Pi Pico 2 (RP2350, RISC-V cores): firmware built by
     # "make -C firmware/pico2"; simPICO2 and the board project.
     pico2 = os.path.join(PROJECTS, "simPICO2")

@@ -22,3 +22,5 @@ kicad/projects/*/pico.lib
 kicad/projects/*/rp2040.lib
 kicad/projects/*/rp2350.lib
 kicad/projects/*/pico2.lib
+kicad/projects/*/pico_*.lib
+kicad/projects/*/i2c_*.lib

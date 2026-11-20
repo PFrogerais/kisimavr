@@ -1,0 +1,28 @@
+simPICO_spi - Raspberry Pi Pico, bus SPI : registre a decalage 74HC595
+=======================================================================
+
+Modeles : generes par "cmake --build build --target demos" (tools/setup_demos.py) :
+  - pico_spi.lib : A1 = Raspberry Pi Pico (RP2040, rp2040js dans le plug-in),
+                   firmware firmware/pico/pico_spi.bin (make -C firmware/pico)
+  - 74hc595.lib  : U2 = 74HC595 (symbole officiel 74xx:74HC595), niveaux suivant
+                   son alimentation (ici 3,3 V)
+  - led_models.lib : LED D1..D8
+
+Le bus est electrique : SPI0 de la Pico en maitre, mode 0, 1 MHz, MSB d'abord
+  GP18 SCK  -> SRCLK (11)       GP19 TX (MOSI) -> SER (14)
+  GP17 GPIO -> RCLK (12)        GP16 RX (MISO) <- QH' (9)
+Un front montant sur RCLK recopie l'octet decale sur QA..QH. Pendant qu'un
+octet entre, le precedent sort par QH' : la Pico le relit, ce qui verifie
+toute la boucle.
+
+Firmware : firmware/pico/pico_spi.c (bare-metal, clang + lld)
+  chenillard (un octet par milliseconde), "SPI : envoye 04, relu 02"
+Avec le Pico SDK ou Arduino-pico (SPI.transfer) : regenerer le modele de la
+Pico avec le .uf2 (memes broches) :
+  python3 tools/make_pico_lib.py --fw mon_prog.uf2 --name spi -o pico_spi.lib
+
+Ou voir quoi ?
+  - Terminal : UART0> SPI : envoye .., relu ..
+  - Simulateur : SCK, MOSI, RCLK, MISO (zoom sur 20 us), QA..QH
+
+Simulation : transitoire, pas 0.2u, duree 10m.

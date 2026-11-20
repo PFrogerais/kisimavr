@@ -1,0 +1,72 @@
+* 74HC595: 8-bit shift register with output latches (XSPICE digital model)
+* kisimavr - SPDX-License-Identifier: GPL-3.0-or-later
+*
+* Pins in the order of the KiCad symbol 74xx:74HC595 (DIP-16):
+*   1 QB  2 QC  3 QD  4 QE  5 QF  6 QG  7 QH  8 GND
+*   9 QH' 10 ~SRCLR  11 SRCLK  12 RCLK  13 ~OE  14 SER  15 QA  16 VCC
+* SRCLK rising: SER -> QA stage -> ... -> QH stage (QH' = last stage).
+* RCLK rising: the 8 stages are copied to the outputs QA..QH.
+* ~SRCLR low: clears the shift stages. ~OE low: outputs driven; high:
+* outputs released (high impedance, 1 Mohm to GND).
+* Levels follow the supply (2 to 6 V, e.g. 5 V or 3.3 V): CMOS input
+* thresholds 30 % / 70 % of VCC, outputs 0 / VCC through 50 ohm (about the
+* HC output resistance), 15 ns propagation.
+.subckt 74HC595 QB QC QD QE QF QG QH VSS QHS SRCLR_N SRCLK RCLK OE_N SER QA VCC
+* Inputs, scaled to a 5 V supply: thresholds 1.5 / 3.5 V of 5 V = 30 / 70 % of VCC
+Bvs vs 0 V = max(V(VCC,VSS), 1)
+Bser n_ser 0 V = V(SER,VSS) * 5 / V(vs)
+Bsrclk n_srclk 0 V = V(SRCLK,VSS) * 5 / V(vs)
+Brclk n_rclk 0 V = V(RCLK,VSS) * 5 / V(vs)
+Bclr n_clr 0 V = V(SRCLR_N,VSS) * 5 / V(vs)
+Boe n_oe 0 V = V(OE_N,VSS) * 5 / V(vs)
+aIn [n_ser n_srclk n_rclk n_clr n_oe] [d_ser d_srclk d_rclk d_srclrn d_oen] hc595_in
+aClr d_srclrn d_clr hc595_inv
+aEn  d_oen d_en hc595_inv
+* Shift register: d_dff data clk set reset out nout
+aS0 d_ser d_srclk NULL d_clr s0 NULL hc595_dff
+aS1 s0 d_srclk NULL d_clr s1 NULL hc595_dff
+aS2 s1 d_srclk NULL d_clr s2 NULL hc595_dff
+aS3 s2 d_srclk NULL d_clr s3 NULL hc595_dff
+aS4 s3 d_srclk NULL d_clr s4 NULL hc595_dff
+aS5 s4 d_srclk NULL d_clr s5 NULL hc595_dff
+aS6 s5 d_srclk NULL d_clr s6 NULL hc595_dff
+aS7 s6 d_srclk NULL d_clr s7 NULL hc595_dff
+* Storage register
+aL0 s0 d_rclk NULL NULL l0 NULL hc595_dff
+aL1 s1 d_rclk NULL NULL l1 NULL hc595_dff
+aL2 s2 d_rclk NULL NULL l2 NULL hc595_dff
+aL3 s3 d_rclk NULL NULL l3 NULL hc595_dff
+aL4 s4 d_rclk NULL NULL l4 NULL hc595_dff
+aL5 s5 d_rclk NULL NULL l5 NULL hc595_dff
+aL6 s6 d_rclk NULL NULL l6 NULL hc595_dff
+aL7 s7 d_rclk NULL NULL l7 NULL hc595_dff
+* Outputs: level gated by ~OE (released = 0 V level through 1 Mohm)
+aG0 [l0 d_en] g0 hc595_and
+aG1 [l1 d_en] g1 hc595_and
+aG2 [l2 d_en] g2 hc595_and
+aG3 [l3 d_en] g3 hc595_and
+aG4 [l4 d_en] g4 hc595_and
+aG5 [l5 d_en] g5 hc595_and
+aG6 [l6 d_en] g6 hc595_and
+aG7 [l7 d_en] g7 hc595_and
+aOut [g0 g1 g2 g3 g4 g5 g6 g7 s7] [qa_i qb_i qc_i qd_i qe_i qf_i qg_i qh_i qhs_i] hc595_out
+aOe  [d_en d_en d_en d_en d_en d_en d_en d_en] [ea eb ec ed ee ef eg eh] hc595_out
+* 50 ohm when enabled, 1 Mohm when released: resistor value = control voltage;
+* level 0 / 5 V of the bridge scaled to 0 / VCC
+BRa qa_i QA I = (V(qa_i)*V(vs)/5+V(VSS)-V(QA)) / (50 + (1 - V(ea)/5) * 1e6)
+BRb qb_i QB I = (V(qb_i)*V(vs)/5+V(VSS)-V(QB)) / (50 + (1 - V(eb)/5) * 1e6)
+BRc qc_i QC I = (V(qc_i)*V(vs)/5+V(VSS)-V(QC)) / (50 + (1 - V(ec)/5) * 1e6)
+BRd qd_i QD I = (V(qd_i)*V(vs)/5+V(VSS)-V(QD)) / (50 + (1 - V(ed)/5) * 1e6)
+BRe qe_i QE I = (V(qe_i)*V(vs)/5+V(VSS)-V(QE)) / (50 + (1 - V(ee)/5) * 1e6)
+BRf qf_i QF I = (V(qf_i)*V(vs)/5+V(VSS)-V(QF)) / (50 + (1 - V(ef)/5) * 1e6)
+BRg qg_i QG I = (V(qg_i)*V(vs)/5+V(VSS)-V(QG)) / (50 + (1 - V(eg)/5) * 1e6)
+BRh qh_i QH I = (V(qh_i)*V(vs)/5+V(VSS)-V(QH)) / (50 + (1 - V(eh)/5) * 1e6)
+BRqhs qhs_i QHS I = (V(qhs_i)*V(vs)/5+V(VSS)-V(QHS)) / 50
+* Supply: a small load so that VCC and GND are never floating
+RVCC VCC VSS 100k
+.model hc595_in  adc_bridge(in_low=1.5 in_high=3.5)
+.model hc595_out dac_bridge(out_low=0 out_high=5 out_undef=2.5 t_rise=5n t_fall=5n)
+.model hc595_inv d_inverter(rise_delay=5n fall_delay=5n)
+.model hc595_and d_and(rise_delay=5n fall_delay=5n)
+.model hc595_dff d_dff(clk_delay=15n set_delay=15n reset_delay=15n ic=0)
+.ends 74HC595

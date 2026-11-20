@@ -10,7 +10,9 @@ Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DI
            pico (Raspberry Pi Pico, RP2040: LED, button, ADC, UART terminal),
            picoboard (the Pico board itself after its official schematic, in a
                       sub-sheet; the root sheet shows it as a Pico-shaped block),
-           pico2, pico2board (the same for the Raspberry Pi Pico 2, RP2350)
+           pico2, pico2board (the same for the Raspberry Pi Pico 2, RP2350),
+           picoi2c (Pico I2C master: LM75 and LCD 16x2 I2C modules),
+           picospi (Pico SPI master: 74HC595 and 8 LEDs)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -30,7 +32,8 @@ PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
            "uno": "Arduino_UNO", "spi": "simAVR_spi",
            "lcd": "simAVR_lcd", "pico": "simPICO",
            "picoboard": "RaspberryPi_Pico", "pico2": "simPICO2",
-           "pico2board": "RaspberryPi_Pico2"}[VARIANT]
+           "pico2board": "RaspberryPi_Pico2", "picoi2c": "simPICO_i2c",
+           "picospi": "simPICO_spi"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -50,6 +53,7 @@ FOOTPRINTS = {
     "Display_Character:WC1602A": "Display:WC1602A",
     "MCU_Module:RaspberryPi_Pico": "Module:RaspberryPi_Pico_Common_Unspecified",
     "simAVR:RT6150B-33GQW": "Package_DFN_QFN:Richtek_UQFN-10_2.6x2.6mm_P0.5mm",
+    "Connector_Generic:Conn_01x04": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x06": "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x08": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x10": "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
@@ -255,7 +259,7 @@ def _conn_1xn(n):
         pin_names=False)
 
 
-for _n in (6, 8, 10):
+for _n in (4, 6, 8, 10):
     LIB[f"Connector_Generic:Conn_01x{_n:02d}"] = _conn_1xn(_n)
 
 LIB.update({
@@ -1652,6 +1656,85 @@ if VARIANT in ("pico", "pico2"):
     DIRECTIVES = [(".tran 0.5u 12m", 25.4, 185.42)]
 
 
+if VARIANT in ("picoi2c", "picospi"):
+    # Pico (RP2040) as an I2C or SPI master: the bus signals are electrical.
+    PICO_SIM_PINS = ("1=GP0 2=GP1 4=GP2 5=GP3 6=GP4 7=GP5 9=GP6 10=GP7 11=GP8 12=GP9 "
+                     "14=GP10 15=GP11 16=GP12 17=GP13 19=GP14 20=GP15 21=GP16 22=GP17 "
+                     "24=GP18 25=GP19 26=GP20 27=GP21 29=GP22 30=RUN 31=GP26 32=GP27 "
+                     "34=GP28 35=ADC_VREF 36=V3V3 37=V3V3_EN 39=VSYS 40=VBUS")
+    I2C = VARIANT == "picoi2c"
+    PICOFILE = "pico_i2c.lib" if I2C else "pico_spi.lib"
+    LIBFILE = PICOFILE    # main() copies the model given on the command line here.
+    SUBNAME = "PICO_I2C" if I2C else "PICO_SPI"
+    pins = {"*": "NC", "3": "GND", "36": "+3V3", "1": "TX"}
+    if I2C:
+        pins.update({"6": "SDA", "7": "SCL"})
+    else:
+        pins.update({"21": "MISO", "22": "RCLK", "24": "SCK", "25": "MOSI"})
+    BUS_PARTS = [
+        ("MCU_Module:RaspberryPi_Pico", "A1", "RaspberryPi_Pico", 101.6, 99.06,
+         {"Sim.Device": "SUBCKT", "Sim.Library": PICOFILE, "Sim.Name": SUBNAME,
+          "Sim.Pins": PICO_SIM_PINS}, pins),
+        ("Device:R", "R9", "100k", 60.96, 139.7, {}, {"1": "TX", "2": "GND"}),
+    ]
+    if I2C:
+        I2C_PINS = "1=GND 2=VCC 3=SDA 4=SCL"
+        BUS_PARTS += [
+            ("Device:R", "R1", "4.7k", 154.94, 68.58, {}, {"1": "+3V3", "2": "SDA"}),
+            ("Device:R", "R2", "4.7k", 165.1, 68.58, {}, {"1": "+3V3", "2": "SCL"}),
+            ("Connector_Generic:Conn_01x04", "J1", "LM75 (0x48)", 200.66, 88.9,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "i2c_lm75.lib", "Sim.Name": "I2C_LM75",
+              "Sim.Pins": I2C_PINS},
+             {"1": "GND", "2": "+3V3", "3": "SDA", "4": "SCL"}),
+            ("Connector_Generic:Conn_01x04", "J2", "LCD 16x2 I2C (0x27)", 200.66, 116.84,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "i2c_lcd.lib", "Sim.Name": "I2C_LCD",
+              "Sim.Pins": I2C_PINS},
+             {"1": "GND", "2": "+3V3", "3": "SDA", "4": "SCL"}),
+        ]
+        TEXTS = [
+            ("Raspberry Pi Pico, maitre I2C0 a 100 kHz : GP4 = SDA, GP5 = SCL (drain ouvert)",
+             25.4, 30.48),
+            ("R1 / R2 : pull-ups 4,7 kOhm du bus ; J1 : capteur LM75 (0x48), "
+             "J2 : afficheur LCD 16x2 I2C (PCF8574, 0x27)", 25.4, 34.29),
+            ("Les esclaves decodent SDA / SCL bit a bit et tirent SDA a 0 (ACK, donnees)",
+             25.4, 38.1),
+            ("Terminal : UART0> LM75 : T = 25.5 C, LCD> [Pico I2C] [T = 25.5 C], I2C> ...",
+             25.4, 41.91),
+            ("Sonder : SDA, SCL (zoom sur 1 ms : START, adresse, ACK, STOP)", 25.4, 45.72),
+        ]
+        DIRECTIVES = [(".tran 0.5u 30m", 25.4, 185.42)]
+    else:
+        BUS_PARTS.append(
+            ("74xx:74HC595", "U2", "74HC595", 165.1, 99.06,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "74hc595.lib", "Sim.Name": "74HC595",
+              "Sim.Pins": "1=QB 2=QC 3=QD 4=QE 5=QF 6=QG 7=QH 8=VSS 9=QHS 10=SRCLR_N "
+                          "11=SRCLK 12=RCLK 13=OE_N 14=SER 15=QA 16=VCC"},
+             {"14": "MOSI", "11": "SCK", "10": "+3V3", "12": "RCLK", "13": "GND",
+              "9": "MISO", "16": "+3V3", "8": "GND",
+              "15": "QA", "1": "QB", "2": "QC", "3": "QD", "4": "QE", "5": "QF", "6": "QG",
+              "7": "QH"}))
+        for k, q in enumerate("ABCDEFGH"):
+            x = 200.66 + 12.7 * k
+            BUS_PARTS.append(("Device:R", f"R{k + 1}", "220", x, 81.28, {},
+                              {"1": f"Q{q}", "2": f"L{q}"}))
+            BUS_PARTS.append(("Device:LED", f"D{k + 1}", "LEDRED", x, 99.06,
+                              {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE,
+                               "Sim.Name": "LEDRED", "Sim.Pins": "1=K 2=A"},
+                              {"2": f"L{q}", "1": "GND"}))
+        TEXTS = [
+            ("Raspberry Pi Pico, maitre SPI0 a 1 MHz (mode 0) : GP18 SCK -> SRCLK, "
+             "GP19 TX -> SER", 25.4, 30.48),
+            ("GP17 -> RCLK (verrou) ; GP16 RX <- QH' : relit l'octet precedent", 25.4, 34.29),
+            ("74HC595 alimente en 3,3 V par la Pico ; chenillard sur 8 LED", 25.4, 38.1),
+            ("Terminal : UART0> SPI : envoye 04, relu 02", 25.4, 41.91),
+            ("Sonder : SCK, MOSI, RCLK, MISO (zoom sur 20 us), QA..QH", 25.4, 45.72),
+        ]
+        DIRECTIVES = [(".tran 0.2u 10m", 25.4, 185.42)]
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(BUS_PARTS)
+    JUNCTIONS = []
+    NO_CONNECT_REF = None
+
+
 if VARIANT == "lcd":
     SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
                 "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
@@ -2107,11 +2190,11 @@ def main():
     if VARIANT == "pico2board":
         with open(os.path.join(OUT, BOARDFILE), "w") as f:
             f.write(PICO2_BOARD_MODELS)
-    if VARIANT == "spi":
+    if VARIANT in ("spi", "picospi"):
         here = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(here, "..", "kicad", HC595FILE)) as f:
+        with open(os.path.join(here, "..", "kicad", "74hc595.lib")) as f:
             model = f.read()
-        with open(os.path.join(OUT, HC595FILE), "w") as f:
+        with open(os.path.join(OUT, "74hc595.lib"), "w") as f:
             f.write(model)
 
     with open(sys.argv[2]) as f:

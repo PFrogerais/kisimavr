@@ -1,0 +1,34 @@
+simPICO_i2c - Raspberry Pi Pico, bus I2C : capteur LM75 et afficheur LCD I2C
+=============================================================================
+
+Modeles : generes par "cmake --build build --target demos" (tools/setup_demos.py) :
+  - pico_i2c.lib : A1 = Raspberry Pi Pico (RP2040, rp2040js dans le plug-in),
+                   firmware firmware/pico/pico_i2c.bin (make -C firmware/pico)
+  - i2c_lm75.lib : J1 = module capteur de temperature LM75, adresse 0x48, 25,5 C
+  - i2c_lcd.lib  : J2 = afficheur LCD 16x2 avec module I2C PCF8574, adresse 0x27
+                   (cablage de la bibliotheque LiquidCrystal_I2C)
+
+Le bus est electrique : la Pico pilote SDA (GP4) et SCL (GP5) en drain ouvert
+a 100 kHz, R1 / R2 (4,7 kOhm) les tirent a 3,3 V. Chaque module decode les
+tensions de SDA et SCL bit a bit et tire SDA a 0 pour ses ACK et ses donnees,
+comme un vrai composant : on voit sur le simulateur START, adresse, R/W, ACK,
+donnees et STOP. Sans module a l'adresse appelee, SDA reste haut : NACK.
+
+Firmware : firmware/pico/pico_i2c.c (bare-metal, clang + lld)
+  - lit le LM75 (pointeur 0, START repete, 2 octets) -> "LM75 : T = 25.5 C"
+  - ecrit "Pico I2C" et "T = 25.5 C" sur le LCD en mode 4 bits
+Avec le Pico SDK ou Arduino-pico (Wire, LiquidCrystal_I2C) : regenerer le
+modele de la Pico avec le .uf2 (SDA / SCL sur GP4 / GP5 comme ici) :
+  python3 tools/make_pico_lib.py --fw mon_prog.uf2 --name i2c -o pico_i2c.lib
+
+Autres modules : tools/make_i2c_lib.py (--lm75, --eeprom 24C02, --lcd,
+--temp, --rate pour une temperature qui varie ; un rang --irreversible
+different par module).
+
+Ou voir quoi ?
+  - Terminal (KiCad lance depuis un terminal) : UART0> LM75 : T = 25.5 C,
+    LCD> [Pico I2C        ] [T = 25.5 C      ], I2C> 0x48 R 19 80 ;
+    ecrans du LCD dans lcd_log.txt
+  - Simulateur : sonder SDA et SCL (zoom sur la premiere milliseconde)
+
+Simulation : transitoire, pas 0.5u, duree 30m (une minute de calcul environ).
