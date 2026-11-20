@@ -1305,6 +1305,10 @@ def main():
 
     pro = {"meta": {"filename": PROJECT + ".kicad_pro", "version": 1},
            "sheets": sheets}
+    if VARIANT == "uno":
+        # The UNO block is a template: its pins wait for the user's parts,
+        # so a label alone on a pin is a warning, not an error.
+        pro["erc"] = {"rule_severities": {"label_dangling": "warning"}}
     with open(os.path.join(OUT, PROJECT + ".kicad_pro"), "w") as f:
         json.dump(pro, f, indent=2)
 

@@ -5,12 +5,17 @@
   },
   "sheets": [
     [
-      "a327ce09-1a31-4dc1-8b2e-b90977b4f656",
+      "ce89e568-5c0c-4c10-8f66-24f168e8d024",
       "Root"
     ],
     [
-      "2d94fe8f-fdee-480e-aea0-f537546aaa5a",
+      "f90a8806-fd4b-4834-a2eb-b1f6caa2777b",
       "Arduino UNO R3"
     ]
-  ]
+  ],
+  "erc": {
+    "rule_severities": {
+      "label_dangling": "warning"
+    }
+  }
 }
