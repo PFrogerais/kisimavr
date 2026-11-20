@@ -136,3 +136,11 @@ if(NGSPICE AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
 elseif(NGSPICE)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
 endif()
+
+# ---- Output files never replace a file the plug-in did not write ----------------
+add_test(NAME outputs.guard
+    COMMAND ${CMAKE_COMMAND}
+            -DRUN=${RUN} -DSO=${SO} -DHEX=${FW}/uart_adc.hex
+            -DDIR=${CMAKE_CURRENT_BINARY_DIR}/output_guard
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/output_guard.cmake)
+set_tests_properties(outputs.guard PROPERTIES FIXTURES_REQUIRED firmware)

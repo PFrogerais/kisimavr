@@ -32,8 +32,10 @@
  *   vref  DAC full scale in volts (default 5), i.e. AVCC
  *   adcbit  duration of one SAR step in seconds (default 1e-6)
  *   txpin   output pin that carries the UART0 TX frames (default PD1)
- *   uartlog file receiving the UART0 text (default: none)
- *   vcd     VCD file of the GPIO pins, for GTKWave / PulseView
+ *   uartlog file receiving the UART0 text, .txt or .log (default: none)
+ *   vcd     VCD file of the GPIO pins, .vcd, for GTKWave / PulseView
+ *           (output files are never written through a symbolic link, and an
+ *           existing file is only replaced if mcu_cosim wrote it)
  *   log   1 to print pin activity on stderr (default 0)
  *
  * UART0: every byte sent by the firmware is printed on stderr, one line at
@@ -59,6 +61,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -66,11 +69,16 @@
 #include <cstring>
 #include <deque>
 #include <filesystem>
+#include <initializer_list>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include <sim_avr.h>
 #include <sim_hex.h>
@@ -245,6 +253,109 @@ std::string resolveOutputPath(const std::string &path)
         return path;
     }
     return (fs::path(resolvePath(in.parent_path().string())) / in.filename()).string();
+}
+
+/* ------------------------------------------------------------------------ */
+/* Output files (UART log, VCD): guarded against overwriting other files    */
+/* ------------------------------------------------------------------------ */
+
+/**
+ * The paths of "uartlog" and "vcd" come from the netlist. A typo (or a
+ * netlist from someone else) must not truncate an unrelated file, so an
+ * output file is only written when:
+ *   - its extension is one of the expected ones (.txt/.log, .vcd);
+ *   - it is not a symbolic link and, if it exists, is a regular file;
+ *   - if it exists and is not empty, its content looks like a file this
+ *     plug-in wrote (see the "looksLike" checks).
+ */
+using ContentCheck = bool (*)(const std::string &head);
+
+bool looksLikeVcd(const std::string &head)
+{
+    return head.rfind("$timescale", 0) == 0;
+}
+
+/** UART log: printable ASCII lines of at most 200 characters. */
+bool looksLikeUartLog(const std::string &head)
+{
+    size_t lineLength = 0;
+    for (const char c : head)
+    {
+        if (c == '\n')
+        {
+            lineLength = 0;
+            continue;
+        }
+        if (c < 0x20 || c > 0x7E || ++lineLength > 200u)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool hasExtension(const std::string &path, std::initializer_list<const char *> extensions)
+{
+    const std::string ext = toLower(std::filesystem::path(path).extension().string());
+    return std::any_of(extensions.begin(), extensions.end(),
+                       [&ext](const char *e) { return ext == e; });
+}
+
+/** Open (and truncate) an output file, or explain why not and return null. */
+std::FILE *openOutputFile(const std::string &path, const char *what,
+                          std::initializer_list<const char *> extensions, ContentCheck check)
+{
+    auto refuse = [&](const char *reason) {
+        std::fprintf(stderr, "%s not writing %s '%s': %s\n", kTag, what, path.c_str(), reason);
+        return static_cast<std::FILE *>(nullptr);
+    };
+
+    if (!hasExtension(path, extensions))
+    {
+        return refuse("unexpected file extension");
+    }
+
+    // O_NOFOLLOW: no symbolic link; O_NONBLOCK: never hang on a FIFO.
+    const int fd = ::open(path.c_str(), O_RDWR | O_CREAT | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC,
+                          0644);
+    if (fd < 0)
+    {
+        return refuse(errno == ELOOP ? "is a symbolic link" : std::strerror(errno));
+    }
+
+    struct stat st{};
+    if (::fstat(fd, &st) != 0 || !S_ISREG(st.st_mode))
+    {
+        ::close(fd);
+        return refuse("not a regular file");
+    }
+
+    if (st.st_size > 0)
+    {
+        std::string head(4096, '\0');
+        const ssize_t n = ::read(fd, &head[0], head.size());
+        head.resize(n > 0 ? static_cast<size_t>(n) : 0u);
+        if (!check(head))
+        {
+            ::close(fd);
+            return refuse("existing file was not written by mcu_cosim (delete it to reuse the name)");
+        }
+    }
+
+    if (::ftruncate(fd, 0) != 0 || ::lseek(fd, 0, SEEK_SET) != 0 ||
+        ::fcntl(fd, F_SETFL, ::fcntl(fd, F_GETFL) & ~O_NONBLOCK) != 0)
+    {
+        ::close(fd);
+        return refuse(std::strerror(errno));
+    }
+
+    std::FILE *file = ::fdopen(fd, "w");
+    if (file == nullptr)
+    {
+        ::close(fd);
+        return refuse(std::strerror(errno));
+    }
+    return file;
 }
 
 bool isKey(const std::string &word)
@@ -916,12 +1027,8 @@ private:
 
         if (!m_cfg.uartLog.empty())
         {
-            m_uartFile = std::fopen(m_cfg.uartLog.c_str(), "w");
-            if (m_uartFile == nullptr)
-            {
-                std::fprintf(stderr, "%s cannot write UART log '%s'\n", kTag,
-                             m_cfg.uartLog.c_str());
-            }
+            m_uartFile = openOutputFile(m_cfg.uartLog, "UART log", { ".txt", ".log" },
+                                        looksLikeUartLog);
         }
 
         PinRef tx{};
@@ -1009,10 +1116,9 @@ private:
         {
             return true;
         }
-        m_vcd = std::fopen(m_cfg.vcdPath.c_str(), "w");
+        m_vcd = openOutputFile(m_cfg.vcdPath, "VCD", { ".vcd" }, looksLikeVcd);
         if (m_vcd == nullptr)
         {
-            std::fprintf(stderr, "%s cannot write VCD '%s'\n", kTag, m_cfg.vcdPath.c_str());
             return true;    // Not fatal.
         }
 

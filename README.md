@@ -251,9 +251,14 @@ Chaque clé et chaque valeur est **une chaîne séparée** :
 | `vref` | pleine échelle du CNA en volts (= AVCC) | `5` |
 | `adcbit` | durée d'un pas SAR en secondes | `1e-6` |
 | `txpin` | broche qui porte les trames UART0 | `PD1` |
-| `uartlog` | fichier recevant le texte de l'UART0 | — |
-| `vcd` | trace VCD des broches | — |
+| `uartlog` | fichier recevant le texte de l'UART0 (`.txt` ou `.log`) | — |
+| `vcd` | trace VCD des broches (`.vcd`) | — |
 | `log` | `1` : activité des broches et conversions sur stderr | `0` |
+
+Les fichiers `uartlog` et `vcd` ne sont jamais écrits à travers un lien
+symbolique, et un fichier existant n'est remplacé que s'il a été écrit par
+le plug-in (texte ASCII de l'UART, ou VCD commençant par `$timescale`) :
+une faute de frappe dans la netlist ne peut pas écraser un autre fichier.
 
 Ordre des ports de la ligne `aMcu [entrées] [sorties] null modèle` :
 - entrées = `in`, puis lecture de chaque `io`, puis un comparateur par `adc` ;
@@ -286,6 +291,7 @@ Charge le plug-in comme `d_cosim`, pilote l'entrée 0 par un signal carré
 | Le `.so` n'est pas trouvé depuis KiCad | KiCad met la netlist en minuscules | chemin du `.so` tout en minuscules (lien `/opt/kisimavr/mcu_cosim.so` par ex.) ; les autres chemins sont corrigés par le plug-in |
 | `kicad: commande introuvable` | KiCad installé en Flatpak | `flatpak run org.kicad.KiCad 2>&1 \| grep --line-buffered mcu_cosim` |
 | Quelques `XSPICE time is behind vtime` | ngspice a rejeté un pas après l'avoir proposé | sans effet notable (< 1 µs) ; sinon `delay=200n` ou `"adcbit" "2e-6"` |
+| `not writing UART log '…'` / `not writing VCD '…'` | extension inattendue, lien symbolique, ou fichier existant qui n'a pas été écrit par le plug-in | corriger le chemin, ou supprimer l'ancien fichier |
 | Simulation très lente | `delay()` longs, ou durée simulée trop grande | réduire les délais du firmware et la durée de la simulation |
 
 Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
@@ -316,6 +322,15 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |
 | `firmware/` | firmwares de démo (C) et `full_demo/full_demo.ino` (Arduino) |
 | `ngspice/` | netlists de test autonomes |
+
+## Sécurité
+
+Simuler un projet revient à exécuter du code : la ligne
+`.model … d_cosim simulation="….so"` charge n'importe quelle bibliothèque
+partagée, et le firmware choisi tourne dans l'émulateur. C'est le
+fonctionnement de `d_cosim` dans ngspice, pas propre à ce plug-in :
+**ne simulez pas un projet KiCad ou une netlist reçus d'une source non
+fiable** sans avoir lu leurs `.lib`.
 
 ## Licence
 
