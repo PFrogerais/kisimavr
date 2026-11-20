@@ -1,6 +1,7 @@
 * =============================================================================
 * PICO : Raspberry Pi Pico (RP2040) co-simulation model (kisimavr)
-*   rp2040js (Wokwi) runs the firmware inside mcu_cosim.so (QuickJS, d_cosim)
+*   rp2040js (Wokwi) runs the firmware inside mcu_cosim.so
+*   (QuickJS, d_cosim)
 *
 * GPIO: 3.3 V, bidirectional, direction and pulls set by the firmware.
 *   UART0: TX = GP0 / GP12 / GP16, RX = GP1 / GP13 / GP17 (frames rebuilt by the

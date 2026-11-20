@@ -5,10 +5,15 @@
 Usage (KiCad project):
   python3 tools/make_pico_lib.py --fw ~/pico/blink/build/blink.uf2 -o ~/kicad/proj/pico.lib
   python3 tools/make_pico_lib.py --chip --fw prog.uf2 -o rp2040.lib   (RP2040 chip alone)
+  python3 tools/make_pico_lib.py --mcu rp2350 --fw blink.uf2 -o pico2.lib   (Pico 2: PICO2)
+  python3 tools/make_pico_lib.py --mcu rp2350 --chip --fw blink.uf2 -o rp2350.lib
 
-The RP2040 is emulated by rp2040js (JavaScript, Wokwi) run by QuickJS inside
-mcu_cosim.so. Firmware: .uf2 (Pico SDK, Arduino-pico "Export compiled
-binary"), .bin (flash image) or .hex.
+The RP2040 is emulated by rp2040js (JavaScript, Wokwi), the RP2350 by
+rp2350js (Hazard3 RISC-V or Cortex-M33 cores, from the firmware), run by
+QuickJS inside mcu_cosim.so. Firmware: .uf2 (Pico SDK, Arduino-pico
+"Export compiled binary"), .bin (flash image) or .hex.
+The Pico 2 has the pinout of the Pico: same sub-circuit pins, sub-circuit
+PICO2; the RP2350A chip alone is RP2350 (GPIO0..GPIO29).
 
 Sub-circuit pins (3.3 V logic, ground = node 0 as for the ATMEGA328P):
   GP0..GP22 GP26 GP27 GP28  VBUS VSYS V3V3_EN V3V3 ADC_VREF RUN
@@ -35,6 +40,10 @@ CHIP_GPIOS = [f"GPIO{i}" for i in range(30)]
 # RP2040 chip (QFN-56) pin numbers of the GPIOs, symbol MCU_RaspberryPi:RP2040.
 CHIP_PINS = dict(zip(CHIP_GPIOS, [2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18,
                                   27, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38, 39, 40, 41]))
+# RP2350A chip (QFN-60) pin numbers of the GPIOs, symbol MCU_RaspberryPi:RP2350A.
+CHIP_PINS_RP2350 = dict(zip(CHIP_GPIOS, [2, 3, 4, 5, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 18,
+                                         19, 27, 28, 29, 31, 32, 33, 34, 35, 36, 37, 40, 41,
+                                         42, 43]))
 
 # Pico board pin numbers (top view, USB at the top: 1..20 on the left).
 PICO_PINS = {
@@ -69,11 +78,18 @@ def parse_args():
     ap.add_argument("--name", default="", help="suffix: PICO_<NAME>, for several Picos")
     ap.add_argument("--irreversible", type=int, default=1,
                     help="d_cosim rank, distinct for each co-simulated part (default 1)")
+    ap.add_argument("--mcu", choices=["rp2040", "rp2350"], default="rp2040",
+                    help="rp2040 (Pico, default) or rp2350 (Pico 2)")
+    ap.add_argument("--arch", choices=["riscv", "arm"],
+                    help="RP2350 cores when the firmware does not tell (default: from "
+                         "the UF2 family / IMAGE_DEF block)")
     ap.add_argument("--chip", action="store_true",
-                    help="RP2040 chip alone (sub-circuit RP2040, pins GPIO0..GPIO29) "
+                    help="chip alone (sub-circuit RP2040 / RP2350, pins GPIO0..GPIO29) "
                          "instead of the Pico board")
     ap.add_argument("--relative", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
+    if args.arch and args.mcu != "rp2350":
+        ap.error("--arch is for --mcu rp2350")
 
     if args.relative:    # Repository copy used by the ngspice/ tests.
         args.uartlog = args.uartlog or "../uart_log.txt"
@@ -95,15 +111,21 @@ def parse_args():
 
 def main():
     a = parse_args()
+    rp2350 = a.mcu == "rp2350"
+    chip = "RP2350" if rp2350 else "RP2040"
+    board = "Raspberry Pi Pico 2" if rp2350 else "Raspberry Pi Pico"
+    emulator = ("rp2350js (c1570, fork of rp2040js)" if rp2350
+                else "rp2040js (Wokwi)")
     if a.chip:
-        # RP2040 alone: every GPIO is a pin of the sub-circuit.
-        sub, tag = "RP2040", "rp2040"
+        # The chip alone: every GPIO is a pin of the sub-circuit.
+        sub, tag = chip, chip.lower()
         names = CHIP_GPIOS
         ios = [f"GP{i}" for i in range(30)]
         pins = CHIP_GPIOS
-        sim_pins = " ".join(f"{CHIP_PINS[p]}={p}" for p in CHIP_GPIOS)
+        numbers = CHIP_PINS_RP2350 if rp2350 else CHIP_PINS
+        sim_pins = " ".join(f"{numbers[p]}={p}" for p in CHIP_GPIOS)
     else:
-        sub, tag = "PICO", "pico"
+        sub, tag = ("PICO2", "pico2") if rp2350 else ("PICO", "pico")
         names = GPIOS + INTERNAL
         ios = names
         pins = GPIOS + POWER
@@ -111,17 +133,20 @@ def main():
                             for p in sorted(pins, key=lambda p: PICO_PINS[p]))
     nodes = {g: n for g, n in zip(ios, names)}      # GPIO -> node in the sub-circuit
     low = [g.lower() for g in ios]
-    sim_args = (['"mcu"', '"rp2040"', '"fw"', f'"{a.fw}"', '"io"'] + [f'"{g}"' for g in ios] +
+    arch = ['"arch"', f'"{a.arch}"'] if a.arch else []
+    sim_args = (['"mcu"', f'"{a.mcu}"', '"fw"', f'"{a.fw}"'] + arch + ['"io"'] +
+                [f'"{g}"' for g in ios] +
                 ['"adc"'] + [f'"{c}"' for c in ADC] + ['"uartlog"', f'"{a.uartlog}"'])
 
     out = []
     w = out.append
     w("* =============================================================================")
     if a.chip:
-        w("* RP2040 : Raspberry Pi RP2040 chip, co-simulation model (kisimavr)")
+        w(f"* {sub} : Raspberry Pi {chip} chip, co-simulation model (kisimavr)")
     else:
-        w("* PICO : Raspberry Pi Pico (RP2040) co-simulation model (kisimavr)")
-    w("*   rp2040js (Wokwi) runs the firmware inside mcu_cosim.so (QuickJS, d_cosim)")
+        w(f"* {sub} : {board} ({chip}) co-simulation model (kisimavr)")
+    w(f"*   {emulator} runs the firmware inside mcu_cosim.so")
+    w("*   (QuickJS, d_cosim)")
     w("*")
     w("* GPIO: 3.3 V, bidirectional, direction and pulls set by the firmware.")
     w("*   UART0: TX = GP0 / GP12 / GP16, RX = GP1 / GP13 / GP17 (frames rebuilt by the")
@@ -138,7 +163,8 @@ def main():
     w(f"* KiCad: Sim.Device = SUBCKT, Sim.Name = {sub}, Sim.Pins =")
     w(f"*   {sim_pins}")
     w("*")
-    w(f"* New firmware: rerun tools/make_pico_lib.py{' --chip' if a.chip else ''} "
+    opts = (" --mcu rp2350" if rp2350 else "") + (" --chip" if a.chip else "")
+    w(f"* New firmware: rerun tools/make_pico_lib.py{opts} "
       "--fw <file> -o <lib>")
     w("* or edit the path after \"fw\". Keep the .so path in lower case.")
     w("* Generated by tools/make_pico_lib.py")
@@ -180,7 +206,7 @@ def main():
         w(f"Dled led 0 {tag}_led")
         w("Rgp23 GP23 0 10meg")
     w("")
-    w("* Pin voltages read back by the RP2040")
+    w(f"* Pin voltages read back by the {chip}")
     w("aIn [" + wrap([nodes[g] for g in ios]) + "]")
     w("+ [" + wrap([f"{g}_i" for g in low]) + f"] {tag}_in")
     w("")
@@ -190,7 +216,7 @@ def main():
     w("aCmp [" + " ".join(f"c{c}" for c in ADC) + "] [" +
       " ".join(f"c{c}_d" for c in ADC) + f"] {tag}_cmp")
     w("")
-    w("* The RP2040: inputs = pin reads + comparators,")
+    w(f"* The {chip}: inputs = pin reads + comparators,")
     w("*             outputs = (level, oe, pu, pd) per pin + DAC bits b0..b11")
     ins = [f"{g}_i" for g in low] + [f"c{c}_d" for c in ADC]
     outs = [n for g in low for n in (f"{g}_l", f"{g}_e", f"{g}_u", f"{g}_d")] + \

@@ -1,0 +1,4 @@
+# Text sent by the PC terminal to the Pico (UART0, 115200 bauds, 3.3 V).
+# One line per send: <time> <text>   (escapes: \n \r \s \xHH)
+# After a change: python3 tools/make_terminal_lib.py --vhigh 3.3 terminal.txt -o terminal.lib
+2m Bonjour Pico\n

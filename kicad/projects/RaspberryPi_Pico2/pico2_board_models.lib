@@ -1,0 +1,19 @@
+* Models of the Raspberry Pi Pico 2 board project (kisimavr), simplified.
+
+* Schottky diode PMEG6010ELR (VBUS -> VSYS), about 0.3 V at 100 mA
+.subckt PMEG6010 A K
+D1 A K DPMEG
+.model DPMEG D(IS=10u RS=0.08 N=1.05 BV=60 IBV=1m CJO=80p)
+.ends PMEG6010
+
+* N-channel MOSFET DMG1012T (SOT-523), level 1: Vth ~ 0.7 V
+.subckt DMG1012T D G S
+M1 D G S S NDMG
+.model NDMG NMOS(LEVEL=1 VTO=0.7 KP=0.5 LAMBDA=0.02)
+.ends DMG1012T
+
+* Green LED (pins: anode cathode), about 2.0 V at 3 mA
+.subckt LEDVERTE A K
+D1 A K DLEDV
+.model DLEDV D(IS=1e-19 RS=10 N=2 BV=5 IBV=10u CJO=10p)
+.ends LEDVERTE

@@ -66,17 +66,6 @@ jobs:
       # After the tools: checkout then uses git.
       - uses: actions/checkout@v4
 
-      - name: Dump KiCad symbols (temporary)
-        if: matrix.name == 'release'
-        run: |
-          for lib in MCU_RaspberryPi MCU_Module Regulator_Switching Memory_Flash Diode; do
-              python3 tools/dump_kicad_symbol.py --list $lib | grep -i -E 'rp23|pico|rt61|w25q32|pmeg|mbr1' | sed 's/^/KLIST|/' || true
-          done
-          python3 tools/dump_kicad_symbol.py MCU_RaspberryPi:RP2350A MCU_Module:RaspberryPi_Pico2 \
-              Regulator_Switching:RT6154A Regulator_Switching:RT6154B Memory_Flash:W25Q32RVXHJQ \
-              | sed 's/^/KSYM|/' || true
-
-
       - name: Cache simavr
         id: simavr-cache
         uses: actions/cache@v4

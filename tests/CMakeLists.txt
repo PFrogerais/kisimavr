@@ -260,6 +260,16 @@ if(Python3_FOUND)
                 ${PROJECT_SOURCE_DIR}/ngspice/pico.lib)
     set_tests_properties(models.pico_up_to_date PROPERTIES FIXTURES_SETUP model_pico)
     set_tests_properties(models.pico_compare PROPERTIES FIXTURES_REQUIRED model_pico)
+    kisimavr_test(models.pico2_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
+        COMMAND ${Python3_EXECUTABLE} make_pico_lib.py --relative --mcu rp2350
+                --so ../build/mcu_cosim.so --fw ../firmware/pico2/pico2_demo_riscv.bin
+                -o ${CMAKE_CURRENT_BINARY_DIR}/models/pico2.lib
+        EXPECT [[written]])
+    add_test(NAME models.pico2_compare
+        COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/models/pico2.lib
+                ${PROJECT_SOURCE_DIR}/ngspice/pico2.lib)
+    set_tests_properties(models.pico2_up_to_date PROPERTIES FIXTURES_SETUP model_pico2)
+    set_tests_properties(models.pico2_compare PROPERTIES FIXTURES_REQUIRED model_pico2)
 
     # Character LCD model.
     kisimavr_test(models.lcd1602_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
@@ -377,6 +387,15 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                    [[UART0> VSYS = 0.00 V, USB : non]]
             REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
         set_tests_properties(ngspice.pico PROPERTIES LABELS ngspice)
+        # Pico 2 (RP2350, RISC-V cores): the same circuit.
+        kisimavr_test(ngspice.pico2 FIXTURE firmware_pico2 TIMEOUT 600
+            WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+            COMMAND ${NGSPICE} -b pico2_test.cir
+            EXPECT [[rp2350 riscv]] [=[UART0> Pico 2 pret \(RISC-V\)]=]
+                   [=[UART0> ADC0 = 1[23][0-9][0-9] \(1\.0[4-7] V\)]=]
+                   [[UART0> VSYS = 0.00 V, USB : non]]
+            REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2350: ]])
+        set_tests_properties(ngspice.pico2 PROPERTIES LABELS ngspice)
     endif()
 elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
@@ -482,6 +501,40 @@ if(KICAD_CLI AND Python3_FOUND)
                 REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
             set_tests_properties(ngspice.kicad_picoboard PROPERTIES LABELS "ngspice;kicad"
                                  FIXTURES_REQUIRED "firmware_pico;demos;picoboard_netlist")
+
+            # Pico 2 (RP2350, RISC-V cores): the same two projects.
+            set(pico2_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO2.cir)
+            add_test(NAME kicad.pico2_netlist
+                COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${pico2_net}
+                        -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/simPICO2/simPICO2.kicad_sch
+                        -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+            set_tests_properties(kicad.pico2_netlist PROPERTIES FIXTURES_SETUP pico2_netlist
+                                 LABELS kicad TIMEOUT 120)
+            kisimavr_test(ngspice.kicad_pico2 TIMEOUT 600
+                WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/simPICO2
+                COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO2.raw ${pico2_net}
+                EXPECT [=[UART0> Pico 2 pret \(RISC-V\)]=] [[UART0> Recu : Bonjour Pico]]
+                       [=[UART0> ADC0 = 1[23][0-9][0-9] \(1\.0[4-7] V\)]=]
+                REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2350: ]])
+            set_tests_properties(ngspice.kicad_pico2 PROPERTIES LABELS "ngspice;kicad"
+                                 FIXTURES_REQUIRED "firmware_pico2;demos;pico2_netlist")
+
+            set(p2board_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/RaspberryPi_Pico2.cir)
+            add_test(NAME kicad.pico2board_netlist
+                COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${p2board_net}
+                        -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/RaspberryPi_Pico2/RaspberryPi_Pico2.kicad_sch
+                        -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+            set_tests_properties(kicad.pico2board_netlist PROPERTIES
+                                 FIXTURES_SETUP pico2board_netlist LABELS kicad TIMEOUT 120)
+            kisimavr_test(ngspice.kicad_pico2board TIMEOUT 600
+                WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/RaspberryPi_Pico2
+                COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/RaspberryPi_Pico2.raw
+                        ${p2board_net}
+                EXPECT [=[UART0> Pico 2 pret \(RISC-V\)]=]
+                       [=[UART0> VSYS = 4\.[5-9][0-9] V, USB : oui]=]
+                REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2350: ]])
+            set_tests_properties(ngspice.kicad_pico2board PROPERTIES LABELS "ngspice;kicad"
+                                 FIXTURES_REQUIRED "firmware_pico2;demos;pico2board_netlist")
         endif()
 
         # LCD project: the display is a second co-simulated part.

@@ -20,3 +20,5 @@ firmware/pico/*.bin
 firmware/pico2/*.bin
 kicad/projects/*/pico.lib
 kicad/projects/*/rp2040.lib
+kicad/projects/*/rp2350.lib
+kicad/projects/*/pico2.lib

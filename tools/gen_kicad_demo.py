@@ -9,7 +9,8 @@ Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DI
            lcd (character LCD 16x2 HD44780 + voltage on A0, official symbols),
            pico (Raspberry Pi Pico, RP2040: LED, button, ADC, UART terminal),
            picoboard (the Pico board itself after its official schematic, in a
-                      sub-sheet; the root sheet shows it as a Pico-shaped block)
+                      sub-sheet; the root sheet shows it as a Pico-shaped block),
+           pico2, pico2board (the same for the Raspberry Pi Pico 2, RP2350)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -28,7 +29,8 @@ PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
            "full": "simAVR_atmega328p", "i2c": "simAVR_i2c",
            "uno": "Arduino_UNO", "spi": "simAVR_spi",
            "lcd": "simAVR_lcd", "pico": "simPICO",
-           "picoboard": "RaspberryPi_Pico"}[VARIANT]
+           "picoboard": "RaspberryPi_Pico", "pico2": "simPICO2",
+           "pico2board": "RaspberryPi_Pico2"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -57,6 +59,7 @@ DATASHEETS = {
     "MCU_Module:RaspberryPi_Pico": "https://datasheets.raspberrypi.com/pico/pico-datasheet.pdf",
     "MCU_Microchip_ATmega:ATmega328P-P": "http://ww1.microchip.com/downloads/en/DeviceDoc/ATmega328_P%20AVR%20MCU%20with%20picoPower%20Technology%20Data%20Sheet%2040001984A.pdf",
 }
+PICO2_DATASHEET = "https://datasheets.raspberrypi.com/pico/pico-2-datasheet.pdf"
 # Simulation-only parts: no footprint, not on the board, not in the BOM.
 SIM_ONLY = {"Simulation_SPICE:VPULSE", "Simulation_SPICE:VDC", "simAVR:USB_SERIE"}
 
@@ -1279,10 +1282,218 @@ if VARIANT == "picoboard":
     HIER_SHEET = (PICO_SUBFILE, "Raspberry Pi Pico", lambda: pico_root_sheet())
 
 
-def pico_root_sheet():
-    """Root sheet of RaspberryPi_Pico: the board as a sheet symbol shaped
-    like a Pico seen from above (USB at the top), header pins at their
-    real positions (scale 3: 2.54 mm pitch = 7.62 mm)."""
+if VARIANT == "pico2board":
+    # Raspberry Pi Pico 2 (RP2350A). Its schematic is only published as a
+    # picture (Pico 2 datasheet, appendix B): the board is rebuilt from the
+    # Pico (picoboard above, same board outline and power section), the
+    # text of the Pico 2 datasheet, the Pico 2 W schematic (same RP2350
+    # core: references and values) and "Hardware design with RP2350".
+    LIB.update(load_official_symbols("pico_board.kicad_sym.txt"))
+    LIB.update(load_official_symbols("rp2350.kicad_sym.txt"))
+    PAPER = "A3"
+    TITLE = ("Raspberry Pi Pico 2 (simulation kisimavr)",
+             "Reconstruit : datasheet Pico 2, schema Pico 2 W, Hardware design with RP2350",
+             "Simulation : RP2350 = rp2350js ; U2 remplace par V3 ; USB = V2 (5 V)")
+    BOARDFILE = "pico2_board_models.lib"
+    CHIPFILE = "rp2350.lib"
+    LIBFILE = CHIPFILE    # main() copies the model given on the command line here.
+    PICO_SUBFILE = "pico2_board.kicad_sch"
+    NOSIM = {"_nosim": True}
+    R0402 = "Resistor_SMD:R_0402_1005Metric"
+    R0603 = "Resistor_SMD:R_0603_1608Metric"
+    C0402 = "Capacitor_SMD:C_0402_1005Metric"
+    C0603 = "Capacitor_SMD:C_0603_1608Metric"
+    C0805 = "Capacitor_SMD:C_0805_2012Metric"
+
+    def res(ref, value, x, y, net1, net2, fp=R0603, sim=True):
+        extra = {"_fp": fp}
+        if not sim:
+            extra.update(NOSIM)
+        return ("Device:R", ref, value, x, y, extra, {"1": net1, "2": net2})
+
+    def cap(ref, value, x, y, net1, net2, fp=C0603, sim=True):
+        extra = {"_fp": fp}
+        if not sim:
+            extra.update(NOSIM)
+        return ("Device:C", ref, value, x, y, extra, {"1": net1, "2": net2})
+
+    # RP2350A (QFN-60) GPIO pins, symbol MCU_RaspberryPi:RP2350A.
+    gpio_pins = {"2": 0, "3": 1, "4": 2, "5": 3, "7": 4, "8": 5, "9": 6, "10": 7, "12": 8,
+                 "13": 9, "14": 10, "15": 11, "16": 12, "17": 13, "18": 14, "19": 15,
+                 "27": 16, "28": 17, "29": 18, "31": 19, "32": 20, "33": 21, "34": 22,
+                 "35": 23, "36": 24, "37": 25, "40": 26, "41": 27, "42": 28, "43": 29}
+    gpio_net = {n: (f"GPIO{n}" if n < 26 else f"GPIO{n}_ADC{n - 26}") for n in range(30)}
+    u1 = {num: gpio_net[g] for num, g in gpio_pins.items()}
+    u1.update({"1": "+3V3", "11": "+3V3", "20": "+3V3", "30": "+3V3", "38": "+3V3",
+               "45": "+3V3", "53": "+3V3", "54": "+3V3", "49": "+3V3",
+               "6": "1V1", "23": "1V1", "39": "1V1", "50": "1V1", "48": "VREG_LX",
+               "46": "VREG_AVDD", "47": "GND", "44": "ADC_VREF!", "61": "GND",
+               "21": "XIN", "22": "XOUT", "24": "SWCLK", "25": "SWDIO", "26": "RUN",
+               "51": "USB_DM", "52": "USB_DP", "55": "QSPI_SD3", "56": "QSPI_SCLK",
+               "57": "QSPI_SD0", "58": "QSPI_SD2", "59": "QSPI_SD1", "60": "QSPI_SS"})
+    chip_sim_pins = " ".join(f"{num}=GPIO{g}" for num, g in
+                             sorted(gpio_pins.items(), key=lambda kv: kv[1]))
+
+    BOARD_PARTS = [
+        # --- RP2350A (co-simulated) ---
+        ("MCU_RaspberryPi:RP2350A", "U1", "RP2350A0A2", 200.66, 167.64,
+         {"Sim.Device": "SUBCKT", "Sim.Library": CHIPFILE, "Sim.Name": "RP2350",
+          "Sim.Pins": chip_sim_pins}, u1),
+        # --- USB: micro-B connector, 27R series resistors, test points ---
+        ("Connector:USB_B_Micro", "J1", "690-005-298-486", 40.64, 60.96,
+         dict(NOSIM, _fp="Connector_USB:USB_Micro-B_Molex-105017-0001"),
+         {"1": "VBUS", "2": "USB_DMX", "3": "USB_DPX", "4": "NC", "5": "GND", "SH": "GND"}),
+        res("R12", "27R", 73.66, 53.34, "USB_DMX", "USB_DM", sim=False),
+        res("R13", "27R", 83.82, 53.34, "USB_DPX", "USB_DP", sim=False),
+        ("Connector:TestPoint", "TP1", "GND", 63.5, 80.01, NOSIM, {"1": "GND"}),
+        ("Connector:TestPoint", "TP2", "USB_DM", 73.66, 80.01, NOSIM, {"1": "USB_DMX"}),
+        ("Connector:TestPoint", "TP3", "USB_DP", 83.82, 80.01, NOSIM, {"1": "USB_DPX"}),
+        # --- Power: VBUS -> D1 -> VSYS -> U2 buck-boost -> 3V3 ---
+        ("Device:D_Schottky", "D1", "PMEG6010ELR", 124.46, 43.18,
+         {"Sim.Device": "SUBCKT", "Sim.Library": BOARDFILE, "Sim.Name": "PMEG6010",
+          "Sim.Pins": "1=K 2=A", "_rot": 180, "_fp": "Diode_SMD:Nexperia_CFP3_SOD-123W"},
+         {"2": "VBUS", "1": "VSYS"}),
+        cap("C1", "47u", 147.32, 58.42, "VSYS!", "GND", C0805),
+        res("R2", "100K", 157.48, 58.42, "VSYS", "3V3_EN"),
+        res("R9", "1R", 167.64, 58.42, "VSYS", "VINA"),
+        cap("C22", "4u7", 167.64, 76.2, "VINA!", "GND", C0402),
+        ("simAVR:RT6150B-33GQW", "U2", "RT6150B-33GQW", 205.74, 63.5, NOSIM,
+         {"5": "VSYS", "8": "VINA", "6": "3V3_EN", "7": "GPIO23", "4": "LX1", "2": "LX2",
+          "1": "+3V3", "10": "+3V3", "3": "GND"}),
+        ("Device:L", "L1", "1u", 233.68, 48.26, NOSIM, {"1": "LX1", "2": "LX2"}),
+        cap("C2", "47u", 246.38, 63.5, "+3V3", "GND", C0805),
+        cap("C21", "47u", 256.54, 63.5, "+3V3", "GND", C0805),
+        ("Connector:TestPoint", "TP4", "GPIO23", 182.88, 83.82, NOSIM, {"1": "GPIO23"}),
+        # --- VSYS / 3 on ADC3 (Q1 isolates the pin when 3V3 is off) ---
+        res("R5", "200K", 279.4, 50.8, "VSYS", "VSYS_DIV"),
+        res("R6", "100K", 279.4, 76.2, "VSYS_DIV", "GND"),
+        ("Transistor_FET:DMG1012T", "Q1", "DMG1012T", 297.18, 63.5,
+         {"Sim.Device": "SUBCKT", "Sim.Library": BOARDFILE, "Sim.Name": "DMG1012T",
+          "Sim.Pins": "1=G 2=S 3=D"},
+         {"1": "+3V3", "3": "VSYS_DIV", "2": "GPIO29_ADC3"}),
+        cap("C3", "1n", 312.42, 76.2, "GPIO29_ADC3", "GND"),
+        # --- VBUS sense on GPIO24 ---
+        res("R10", "5K6", 335.28, 50.8, "VBUS", "GPIO24"),
+        res("R1", "10K", 335.28, 76.2, "GPIO24", "GND"),
+        # --- User LED on GPIO25 ---
+        res("R3", "470R", 358.14, 50.8, "GPIO25", "LED_A"),
+        ("Device:LED", "D2", "Green", 358.14, 73.66,
+         {"Sim.Device": "SUBCKT", "Sim.Library": BOARDFILE, "Sim.Name": "LEDVERTE",
+          "Sim.Pins": "1=K 2=A", "_rot": 90, "_fp": "LED_SMD:LED_0603_1608Metric"},
+         {"2": "LED_A", "1": "GND"}),
+        ("Connector:TestPoint", "TP5", "GPIO25", 370.84, 63.5, NOSIM, {"1": "GPIO25"}),
+        # --- ADC supply / reference: 3V3 filtered by R7 / C14 ---
+        res("R7", "200R", 279.4, 109.22, "+3V3", "ADC_VREF", R0402),
+        cap("C14", "2u2", 279.4, 127.0, "ADC_VREF", "GND", C0402),
+        # --- Core regulator of the RP2350: 3V3 -> VREG_LX -> L2 -> 1V1 ---
+        cap("C9", "4u7", 320.04, 109.22, "+3V3", "GND", C0402),
+        ("Device:L", "L2", "3u3", 335.28, 104.14,
+         dict(NOSIM, _fp="Inductor_SMD:L_0806_2016Metric"), {"1": "VREG_LX", "2": "1V1"}),
+        cap("C13", "4u7", 350.52, 109.22, "1V1", "GND", C0402, sim=False),
+        res("R4", "33R", 320.04, 134.62, "+3V3", "VREG_AVDD", R0402, sim=False),
+        cap("C18", "4u7", 335.28, 139.7, "VREG_AVDD", "GND", C0402, sim=False),
+        # --- QSPI flash, BOOTSEL ---
+        ("Memory_Flash:W25Q32JVSS", "U3", "W25Q32RVXHJQ", 101.6, 116.84,
+         dict(NOSIM, _fp="Package_SON:Winbond_USON-8-1EP_3x2mm_P0.5mm_EP0.2x1.6mm"),
+         {"1": "QSPI_SS", "2": "QSPI_SD1", "3": "QSPI_SD2", "4": "GND", "5": "QSPI_SD0",
+          "6": "QSPI_SCLK", "7": "QSPI_SD3", "8": "+3V3"}),
+        cap("C4", "100n", 124.46, 116.84, "+3V3", "GND"),
+        res("R11", "1K", 63.5, 132.08, "QSPI_SS", "BOOTSEL", sim=False),
+        ("Switch:SW_Push", "SW1", "TP-1221U-K9K5325", 76.2, 147.32, NOSIM,
+         {"1": "BOOTSEL", "2": "GND"}),
+        ("Connector:TestPoint", "TP6", "BOOTSEL", 50.8, 147.32, NOSIM, {"1": "BOOTSEL"}),
+        # --- 12 MHz crystal ---
+        ("Device:Crystal_GND24", "X1", "12MHz ABM8-272-T3", 101.6, 187.96,
+         dict(NOSIM, _fp="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"),
+         {"1": "XIN", "3": "XR", "2": "GND"}),
+        res("R14", "1K", 124.46, 182.88, "XOUT", "XR", sim=False),
+        cap("C16", "15p", 86.36, 203.2, "XIN", "GND", sim=False),
+        cap("C17", "15p", 116.84, 203.2, "XR", "GND", sim=False),
+        # --- Decoupling: 3V3 (100n, 4u7), 1V1 core (not simulated) ---
+        cap("C5", "100n", 162.56, 241.3, "+3V3", "GND"),
+        cap("C6", "100n", 172.72, 241.3, "+3V3", "GND"),
+        cap("C7", "100n", 182.88, 241.3, "+3V3", "GND"),
+        cap("C8", "100n", 193.04, 241.3, "+3V3", "GND"),
+        cap("C10", "100n", 203.2, 241.3, "+3V3", "GND"),
+        cap("C11", "100n", 213.36, 241.3, "+3V3", "GND"),
+        cap("C12", "100n", 223.52, 241.3, "+3V3", "GND"),
+        cap("C23", "4u7", 233.68, 241.3, "+3V3", "GND", C0402),
+        cap("C15", "100n", 246.38, 241.3, "1V1", "GND", sim=False),
+        cap("C20", "100n", 256.54, 241.3, "1V1", "GND", sim=False),
+        cap("C19", "4u7", 266.7, 241.3, "1V1", "GND", C0402, sim=False),
+        # --- Board edge: 40-pin castellated header J0, SWD header J2 ---
+        ("Connector_Generic:Conn_02x20_Counter_Clockwise", "J0", "CON_PICO_40W",
+         370.84, 167.64, dict(NOSIM, _fp="Module:RaspberryPi_Pico_Common_Unspecified"),
+         {"1": "GPIO0", "2": "GPIO1", "3": "GND", "4": "GPIO2", "5": "GPIO3", "6": "GPIO4",
+          "7": "GPIO5", "8": "GND", "9": "GPIO6", "10": "GPIO7", "11": "GPIO8", "12": "GPIO9",
+          "13": "GND", "14": "GPIO10", "15": "GPIO11", "16": "GPIO12", "17": "GPIO13",
+          "18": "GND", "19": "GPIO14", "20": "GPIO15", "21": "GPIO16", "22": "GPIO17",
+          "23": "GND", "24": "GPIO18", "25": "GPIO19", "26": "GPIO20", "27": "GPIO21",
+          "28": "GND", "29": "GPIO22", "30": "RUN", "31": "GPIO26_ADC0",
+          "32": "GPIO27_ADC1", "33": "GND", "34": "GPIO28_ADC2", "35": "ADC_VREF",
+          "36": "+3V3", "37": "3V3_EN", "38": "GND", "39": "VSYS", "40": "VBUS"}),
+        ("Connector_Generic:Conn_01x03", "J2", "CON_PICO_3W", 370.84, 254.0,
+         NOSIM, {"1": "SWCLK", "2": "GND", "3": "SWDIO"}),
+        # --- Simulation only: PC on the USB port, U2 output ---
+        ("Simulation_SPICE:VDC", "V2", "USB 5 V", 40.64, 236.22,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=5"},
+         {"1": "VBUS", "2": "GND"}),
+        ("Simulation_SPICE:VDC", "V3", "3,3 V (U2)", 60.96, 236.22,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=3.3"},
+         {"1": "+3V3", "2": "GND"}),
+    ]
+    PICO_EDGE = {1: "GP0", 2: "GP1", 3: "GND3", 4: "GP2", 5: "GP3", 6: "GP4", 7: "GP5",
+                 8: "GND8", 9: "GP6", 10: "GP7", 11: "GP8", 12: "GP9", 13: "GND13",
+                 14: "GP10", 15: "GP11", 16: "GP12", 17: "GP13", 18: "GND18", 19: "GP14",
+                 20: "GP15", 21: "GP16", 22: "GP17", 23: "GND23", 24: "GP18", 25: "GP19",
+                 26: "GP20", 27: "GP21", 28: "GND28", 29: "GP22", 30: "RUN", 31: "GP26",
+                 32: "GP27", 33: "AGND", 34: "GP28", 35: "ADC_VREF", 36: "3V3",
+                 37: "3V3_EN", 38: "GND38", 39: "VSYS", 40: "VBUS"}
+    PICO_HIER = {("J0", str(k)): name for k, name in PICO_EDGE.items()}
+    PICO_HIER.update({("J2", "1"): "SWCLK", ("J2", "2"): "DBG_GND", ("J2", "3"): "SWDIO"})
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(BOARD_PARTS, PICO_HIER, vlabels=True)
+    for k, (hname, net) in enumerate(POWER_TIES):
+        tx, ty = 314.96, round(200.66 + 5.08 * k, 2)
+        HLABELS.append((hname, tx, ty, 180))
+        WIRES.append(((tx, ty), (round(tx + 5.08, 2), ty)))
+        PARTS.append((f"power:{net}", f"#PWR{90 + k}", net, round(tx + 5.08, 2), ty,
+                      {"_rot": 270 if net != "GND" else 90}))
+    JUNCTIONS = []
+    NO_CONNECT_REF = None
+    TEXTS = [
+        ("USB micro-B", 30.48, 35.56),
+        ("Alimentation : VBUS -> D1 -> VSYS -> U2 (buck-boost 3,3 V) -> 3V3", 119.38, 30.48),
+        ("U2 : RT6150 d'apres la datasheet Pico 2 (RT6154A sur le schema Pico 2 W)",
+         119.38, 34.29),
+        ("PS=0 : PFM (defaut), PS=1 : PWM (GPIO23)", 180.34, 88.9),
+        ("VSYS / 3 sur ADC3 ; Q1 bloque la fuite par ADC3 quand 3V3 est coupe", 269.24, 35.56),
+        ("Detection VBUS", 327.66, 35.56),
+        ("LED (GPIO25)", 350.52, 35.56),
+        ("Alimentation et reference de l'ADC", 266.7, 99.06),
+        ("Regulateur du coeur (dans le RP2350) : 3V3 -> 1V1", 314.96, 99.06),
+        ("Flash QSPI 4 Mo", 86.36, 99.06),
+        ("BOOTSEL : force le demarrage USB", 45.72, 124.46),
+        ("Quartz 12 MHz", 88.9, 172.72),
+        ("Decouplage 3V3 et 1V1", 160.02, 228.6),
+        ("Broches GND / 3V3 du bord de carte", 304.8, 194.31),
+        ("Bord de carte (40 broches)", 353.06, 129.54),
+        ("DEBUG (SWD)", 360.68, 243.84),
+        ("Simulation seulement : PC sur l'USB (V2), sortie de U2 (V3)", 30.48, 223.52),
+        ("Non simules : J0, J1, J2, U2, U3, L1, L2, X1, SW1, TP, R4, R11..R14, C13, C15..C20",
+         30.48, 271.78),
+        ("U1 : modele RP2350 (rp2350js, coeurs RISC-V ou Arm), seules les GPIO sont simulees",
+         30.48, 275.59),
+    ]
+    DIRECTIVES = []
+    HIER_SHEET = (PICO_SUBFILE, "Raspberry Pi Pico 2", lambda: pico_root_sheet(pico2=True))
+
+
+def pico_root_sheet(pico2=False):
+    """Root sheet of RaspberryPi_Pico (RaspberryPi_Pico2): the board as a
+    sheet symbol shaped like a Pico seen from above (USB at the top), header
+    pins at their real positions (scale 3: 2.54 mm pitch = 7.62 mm)."""
+    board = "Raspberry Pi Pico 2" if pico2 else "Raspberry Pi Pico"
+    chip = "RP2350" if pico2 else "RP2040"
     x0, y0 = 116.84, 25.4                  # Upper left corner of the board.
     w, h = 63.5, 152.4                     # 21 x 51 mm.
     pins = []
@@ -1295,7 +1506,7 @@ def pico_root_sheet():
 
     out = [f'(kicad_sch (version 20231120) (generator "eeschema") '
            f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "A4")']
-    out.append('(title_block (title "Raspberry Pi Pico (simulation kisimavr)") '
+    out.append(f'(title_block (title "{board} (simulation kisimavr)") '
                f'(comment 1 "Carte complete : feuille {PICO_SUBFILE}") '
                '(comment 2 "Cablez vos composants sur les broches du bloc"))')
     out.append("(lib_symbols)")
@@ -1322,12 +1533,12 @@ def pico_root_sheet():
     rect(bx(46.99), by(17.78), bx(50.8), by(21.59))                  # LED
     text("LED (GP25)", bx(41.91), by(16.51))
     rect(bx(19.05), by(55.88), bx(44.45), by(81.28))                 # RP2040
-    text("RP2040", bx(26.67), by(69.85), size=2.0)
+    text(chip, bx(26.67), by(69.85), size=2.0)
     rect(bx(21.59), by(91.44), bx(41.91), by(101.6))                 # Flash
-    text("Flash 2 Mo", bx(24.13), by(97.79))
+    text("Flash 4 Mo" if pico2 else "Flash 2 Mo", bx(24.13), by(97.79))
     rect(bx(24.13), by(110.49), bx(39.37), by(116.84))               # Crystal
     text("12 MHz", bx(27.94), by(114.3))
-    text("Raspberry Pi Pico", bx(19.05), by(132.08), size=2.0)
+    text(board, bx(16.51 if pico2 else 19.05), by(132.08), size=2.0)
     text("DEBUG", bx(27.94), by(146.05))
 
     # Each sheet pin: short wire and a label of the same name.
@@ -1352,14 +1563,19 @@ def pico_root_sheet():
     out.append(
         f'(sheet (at {x0} {y0}) (size {w} {h}) (fields_autoplaced yes) '
         f'(stroke (width 0.254) (type solid)) (fill (color 0 0 0 0.0000)) (uuid "{SHEET_UUID}") '
-        f'(property "Sheetname" "Raspberry Pi Pico" (at {x0} {round(y0 - 0.7, 2)} 0) '
+        f'(property "Sheetname" "{board}" (at {x0} {round(y0 - 0.7, 2)} 0) '
         f'(effects (font (size 1.27 1.27)) (justify left bottom))) '
         f'(property "Sheetfile" "{PICO_SUBFILE}" (at {x0} {round(y0 + h + 9.0, 2)} 0) '
         f'(effects (font (size 1.27 1.27)) (justify left top))) '
         f'{pin_txt} '
         f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" (page "2")))))')
-    text("Firmware : pico_demo.bin -> rp2040.lib (tools/make_pico_lib.py --chip)", 20.32, 186.69)
-    text("Sonder : /Raspberry Pi Pico/GPIO25, VSYS, GPIO29_ADC3... ; terminal : UART0> ...",
+    if pico2:
+        text("Firmware : pico2_demo_riscv.bin -> rp2350.lib "
+             "(tools/make_pico_lib.py --mcu rp2350 --chip)", 20.32, 186.69)
+    else:
+        text("Firmware : pico_demo.bin -> rp2040.lib (tools/make_pico_lib.py --chip)",
+             20.32, 186.69)
+    text(f"Sonder : /{board}/GPIO25, VSYS, GPIO29_ADC3... ; terminal : UART0> ...",
          20.32, 190.5)
     out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 20.32 196.85 0) '
                f'(effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "{uid()}"))')
@@ -1368,17 +1584,22 @@ def pico_root_sheet():
     return "\n".join(out) + "\n"
 
 
-if VARIANT == "pico":
-    PICOFILE = "pico.lib"
+if VARIANT in ("pico", "pico2"):
+    PICO2 = VARIANT == "pico2"
+    PICOFILE = "pico2.lib" if PICO2 else "pico.lib"
+    if PICO2:
+        LIBFILE = PICOFILE    # main() copies the model given on the command line here.
     TERMFILE = "terminal.lib"
     PICO_SIM_PINS = ("1=GP0 2=GP1 4=GP2 5=GP3 6=GP4 7=GP5 9=GP6 10=GP7 11=GP8 12=GP9 "
                      "14=GP10 15=GP11 16=GP12 17=GP13 19=GP14 20=GP15 21=GP16 22=GP17 "
                      "24=GP18 25=GP19 26=GP20 27=GP21 29=GP22 30=RUN 31=GP26 32=GP27 "
                      "34=GP28 35=ADC_VREF 36=V3V3 37=V3V3_EN 39=VSYS 40=VBUS")
     PICO_PARTS = [
-        ("MCU_Module:RaspberryPi_Pico", "A1", "RaspberryPi_Pico", 127.0, 99.06,
-         {"Sim.Device": "SUBCKT", "Sim.Library": PICOFILE, "Sim.Name": "PICO",
-          "Sim.Pins": PICO_SIM_PINS},
+        ("MCU_Module:RaspberryPi_Pico", "A1", "RaspberryPi_Pico2" if PICO2 else "RaspberryPi_Pico",
+         127.0, 99.06,
+         dict({"Sim.Device": "SUBCKT", "Sim.Library": PICOFILE,
+               "Sim.Name": "PICO2" if PICO2 else "PICO", "Sim.Pins": PICO_SIM_PINS},
+              **({"_ds": PICO2_DATASHEET} if PICO2 else {})),
          # AGND (33) is tied to GND on the board; wiring it too joins two
          # "power output" pins of the official symbol (ERC error).
          {"*": "NC", "3": "GND", "36": "+3V3",
@@ -1412,7 +1633,9 @@ if VARIANT == "pico":
     JUNCTIONS = []
     NO_CONNECT_REF = None
     TEXTS = [
-        ("Raspberry Pi Pico (RP2040) emule par rp2040js dans le plug-in (firmware pico_demo.bin)",
+        ("Raspberry Pi Pico 2 (RP2350, coeurs RISC-V) emule par rp2350js dans le plug-in "
+         "(firmware pico2_demo_riscv.bin)" if PICO2 else
+         "Raspberry Pi Pico (RP2040) emule par rp2040js dans le plug-in (firmware pico_demo.bin)",
          25.4, 30.48),
         ("GP25 : LED de la carte (dans le modele), GP15 : signal carre 1 kHz", 25.4, 34.29),
         ("GP14 : bouton (appuye de 3 a 6 ms) -> GP16 : LED D1", 25.4, 38.1),
@@ -1561,7 +1784,7 @@ def placed_symbol(lib_id, ref, value, x, y, extra):
         f'(property "Value" "{value}" (at {vx} {vy} 0) {font(justify=just)})',
         f'(property "Footprint" "{extra.pop("_fp", FOOTPRINTS.get(lib_id, d.get("footprint", "")))}" '
         f'(at {x} {y} 0) {font(hide=True)})',
-        f'(property "Datasheet" "{DATASHEETS.get(lib_id, d.get("datasheet", ""))}" '
+        f'(property "Datasheet" "{extra.pop("_ds", DATASHEETS.get(lib_id, d.get("datasheet", "")))}" '
         f'(at {x} {y} 0) {font(hide=True)})',
         f'(property "Description" "" (at {x} {y} 0) {font(hide=True)})',
     ]
@@ -1768,6 +1991,28 @@ D1 A K DLEDV
 .ends LEDVERTE
 """
 
+PICO2_BOARD_MODELS = """\
+* Models of the Raspberry Pi Pico 2 board project (kisimavr), simplified.
+
+* Schottky diode PMEG6010ELR (VBUS -> VSYS), about 0.3 V at 100 mA
+.subckt PMEG6010 A K
+D1 A K DPMEG
+.model DPMEG D(IS=10u RS=0.08 N=1.05 BV=60 IBV=1m CJO=80p)
+.ends PMEG6010
+
+* N-channel MOSFET DMG1012T (SOT-523), level 1: Vth ~ 0.7 V
+.subckt DMG1012T D G S
+M1 D G S S NDMG
+.model NDMG NMOS(LEVEL=1 VTO=0.7 KP=0.5 LAMBDA=0.02)
+.ends DMG1012T
+
+* Green LED (pins: anode cathode), about 2.0 V at 3 mA
+.subckt LEDVERTE A K
+D1 A K DLEDV
+.model DLEDV D(IS=1e-19 RS=10 N=2 BV=5 IBV=10u CJO=10p)
+.ends LEDVERTE
+"""
+
 PICO_TERMINAL = r"""# Text sent by the PC terminal to the Pico (UART0, 115200 bauds, 3.3 V).
 # One line per send: <time> <text>   (escapes: \n \r \s \xHH)
 # After a change: python3 tools/make_terminal_lib.py --vhigh 3.3 terminal.txt -o terminal.lib
@@ -1847,11 +2092,14 @@ def main():
 
     if VARIANT == "uno":
         write_uno_models()
-    if VARIANT == "pico":
+    if VARIANT in ("pico", "pico2"):
         write_pico_terminal()
     if VARIANT == "picoboard":
         with open(os.path.join(OUT, BOARDFILE), "w") as f:
             f.write(PICO_BOARD_MODELS)
+    if VARIANT == "pico2board":
+        with open(os.path.join(OUT, BOARDFILE), "w") as f:
+            f.write(PICO2_BOARD_MODELS)
     if VARIANT == "spi":
         here = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(here, "..", "kicad", HC595FILE)) as f:

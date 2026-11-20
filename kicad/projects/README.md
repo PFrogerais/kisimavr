@@ -21,6 +21,8 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `simAVR_lcd` | `firmware/lcd_demo.c` ou `lcd_demo/lcd_demo.ino` | afficheur LCD 16x2 (symbole officiel WC1602A) en 4 bits, câblage `LiquidCrystal`, tension de A0 |
 | `simPICO` | `firmware/pico/pico_demo.c` (RP2040, bare-metal) | Raspberry Pi Pico (symbole officiel `MCU_Module:RaspberryPi_Pico`) : LED de la carte, bouton, ADC, UART avec terminal 3,3 V |
 | `RaspberryPi_Pico` | `firmware/pico/pico_demo.c` | la carte Pico entière d'après son schéma officiel (feuille hiérarchique), bloc racine dessiné comme une Pico ; ADC3 = VSYS / 3, détection VBUS |
+| `simPICO2` | `firmware/pico2/pico2_demo.c` (RP2350, cœurs RISC-V, bare-metal) | le montage de `simPICO` avec une Raspberry Pi Pico 2 (même brochage) |
+| `RaspberryPi_Pico2` | `firmware/pico2/pico2_demo.c` | la carte Pico 2 entière, reconstruite (son schéma n'est publié qu'en image) : RP2350A, régulateur du cœur, feuille hiérarchique comme `RaspberryPi_Pico` |
 | `Arduino_UNO` | `firmware/uno_demo.c` ou `uno_demo/uno_demo.ino` | carte UNO R3 d'après le schéma officiel : LED L (tampon LMV358), reset, liaison série 1 kΩ vers le 16U2, connecteurs ; blink + UART RX/TX |
 
 *Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la
@@ -299,6 +301,30 @@ symbole est dessiné.
 - **Non simulés** (exclus) : USB, flash, quartz, BOOTSEL, RT6150 et L1,
   points de test, condensateurs du 1V1.
 - Le firmware de démo affiche `VSYS = 4.7x V, USB : oui`.
+
+## Étape 3 sexies — La Raspberry Pi Pico 2 (`simPICO2`, `RaspberryPi_Pico2`)
+
+La Pico 2 a le brochage de la Pico : `simPICO2` reprend le montage de
+`simPICO` (symbole `MCU_Module:RaspberryPi_Pico`, valeur
+`RaspberryPi_Pico2`, sous-circuit `PICO2`). Le RP2350 est émulé par
+rp2350js : sa bootrom A2 démarre le firmware comme sur la puce, sur les
+cœurs **RISC-V** (Hazard3) ou **Arm** (Cortex-M33) selon le firmware (famille
+UF2, bloc `IMAGE_DEF`, ou clé `"arch"`). Modèle pour un autre programme :
+
+```bash
+python3 ~/dev/kisimavr/tools/make_pico_lib.py --mcu rp2350 --fw mon_prog.uf2 -o pico2.lib
+```
+
+`RaspberryPi_Pico2` suit `RaspberryPi_Pico` (même bloc racine, même partie
+alimentation), avec le RP2350A (symbole officiel `MCU_RaspberryPi:RP2350A`),
+son régulateur interne 1,1 V (VREG_LX → L2 3,3 µH → 1V1), la flash de 4 Mo et
+les valeurs du schéma Pico 2 W. Le schéma de la Pico 2 n'étant publié qu'en
+image, la carte est **reconstruite** : `LISEZMOI.txt` liste les points à
+vérifier avant un PCB. Le firmware de démo affiche
+`Pico 2 pret (RISC-V)` puis `VSYS = 4.7x V, USB : oui`.
+
+L'émulation RP2350 est plus lente que celle du RP2040 (150 MHz, deux cœurs) :
+environ 1 s de calcul par milliseconde simulée en RISC-V.
 
 ## Étape 4 — Passer au circuit imprimé
 

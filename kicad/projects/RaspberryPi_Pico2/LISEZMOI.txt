@@ -1,0 +1,50 @@
+RaspberryPi_Pico2 - la carte Raspberry Pi Pico 2 (RP2350A)
+==========================================================
+
+Attention : le schema de la Pico 2 n'est publie qu'en image (annexe B de la
+datasheet Pico 2, sans netliste). Cette carte est donc RECONSTRUITE a partir :
+  - de la carte Pico (projet RaspberryPi_Pico, schema RPI-PICO-R3) : meme
+    contour, meme brochage, meme partie alimentation / VSYS / VBUS / LED ;
+  - de la datasheet Pico 2 (texte) : D1, R1 / R10 (VBUS), R5 / R6 / C3 (VSYS / 3),
+    R7 / C14 (ADC_VREF, 200 Ohm et 2,2 uF), R9, TP1..TP6, flash W25Q32RV, quartz
+    ABM8-272-T3 ;
+  - du schema Pico 2 W (meme coeur RP2350) : RP2350A0A2, W25Q32RVXHJQ,
+    PMEG6010ELR, L1 1u, L2 3u3, condensateurs 47u / 4u7 / 100n / 15p ;
+  - du guide "Hardware design with RP2350" : regulateur du coeur
+    (VREG_VIN, VREG_LX -> L2 -> 1V1, VREG_FB, VREG_AVDD filtre 33 Ohm / 4,7 uF).
+A verifier avant de router un PCB : l'affectation des condensateurs (C9, C13,
+C18..C23), R4 (33 Ohm sur VREG_AVDD, valeur du guide), R16 de la datasheet
+Pico 2 (non dessinee), et U2 : la datasheet Pico 2 nomme un RT6150 (symbole et
+empreinte du projet Pico), le schema Pico 2 W montre un RT6154A a cette place.
+
+Symboles officiels KiCad 10 (MCU_RaspberryPi:RP2350A, Memory_Flash,
+Device:Crystal_GND24, Connector:USB_B_Micro, Transistor_FET:DMG1012T...) ;
+le RT6150B (absent de la bibliotheque) est dessine.
+
+Deux feuilles :
+  - RaspberryPi_Pico2.kicad_sch (racine) : la Pico 2 vue de dessus (USB en
+    haut), bloc hierarchique ; broches 1..20 a gauche, 21..40 a droite, SWD en
+    bas, a leur position reelle (echelle 3). Chaque broche porte un label de
+    meme nom : cablez vos composants sur ces labels (GP0, GP15, 3V3, GND3...).
+  - pico2_board.kicad_sch (A3) : la carte. J0 = bord de carte 40 broches,
+    J2 = SWD ; chaque broche porte un label hierarchique (GND3..GND38, AGND,
+    DBG_GND et 3V3 sont relies aux nets GND / +3V3).
+
+Modele : genere par "cmake --build build --target demos" :
+  - rp2350.lib : U1 = RP2350 (rp2350js dans le plug-in, coeurs RISC-V),
+                 firmware firmware/pico2/pico2_demo_riscv.bin (make -C firmware/pico2)
+  - pico2_board_models.lib : D1 (Schottky), Q1 (DMG1012T), D2 (LED verte)
+Autre firmware (Pico SDK, Arduino-pico, coeurs Arm ou RISC-V) :
+  python3 tools/make_pico_lib.py --mcu rp2350 --chip --fw mon_prog.uf2 -o rp2350.lib
+
+Simulation :
+  - V2 : PC branche sur l'USB (5 V sur VBUS), V3 : sortie de U2 (3,3 V)
+  - VBUS -> D1 -> VSYS (~4,7 V) -> R5 / R6 -> Q1 -> GPIO29 (ADC3) = VSYS / 3
+  - VBUS -> R10 / R1 -> GPIO24 : detection de l'USB
+  - GPIO25 -> R3 -> D2 : LED de la carte (clignote a 1 kHz avec pico2_demo)
+  Non simules : J0, J1, J2, U2, U3, L1, L2, X1, SW1, TP1..TP6, R4, R11..R14,
+  C13, C15..C20 (USB, flash, quartz, BOOTSEL, regulateurs, 1V1).
+  Terminal : "UART0> VSYS = 4.7x V, USB : oui", "UART0> ADC0 = ..."
+
+Simulation : transitoire, pas 0.5u, duree 10m, depuis la feuille racine.
+Sondes : /Raspberry Pi Pico 2/VSYS, /Raspberry Pi Pico 2/GPIO29_ADC3, GPIO25...
