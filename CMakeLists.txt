@@ -32,9 +32,10 @@ endif()
 message(STATUS "simavr headers: ${SIMAVR_INCLUDE_DIRS}")
 message(STATUS "simavr library: ${SIMAVR_LIBRARIES}")
 
-# ---- Helpers without simavr (configuration, paths, VCD): unit-testable ------
+# ---- Helpers without simavr (config, I2C devices, paths, VCD): unit-tested ---
 set(KISIMAVR_WARNINGS -Wall -Wextra -Wpedantic)
-add_library(kisimavr_core STATIC src/config.cpp src/paths.cpp src/vcd.cpp)
+add_library(kisimavr_core STATIC
+    src/config.cpp src/i2c_devices.cpp src/paths.cpp src/vcd.cpp)
 target_include_directories(kisimavr_core PUBLIC include src)
 target_compile_options(kisimavr_core PRIVATE ${KISIMAVR_WARNINGS})
 set_target_properties(kisimavr_core PROPERTIES
@@ -44,7 +45,7 @@ set_target_properties(kisimavr_core PROPERTIES
 
 # ---- Plug-in loaded by ngspice d_cosim --------------------------------------
 add_library(mcu_cosim MODULE
-    src/mcu_cosim.cpp src/mcu_bridge.cpp src/sar_adc.cpp src/uart0.cpp)
+    src/mcu_cosim.cpp src/mcu_bridge.cpp src/sar_adc.cpp src/uart0.cpp src/i2c_bus.cpp)
 target_include_directories(mcu_cosim SYSTEM PRIVATE ${SIMAVR_INCLUDE_DIRS})
 target_link_libraries(mcu_cosim PRIVATE kisimavr_core ${SIMAVR_LIBRARIES})
 target_compile_options(mcu_cosim PRIVATE ${KISIMAVR_WARNINGS})

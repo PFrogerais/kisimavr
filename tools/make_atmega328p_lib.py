@@ -55,6 +55,10 @@ def parse_args():
     ap.add_argument("--uartlog", help="UART text file (default: next to the .lib)")
     ap.add_argument("--vcd", help="VCD trace (default: next to the .lib, '' = none)")
     ap.add_argument("--freq", default="16000000", help="CPU clock in Hz")
+    ap.add_argument("--i2c", default="lm75 eeprom",
+                    help='virtual I2C slaves, e.g. "lm75 0x48 eeprom 0x50" ("" = none)')
+    ap.add_argument("--lm75temp", default="25", help="LM75 temperature at t = 0 (degC)")
+    ap.add_argument("--lm75rate", default="0", help="LM75 slope (degC per second)")
     ap.add_argument("--relative", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
 
@@ -94,6 +98,9 @@ def main():
              '"io"'] + [f'"{p}"' for p in PINS] +
             ['"adc"'] + [f'"{c}"' for c in ADC] +
             ['"vref"', '"5"', '"adcbit"', '"1e-6"', '"uartlog"', f'"{a.uartlog}"'] +
+            ((['"i2c"'] + [f'"{t}"' for t in a.i2c.split()] +
+              ['"lm75temp"', f'"{a.lm75temp}"', '"lm75rate"', f'"{a.lm75rate}"'])
+             if a.i2c.split() else []) +
             (['"vcd"', f'"{a.vcd}"'] if a.vcd else []))
 
     sim_pins = " ".join(f"{DIP28[p]}={p}" for p in sorted(PINS, key=lambda p: DIP28[p]))
@@ -107,6 +114,9 @@ def main():
     w("* Pins (all bidirectional, direction set by the firmware):")
     w("*   PD0..PD7 = D0..D7   PB0..PB5 = D8..D13   PC0..PC5 = A0..A5 (+ ADC0..5)")
     w("*   UART0: TXD = PD1 (frames rebuilt by the plug-in), text in uart_log.txt")
+    w("*   I2C  : SDA = PC4 (A4), SCL = PC5 (A5), open drain: add pull-ups")
+    w("*          (4.7k to 5 V) or enable the internal ones (Wire.begin does).")
+    w(f"*          Virtual slaves: {a.i2c or 'none'}")
     w("*")
     w("* KiCad: works with the official symbol MCU_Microchip_ATmega:ATmega328P-P;")
     w("*   Sim.Device = SUBCKT, Sim.Name = ATMEGA328P, Sim.Pins =")

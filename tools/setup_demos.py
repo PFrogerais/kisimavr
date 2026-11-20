@@ -45,6 +45,13 @@ def main():
                     "--hex", os.path.join(ROOT, "firmware", "full_demo.hex"),
                     "--so", so, "-o", full], check=True)
 
+    # I2C demo (official symbol): LM75 at 20 degC rising by 1 degC per ms.
+    i2c = os.path.join(PROJECTS, "simAVR_i2c", "atmega328p_full.lib")
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_atmega328p_lib.py"),
+                    "--hex", os.path.join(ROOT, "firmware", "i2c_lm75.hex"),
+                    "--lm75temp", "20", "--lm75rate", "1000",
+                    "--so", so, "-o", i2c], check=True)
+
     # Small demos: repository model with its relative paths made absolute.
     with open(os.path.join(ROOT, "kicad", "atmega328p_cosim.lib")) as f:
         lib = f.read()

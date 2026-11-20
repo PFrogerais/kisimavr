@@ -25,6 +25,8 @@
 #include <string>
 #include <vector>
 
+#include "i2c_devices.h"
+
 namespace kisimavr
 {
 
@@ -43,6 +45,13 @@ inline bool operator==(const PinRef &a, const PinRef &b)
     return a.port == b.port && a.bit == b.bit;
 }
 
+/** One virtual I2C slave of the "i2c" key. */
+struct I2cSlaveConfig
+{
+    I2cDevice::Type type;
+    int             address;    // 7 bits.
+};
+
 /** Configuration parsed from sim_args. */
 struct Config
 {
@@ -58,6 +67,12 @@ struct Config
     std::string         txPin   = "PD1";
     std::string         uartLog;
     std::string         vcdPath;
+    std::vector<I2cSlaveConfig> i2cSlaves;    // "i2c" "lm75" ["0x48"] "eeprom" ...
+    double              lm75Temp = 25.0;      // degC at t = 0
+    double              lm75Rate = 0.0;       // degC per second
+    bool                i2cLog   = true;
+    std::string         sdaPin   = "PC4";
+    std::string         sclPin   = "PC5";
     bool                log = false;
 };
 

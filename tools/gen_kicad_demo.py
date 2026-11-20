@@ -3,7 +3,7 @@
 """Generate the wired KiCad demo projects of kisimavr.
 
 Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DIR]
-  VARIANT: full (ATmega328P-P DIP-28), gpio, adc, uart
+  VARIANT: full or i2c (official ATmega328P-P, DIP-28), gpio, adc, uart
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -18,7 +18,7 @@ import uuid
 
 VARIANT = sys.argv[3] if len(sys.argv) > 3 else "gpio"
 PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
-           "full": "simAVR_atmega328p"}[VARIANT]
+           "full": "simAVR_atmega328p", "i2c": "simAVR_i2c"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -36,7 +36,7 @@ DATASHEETS = {
     "MCU_Microchip_ATmega:ATmega328P-P": "http://ww1.microchip.com/downloads/en/DeviceDoc/ATmega328_P%20AVR%20MCU%20with%20picoPower%20Technology%20Data%20Sheet%2040001984A.pdf",
 }
 # Simulation-only parts: no footprint, not on the board, not in the BOM.
-SIM_ONLY = {"Simulation_SPICE:VPULSE"}
+SIM_ONLY = {"Simulation_SPICE:VPULSE", "Simulation_SPICE:VDC"}
 
 ROOT_UUID = str(uuid.uuid4())
 
@@ -168,6 +168,17 @@ LIB = {
         pins=[("1", "+", 0, 5.08, 270, "passive"),
               ("2", "-", 0, -5.08, 90, "passive")],
         pin_names=False),
+    "Simulation_SPICE:VDC": dict(
+        ref="V", value="VDC",
+        body='(circle (center 0 0) (radius 2.54) '
+             '(stroke (width 0.254) (type default)) (fill (type background))) '
+             '(polyline (pts (xy -1.27 0.508) (xy 1.27 0.508)) '
+             '(stroke (width 0.2) (type default)) (fill (type none))) '
+             '(polyline (pts (xy -0.762 -0.508) (xy 0.762 -0.508)) '
+             '(stroke (width 0.2) (type default)) (fill (type none)))',
+        pins=[("1", "+", 0, 5.08, 270, "passive"),
+              ("2", "-", 0, -5.08, 90, "passive")],
+        pin_names=False),
     "power:+5V": dict(
         ref="#PWR", value="+5V", power=True,
         body='(polyline (pts (xy -0.762 1.27) (xy 0 2.54) (xy 0.762 1.27)) '
@@ -226,7 +237,7 @@ def lib_symbol(lib_id, d):
 # Placed parts: (lib_id, ref, value, X, Y, extra properties)
 # --------------------------------------------------------------------------
 
-LIBFILE = "atmega328p_full.lib" if VARIANT == "full" else "atmega328p_cosim.lib"
+LIBFILE = "atmega328p_full.lib" if VARIANT in ("full", "i2c") else "atmega328p_cosim.lib"
 LEDFILE = "led_models.lib"
 
 PARTS = [
@@ -423,6 +434,52 @@ if VARIANT == "full":
               ("BTN", 148.59, 106.68), ("PWM", 143.51, 116.84), ("VAVG", 147.32, 125.73)]
     NO_CONNECT_REF = "U1"      # Unused U1 pins get a no-connect flag.
     DIRECTIVES = [(".tran 0.5u 20m", 101.6, 144.78)]
+
+if VARIANT == "i2c":
+    SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
+                "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
+    # Official symbol at (127, 88.9): PC4/SDA pin 27 at (142.24, 91.44),
+    # PC5/SCL pin 28 at (142.24, 93.98), PD1/TXD pin 3 at (142.24, 104.14).
+    PARTS = [
+        ("MCU_Microchip_ATmega:ATmega328P-P", "U1", "ATmega328P-P", 127.0, 88.9,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LIBFILE,
+          "Sim.Name": "ATMEGA328P", "Sim.Pins": SIM_PINS}),
+        ("power:+5V", "#PWR01", "+5V", 127.0, 48.26, {}),
+        ("power:PWR_FLAG", "#FLG01", "PWR_FLAG", 129.54, 48.26, {}),
+        ("power:GND", "#PWR02", "GND", 127.0, 129.54, {}),
+        ("power:PWR_FLAG", "#FLG02", "PWR_FLAG", 121.92, 129.54, {}),
+        # I2C pull-ups 4.7k to +5V
+        ("Device:R", "R1", "4.7k", 160.02, 87.63, {}),
+        ("power:+5V", "#PWR03", "+5V", 160.02, 83.82, {}),
+        ("Device:R", "R2", "4.7k", 170.18, 90.17, {}),
+        ("power:+5V", "#PWR04", "+5V", 170.18, 86.36, {}),
+        # TXD load (USB-serial adapter input)
+        ("Device:R", "R3", "100k", 154.94, 107.95, {}),
+        ("power:GND", "#PWR05", "GND", 154.94, 114.3, {}),
+        # 5 V supply for the simulation (not on the board)
+        ("Simulation_SPICE:VDC", "V1", "5V", 190.5, 99.06,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-",
+          "Sim.Params": "dc=5"}),
+        ("power:+5V", "#PWR06", "+5V", 190.5, 91.44, {}),
+        ("power:GND", "#PWR07", "GND", 190.5, 106.68, {}),
+    ]
+    WIRES = [
+        ((127.0, 50.8), (127.0, 48.26)),
+        ((129.54, 50.8), (129.54, 48.26)),
+        ((127.0, 48.26), (129.54, 48.26)),
+        ((127.0, 127.0), (127.0, 129.54)),
+        ((127.0, 129.54), (121.92, 129.54)),
+        ((142.24, 91.44), (160.02, 91.44)),     # SDA
+        ((142.24, 93.98), (170.18, 93.98)),     # SCL
+        ((142.24, 104.14), (154.94, 104.14)),   # TXD
+        ((154.94, 111.76), (154.94, 114.3)),
+        ((190.5, 93.98), (190.5, 91.44)),
+        ((190.5, 104.14), (190.5, 106.68)),
+    ]
+    JUNCTIONS = []
+    LABELS = [("SDA", 146.05, 91.44), ("SCL", 148.59, 93.98), ("TXD", 146.05, 104.14)]
+    NO_CONNECT_REF = "U1"
+    DIRECTIVES = [(".tran 0.2u 5m", 101.6, 144.78)]
 
 
 def placed_symbol(lib_id, ref, value, x, y, extra):

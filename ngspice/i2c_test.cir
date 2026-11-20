@@ -1,0 +1,31 @@
+* Complete ATmega328P model: I2C bus with an LM75 sensor and a 24C02 EEPROM
+* Run from this folder:  ngspice i2c_test.cir
+* Firmware: ../firmware/i2c_lm75.hex (make -C ../firmware)
+* The virtual slaves (lm75 at 0x48, eeprom at 0x50) live in the plug-in;
+* the bus itself is electrical: open-drain SDA/SCL with 4.7k pull-ups.
+
+* Model generated for this firmware (LM75 at 20 degC, +1 degC per ms):
+*   python3 ../tools/make_atmega328p_lib.py --relative --hex ../firmware/i2c_lm75.hex \
+*       --so ../build/mcu_cosim.so --lm75temp 20 --lm75rate 1000 -o atmega328p_i2c.lib
+.include atmega328p_i2c.lib
+
+*      D0  D1  D2  D3  D4  D5  D6  D7  D8  D9  D10 D11 D12 D13 A0  A1  A2  A3  A4  A5
+X1     nd0 txd nd2 nd3 nd4 nd5 nd6 nd7 nb0 nb1 nb2 nb3 nb4 nb5 na0 na1 na2 na3 sda scl ATMEGA328P
+
+* 5 V supply and I2C pull-ups
+Vdd vdd 0 5
+Rsda vdd sda 4.7k
+Rscl vdd scl 4.7k
+* Bus capacitance (wiring + inputs): shapes the rising edges
+Csda sda 0 100p
+Cscl scl 0 100p
+
+* UART receiver load
+Rtx txd 0 100k
+
+.control
+tran 0.2u 4m
+plot v(sda) v(scl)+6
+plot v(sda) v(scl)+6 xlimit 0.3m 0.6m
+.endc
+.end

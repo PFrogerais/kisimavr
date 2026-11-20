@@ -1,0 +1,28 @@
+simAVR_i2c - bus I2C de l'ATmega328P : capteur LM75 + EEPROM 24C02
+==================================================================
+
+Modele : genere par "cmake --build build --target demos" (tools/setup_demos.py).
+
+Composant : U1 = ATmega328P-P (symbole et empreinte officiels KiCad),
+modele ATMEGA328P de atmega328p_full.lib.
+
+Bus I2C : SDA = A4 (PC4, broche 27), SCL = A5 (PC5, broche 28),
+          resistances de tirage R1, R2 = 4,7 kOhm vers +5V (drain ouvert).
+Esclaves virtuels (dans le plug-in) :
+  - LM75 a 0x48 : temperature 20 degC a t = 0, +1 degC par ms
+  - EEPROM 24C02 a 0x50 (256 octets, effacee a 0xFF)
+V1 : alimentation 5 V de la simulation (exclue du PCB).
+
+Firmware : firmware/i2c_lm75.c ou firmware/i2c_lm75/i2c_lm75.ino
+  -> "EEPROM : STI2D" puis "T = 21.0 C", "T = 23.0 C"... (+1 degC par ms) sur TXD (115200 bauds)
+
+Ou voir quoi ?
+  - Terminal (KiCad lance depuis un terminal) : chaque transaction
+      [mcu_cosim] t=... s I2C> 0x48 W 00 | 0x48 R 14 80
+  - uart_log.txt (ce dossier) : le texte du firmware
+  - trace.vcd (ce dossier) : chronogramme, decodeur I2C de PulseView
+  - Simulateur : sonder SDA et SCL (zoom sur ~300 us pour voir les bits)
+
+Simulation : transitoire, pas 0.2u, duree 5m,
+             "Sauvegarder tous les courants" decoche.
+Guide detaille : README.md du dossier parent.

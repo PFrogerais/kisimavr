@@ -15,7 +15,8 @@
  * GPIO: "in" pins are driven by the circuit, "out" pins by the MCU, and an
  * "io" pin has 1 input (pin voltage read back) and 3 outputs (level = PORT
  * bit, oe = DDR bit, pu = pull-up enabled), so that its direction follows
- * DDRx and the pull-up is modelled electrically in SPICE.
+ * DDRx and the pull-up is modelled electrically in SPICE. The UART (TXD)
+ * and the TWI (SDA, SCL: open drain) take over their pins when enabled.
  */
 
 #ifndef KISIMAVR_MCU_BRIDGE_H
@@ -29,6 +30,7 @@
 
 #include "config.h"
 #include "cosim_abi.h"
+#include "i2c_bus.h"
 #include "sar_adc.h"
 #include "uart0.h"
 #include "vcd.h"
@@ -98,6 +100,7 @@ private:
     std::vector<Digital_t>     m_lastOut;
     SarAdc                     m_sar{ m_dirty };
     Uart0                      m_uart{ m_dirty };
+    I2cBus                     m_i2c{ m_dirty };
     VcdWriter                  m_vcd;
 };
 
