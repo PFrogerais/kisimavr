@@ -66,6 +66,19 @@ jobs:
       # After the tools: checkout then uses git.
       - uses: actions/checkout@v4
 
+      - name: Export root sheets as SVG (temporary)
+        if: matrix.name == 'release'
+        run: |
+          mkdir -p svg
+          for p in Arduino_UNO RaspberryPi_Pico RaspberryPi_Pico2; do
+              kicad-cli sch export svg -o svg/$p kicad/projects/$p/$p.kicad_sch || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: matrix.name == 'release'
+        with:
+          name: root-sheets
+          path: svg
+
       - name: Cache simavr
         id: simavr-cache
         uses: actions/cache@v4

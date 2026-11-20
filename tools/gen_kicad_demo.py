@@ -998,30 +998,36 @@ if VARIANT == "uno":
     HIER_SHEET = (UNO_SUBFILE, "Arduino UNO R3", lambda: uno_root_sheet())
 
 
+def snap(v):
+    """Nearest point of the 1.27 mm (50 mil) schematic grid."""
+    return round(round(v / 1.27) * 1.27, 2)
+
+
 def uno_root_sheet():
     """Root sheet of Arduino_UNO: the board as a sheet symbol shaped like an
-    UNO R3 (top view, USB on the left), header pins at their real positions
-    (scale 2.5: 0.1 inch = 6.35 mm)."""
+    UNO R3 (top view, USB on the left), 2.7 x 2.1 in drawn at 42.3 mm per
+    inch; header pins at their place, 3.81 mm apart (on the 1.27 mm grid)."""
     x0, y0 = 63.5, 38.1                    # Upper left corner of the board.
-    w, h = 171.45, 133.35                  # 2.7 x 2.1 inches.
+    w, h = 114.3, 88.9                     # 2.7 x 2.1 inches.
+    K = w / 2.7                            # mm per inch
+    P = 3.81                               # Pin pitch
 
     def bx(inch):
-        return round(x0 + inch * 63.5, 2)
+        return snap(x0 + inch * K)
 
     def by(inch_from_bottom):
-        return round(y0 + h - inch_from_bottom * 63.5, 2)
+        return snap(y0 + h - inch_from_bottom * K)
 
-    top = (["SCL", "SDA", "AREF", "GND3", "D13", "D12", "D11", "D10", "D9", "D8"],
-           0.84)                           # IOH from 0.84 in, then IOL from 1.90 in.
     pins = []
-    for k, name in enumerate(top[0]):
-        pins.append((name, bx(top[1] + 0.1 * k), y0, 90))
+    for k, name in enumerate(["SCL", "SDA", "AREF", "GND3", "D13", "D12", "D11", "D10", "D9",
+                              "D8"]):
+        pins.append((name, round(bx(0.84) + P * k, 2), y0, 90))      # IOH from 0.84 in
     for k, name in enumerate(["D7", "D6", "D5", "D4", "D3", "D2", "D1_TX", "D0_RX"]):
-        pins.append((name, bx(1.90 + 0.1 * k), y0, 90))
+        pins.append((name, round(bx(1.90) + P * k, 2), y0, 90))      # IOL from 1.90 in
     for k, name in enumerate(["IOREF", "RESET", "3V3", "5V", "GND1", "GND2", "VIN"]):
-        pins.append((name, bx(1.14 + 0.1 * k), y0 + h, 270))    # NC at 1.04 in.
+        pins.append((name, round(bx(1.04) + P * (k + 1), 2), y0 + h, 270))  # NC at 1.04 in
     for k, name in enumerate(["A0", "A1", "A2", "A3", "A4", "A5"]):
-        pins.append((name, bx(1.94 + 0.1 * k), y0 + h, 270))
+        pins.append((name, round(bx(1.94) + P * k, 2), y0 + h, 270))
 
     out = [f'(kicad_sch (version 20231120) (generator "eeschema") '
            f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "A4")']
@@ -1040,23 +1046,23 @@ def uno_root_sheet():
                    f'(effects (font (size {size} {size})) (justify {just})) (uuid "{uid()}"))')
 
     # Board details, inside the sheet: USB B, power jack, headers, MCU, reset.
-    rect(round(x0 - 6.35, 2), by(1.65), bx(0.45), by(1.17))          # USB B
+    rect(round(x0 - 3.81, 2), by(1.65), bx(0.45), by(1.17))          # USB B
     text("USB", bx(0.0), by(1.39))
     rect(round(x0 - 1.27, 2), by(0.55), bx(0.55), by(0.10))          # DC jack
     text("7-12 V", bx(0.0), by(0.30))
-    for (first, n, y) in ((0.84, 10, by(2.05)), (1.90, 8, by(2.05)),
-                          (1.04, 8, by(0.05)), (1.94, 6, by(0.05))):
-        rect(round(bx(first) - 1.905, 2), round(y - 1.905, 2),
-             round(bx(first + 0.1 * (n - 1)) + 1.905, 2), round(y + 1.905, 2), dash=True)
+    for (first, n, y) in ((bx(0.84), 10, y0 + 1.27), (bx(1.90), 8, y0 + 1.27),
+                          (bx(1.04), 8, y0 + h - 1.27), (bx(1.94), 6, y0 + h - 1.27)):
+        rect(round(first - 1.27, 2), round(y - 1.27, 2),
+             round(first + P * (n - 1) + 1.27, 2), round(y + 1.27, 2), dash=True)
     rect(bx(1.30), by(1.05), bx(2.45), by(0.70))                     # ATmega328P DIP-28
     text("ATmega328P", bx(1.62), by(0.83))
-    out.append(f'(circle (center {bx(0.55)} {by(1.90)}) (radius 2.54) '
+    out.append(f'(circle (center {bx(0.55)} {by(1.90)}) (radius 1.778) '
                f'(stroke (width 0.254) (type default)) (fill (type none)) (uuid "{uid()}"))')
-    text("RESET", round(bx(0.55) + 3.81, 2), round(by(1.90) + 1.27, 2))
-    text("ARDUINO UNO R3", bx(1.05), by(1.35), size=3.0)
-    text("DIGITAL (PWM ~ : D3 D5 D6 D9 D10 D11)", bx(1.30), round(y0 + 13.97, 2))
-    text("POWER", bx(1.04), round(y0 + h - 13.97, 2))
-    text("ANALOG IN", bx(1.94), round(y0 + h - 13.97, 2))
+    text("RESET", round(bx(0.55) + 2.54, 2), round(by(1.90) + 1.27, 2))
+    text("ARDUINO UNO R3", bx(1.05), by(1.35), size=2.0)
+    text("DIGITAL (PWM ~ : D3 D5 D6 D9 D10 D11)", bx(1.30), round(y0 + 8.89, 2))
+    text("POWER", bx(1.04), round(y0 + h - 8.89, 2))
+    text("ANALOG IN", bx(1.94), round(y0 + h - 8.89, 2))
 
     # Each sheet pin: short wire and a label of the same name, to wire the
     # user's parts by name (an unconnected sheet pin is an ERC error).
@@ -1081,12 +1087,12 @@ def uno_root_sheet():
         f'{pin_txt} '
         f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" (page "2")))))')
     text("Simulation : transitoire 10 ms. Terminal simule : terminal.txt -> "
-         "tools/make_terminal_lib.py", 25.4, 190.5)
+         "tools/make_terminal_lib.py", 25.4, 156.21)
     text("Chaque broche porte un label : placer le meme label sur un composant pour le relier",
-         25.4, 186.69)
+         25.4, 152.4)
     text("Sonder : /Arduino UNO R3/D13, L13, D0_RX, D1_TX (ou un net de cette feuille)",
-         25.4, 194.31)
-    out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 25.4 200.66 0) '
+         25.4, 160.02)
+    out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 25.4 166.37 0) '
                f'(effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "{uid()}"))')
     out.append('(sheet_instances (path "/" (page "1")))')
     out.append(")")
@@ -1491,17 +1497,17 @@ if VARIANT == "pico2board":
 def pico_root_sheet(pico2=False):
     """Root sheet of RaspberryPi_Pico (RaspberryPi_Pico2): the board as a
     sheet symbol shaped like a Pico seen from above (USB at the top), header
-    pins at their real positions (scale 3: 2.54 mm pitch = 7.62 mm)."""
+    pins at their real positions (scale 2: 2.54 mm pitch = 5.08 mm)."""
     board = "Raspberry Pi Pico 2" if pico2 else "Raspberry Pi Pico"
     chip = "RP2350" if pico2 else "RP2040"
     x0, y0 = 116.84, 25.4                  # Upper left corner of the board.
-    w, h = 63.5, 152.4                     # 21 x 51 mm.
+    w, h = 41.91, 101.6                    # 21 x 51 mm (scale 2, on the grid).
     pins = []
     for k in range(1, 21):                 # Left edge, pin 1 at the top.
-        pins.append((PICO_EDGE[k], x0, round(y0 + 3.81 + 7.62 * (k - 1), 2), 180))
+        pins.append((PICO_EDGE[k], x0, round(y0 + 2.54 + 5.08 * (k - 1), 2), 180))
     for k in range(21, 41):                # Right edge, pin 40 at the top.
-        pins.append((PICO_EDGE[k], round(x0 + w, 2), round(y0 + 3.81 + 7.62 * (40 - k), 2), 0))
-    for name, dx in (("SWCLK", 24.13), ("DBG_GND", 31.75), ("SWDIO", 39.37)):
+        pins.append((PICO_EDGE[k], round(x0 + w, 2), round(y0 + 2.54 + 5.08 * (40 - k), 2), 0))
+    for name, dx in (("SWCLK", 16.51), ("DBG_GND", 21.59), ("SWDIO", 26.67)):
         pins.append((name, round(x0 + dx, 2), round(y0 + h, 2), 270))
 
     out = [f'(kicad_sch (version 20231120) (generator "eeschema") '
@@ -1520,11 +1526,12 @@ def pico_root_sheet(pico2=False):
         out.append(f'(text "{t}" (exclude_from_sim yes) (at {x} {y} 0) '
                    f'(effects (font (size {size} {size})) (justify {just})) (uuid "{uid()}"))')
 
+    # Details placed at scale 3: bx / by bring them to scale 2.
     def bx(mm):
-        return round(x0 + mm, 2)
+        return snap(x0 + mm * 2 / 3)
 
     def by(mm):
-        return round(y0 + mm, 2)
+        return snap(y0 + mm * 2 / 3)
 
     rect(bx(21.59), by(-3.81), bx(41.91), by(13.97))                 # micro-USB
     text("USB", bx(27.94), by(8.89))
@@ -1533,22 +1540,22 @@ def pico_root_sheet(pico2=False):
     rect(bx(46.99), by(17.78), bx(50.8), by(21.59))                  # LED
     text("LED (GP25)", bx(41.91), by(16.51))
     rect(bx(19.05), by(55.88), bx(44.45), by(81.28))                 # RP2040
-    text(chip, bx(26.67), by(69.85), size=2.0)
+    text(chip, bx(26.67), by(69.85), size=1.5)
     rect(bx(21.59), by(91.44), bx(41.91), by(101.6))                 # Flash
     text("Flash 4 Mo" if pico2 else "Flash 2 Mo", bx(24.13), by(97.79))
     rect(bx(24.13), by(110.49), bx(39.37), by(116.84))               # Crystal
     text("12 MHz", bx(27.94), by(114.3))
-    text(board, bx(16.51 if pico2 else 19.05), by(132.08), size=2.0)
+    text(board, bx(16.51 if pico2 else 19.05), by(132.08), size=1.5)
     text("DEBUG", bx(27.94), by(146.05))
 
     # Each sheet pin: short wire and a label of the same name.
     for (n, x, y, a) in pins:
         if a == 180:
-            ex, ey = round(x - 5.08, 2), y
+            ex, ey = round(x - 2.54, 2), y
         elif a == 0:
-            ex, ey = round(x + 5.08, 2), y
+            ex, ey = round(x + 2.54, 2), y
         else:
-            ex, ey = x, round(y + 5.08, 2)
+            ex, ey = x, round(y + 2.54, 2)
         out.append(f'(wire (pts (xy {x} {y}) (xy {ex} {ey})) '
                    f'(stroke (width 0) (type default)) (uuid "{uid()}"))')
         just = "right bottom" if a in (180, 270) else "left bottom"
@@ -1565,19 +1572,19 @@ def pico_root_sheet(pico2=False):
         f'(stroke (width 0.254) (type solid)) (fill (color 0 0 0 0.0000)) (uuid "{SHEET_UUID}") '
         f'(property "Sheetname" "{board}" (at {x0} {round(y0 - 0.7, 2)} 0) '
         f'(effects (font (size 1.27 1.27)) (justify left bottom))) '
-        f'(property "Sheetfile" "{PICO_SUBFILE}" (at {x0} {round(y0 + h + 9.0, 2)} 0) '
+        f'(property "Sheetfile" "{PICO_SUBFILE}" (at {x0} {round(y0 + h + 13.97, 2)} 0) '
         f'(effects (font (size 1.27 1.27)) (justify left top))) '
         f'{pin_txt} '
         f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" (page "2")))))')
     if pico2:
         text("Firmware : pico2_demo_riscv.bin -> rp2350.lib "
-             "(tools/make_pico_lib.py --mcu rp2350 --chip)", 20.32, 186.69)
+             "(tools/make_pico_lib.py --mcu rp2350 --chip)", 20.32, 152.4)
     else:
         text("Firmware : pico_demo.bin -> rp2040.lib (tools/make_pico_lib.py --chip)",
-             20.32, 186.69)
+             20.32, 152.4)
     text(f"Sonder : /{board}/GPIO25, VSYS, GPIO29_ADC3... ; terminal : UART0> ...",
-         20.32, 190.5)
-    out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 20.32 196.85 0) '
+         20.32, 156.21)
+    out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 20.32 162.56 0) '
                f'(effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "{uid()}"))')
     out.append('(sheet_instances (path "/" (page "1")))')
     out.append(")")
