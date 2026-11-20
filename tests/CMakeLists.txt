@@ -1,5 +1,6 @@
 # Regression tests: ctest --test-dir build --output-on-failure
 #
+# - unit       : config / paths / vcd modules, without simavr
 # - runner.*   : cosim_runner drives the plug-in without ngspice (fast)
 # - args.*     : configuration errors are reported, not crashes
 # - ngspice.*  : end-to-end run of ngspice/full_test.cir (if ngspice found)
@@ -45,6 +46,12 @@ function(kisimavr_test name)
         set_tests_properties(${name} PROPERTIES FIXTURES_REQUIRED ${T_FIXTURE})
     endif()
 endfunction()
+
+# ---- Unit tests of the simavr-independent modules ------------------------------
+add_executable(unit_tests unit_tests.cpp)
+target_link_libraries(unit_tests PRIVATE kisimavr_core)
+target_compile_options(unit_tests PRIVATE ${KISIMAVR_WARNINGS})
+add_test(NAME unit COMMAND unit_tests ${CMAKE_CURRENT_BINARY_DIR}/unit_scratch)
 
 # ---- Configuration errors (rejected before the firmware is read) ------------
 kisimavr_test(args.missing_hex

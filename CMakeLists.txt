@@ -32,12 +32,22 @@ endif()
 message(STATUS "simavr headers: ${SIMAVR_INCLUDE_DIRS}")
 message(STATUS "simavr library: ${SIMAVR_LIBRARIES}")
 
+# ---- Helpers without simavr (configuration, paths, VCD): unit-testable ------
+set(KISIMAVR_WARNINGS -Wall -Wextra -Wpedantic)
+add_library(kisimavr_core STATIC src/config.cpp src/paths.cpp src/vcd.cpp)
+target_include_directories(kisimavr_core PUBLIC include src)
+target_compile_options(kisimavr_core PRIVATE ${KISIMAVR_WARNINGS})
+set_target_properties(kisimavr_core PROPERTIES
+    POSITION_INDEPENDENT_CODE ON    # Linked into the plug-in.
+    CXX_VISIBILITY_PRESET hidden
+    VISIBILITY_INLINES_HIDDEN ON)
+
 # ---- Plug-in loaded by ngspice d_cosim --------------------------------------
-add_library(mcu_cosim MODULE src/mcu_cosim.cpp)
-target_include_directories(mcu_cosim PRIVATE include)
+add_library(mcu_cosim MODULE
+    src/mcu_cosim.cpp src/mcu_bridge.cpp src/sar_adc.cpp src/uart0.cpp)
 target_include_directories(mcu_cosim SYSTEM PRIVATE ${SIMAVR_INCLUDE_DIRS})
-target_link_libraries(mcu_cosim PRIVATE ${SIMAVR_LIBRARIES})
-target_compile_options(mcu_cosim PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(mcu_cosim PRIVATE kisimavr_core ${SIMAVR_LIBRARIES})
+target_compile_options(mcu_cosim PRIVATE ${KISIMAVR_WARNINGS})
 # Embed the simavr location so ngspice/KiCad need no LD_LIBRARY_PATH.
 get_filename_component(SIMAVR_LIBDIR "${SIMAVR_LIBRARIES}" DIRECTORY)
 set_target_properties(mcu_cosim PROPERTIES
@@ -51,7 +61,7 @@ set_target_properties(mcu_cosim PROPERTIES
 add_executable(cosim_runner tools/main.cpp)
 target_include_directories(cosim_runner PRIVATE include)
 target_link_libraries(cosim_runner PRIVATE ${CMAKE_DL_LIBS})
-target_compile_options(cosim_runner PRIVATE -Wall -Wextra -Wpedantic)
+target_compile_options(cosim_runner PRIVATE ${KISIMAVR_WARNINGS})
 
 install(TARGETS mcu_cosim LIBRARY DESTINATION lib/ngspice)
 

@@ -310,7 +310,10 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 
 | Fichier | Rôle |
 |---|---|
-| `src/mcu_cosim.cpp` | le plug-in (pont simavr ↔ d_cosim) |
+| `src/mcu_cosim.cpp` | point d'entrée du plug-in (`Cosim_setup`) et référence des clés |
+| `src/mcu_bridge.*` | pont simavr ↔ d_cosim : temps, GPIO, ports |
+| `src/sar_adc.*`, `src/uart0.*` | convertisseur SAR, UART0 (console, log, trames TXD) |
+| `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
 | `include/cosim_abi.h` | copie binaire-compatible de `ngspice/cosim.h` |
 | `tools/main.cpp` | `cosim_runner` : test sans ngspice |
 | `tests/` | tests `ctest` (plug-in via `cosim_runner`, erreurs de configuration, modèle généré, ngspice) |
