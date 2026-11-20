@@ -1029,7 +1029,9 @@ if VARIANT == "pico":
         ("MCU_Module:RaspberryPi_Pico", "A1", "RaspberryPi_Pico", 127.0, 99.06,
          {"Sim.Device": "SUBCKT", "Sim.Library": PICOFILE, "Sim.Name": "PICO",
           "Sim.Pins": PICO_SIM_PINS},
-         {"*": "NC", "3": "GND", "33": "GND", "36": "+3V3",
+         # AGND (33) is tied to GND on the board; wiring it too joins two
+         # "power output" pins of the official symbol (ERC error).
+         {"*": "NC", "3": "GND", "36": "+3V3",
           "1": "TX", "2": "RX", "19": "BTN", "20": "SQ", "21": "LED", "31": "POT"}),
         # GP16: LED through 330 ohm
         ("Device:R", "R1", "330", 170.18, 83.82, {}, {"1": "LED", "2": "LED_A"}),

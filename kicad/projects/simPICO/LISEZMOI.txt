@@ -19,6 +19,9 @@ Cablage :
   GP26 (ADC0) : pont R2 10k / R3 4,7k sur 3V3 -> 1,06 V
   GP25 : LED de la carte, dans le modele
   3V3 (broche 36) : sortie 3,3 V du modele ; masses : noeud 0.
+  AGND (33) laissee libre : elle est deja reliee a GND sur la carte, et le
+  symbole officiel declare GND et AGND en "sortie d'alimentation" (les
+  relier donne une erreur ERC).
 
 Firmware : firmware/pico/pico_demo.c (bare-metal, sans SDK, clang + lld)
   "Pico pret", puis "ADC0 = 1314 (1.06 V)" toutes les 4 ms,
