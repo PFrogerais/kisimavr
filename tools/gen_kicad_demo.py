@@ -16,6 +16,7 @@ schematic pin = (X + px, Y - py) for a library pin at (px, py).
 
 import json
 import os
+import re
 import sys
 import uuid
 
@@ -348,6 +349,17 @@ LIB.update({
 })
 
 
+def lib_fields(d):
+    """Reference / Value of the library symbol (y up), bottom left for ICs."""
+    if is_ic(d):
+        left, bottom = body_bottom_left(d)
+        j = font(justify="left bottom")
+        return (f'(property "Reference" "{d["ref"]}" (at {left} {round(bottom - 2.54, 2)} 0) {j}) '
+                f'(property "Value" "{d["value"]}" (at {left} {round(bottom - 5.08, 2)} 0) {j}) ')
+    return (f'(property "Reference" "{d["ref"]}" (at 0 7.62 0) {font()}) '
+            f'(property "Value" "{d["value"]}" (at 0 -7.62 0) {font()}) ')
+
+
 def lib_symbol(lib_id, d):
     short = lib_id.split(":")[1]
     power = "(power) " if d.get("power") else ""
@@ -364,9 +376,8 @@ def lib_symbol(lib_id, d):
             f'(name "{name}" {font()}) (number "{num}" {font()}))')
     return (
         f'(symbol "{lib_id}" {power}{pn}(exclude_from_sim no) (in_bom yes) (on_board yes) '
-        f'(property "Reference" "{d["ref"]}" (at 0 7.62 0) {font()}) '
-        f'(property "Value" "{d["value"]}" (at 0 -7.62 0) {font()}) '
-        f'(property "Footprint" "{FOOTPRINTS.get(lib_id, "")}" (at 0 0 0) {font(hide=True)}) '
+        + lib_fields(d)
+        + f'(property "Footprint" "{FOOTPRINTS.get(lib_id, "")}" (at 0 0 0) {font(hide=True)}) '
         f'(property "Datasheet" "{DATASHEETS.get(lib_id, "")}" (at 0 0 0) {font(hide=True)}) '
         f'(property "Description" "{d.get("description", "")}" (at 0 0 0) {font(hide=True)}) '
         + (f'(property "ki_keywords" "{d["keywords"]}" (at 0 0 0) {font(hide=True)}) '
@@ -897,16 +908,43 @@ if VARIANT == "spi":
     DIRECTIVES = [(".tran 0.5u 20m", 25.4, 185.42)]
 
 
+def body_bottom_left(d):
+    """Lower left corner of a symbol body (library coordinates, y up)."""
+    nums = re.findall(r"\((?:xy|start|end) (-?[0-9.]+) (-?[0-9.]+)\)", d["body"])
+    xs = [float(a) for a, _ in nums]
+    ys = [float(b) for _, b in nums]
+    return min(xs), min(ys)
+
+
+def is_ic(d):
+    """Integrated circuits (MCU, logic, display...): reference "U" or "DS"."""
+    return not d.get("power") and d["ref"] in ("U", "DS")
+
+
+def field_positions(d, x, y):
+    """Schematic positions and justification of Reference and Value.
+
+    ICs: both under the body, aligned on its left edge (bottom left);
+    other parts: on the right of the symbol, as before.
+    """
+    if is_ic(d):
+        left, bottom = body_bottom_left(d)
+        bx, by = round(x + left, 2), round(y - bottom, 2)
+        return (bx, round(by + 2.54, 2)), (bx, round(by + 5.08, 2)), "left bottom"
+    return (x + 3.81, y - 1.27), (x + 3.81, y + 1.27), "left"
+
+
 def placed_symbol(lib_id, ref, value, x, y, extra):
     d = LIB[lib_id]
     extra = dict(extra)
     rot = extra.pop("_rot", 0)
     nosim = extra.pop("_nosim", False)
     hide_ref = d.get("power", False)
+    (rx, ry), (vx, vy), just = field_positions(d, x, y)
     props = [
-        f'(property "Reference" "{ref}" (at {x + 3.81} {y - 1.27} 0) '
-        f'{font(hide=hide_ref, justify="left")})',
-        f'(property "Value" "{value}" (at {x + 3.81} {y + 1.27} 0) {font(justify="left")})',
+        f'(property "Reference" "{ref}" (at {rx} {ry} 0) '
+        f'{font(hide=hide_ref, justify=just)})',
+        f'(property "Value" "{value}" (at {vx} {vy} 0) {font(justify=just)})',
         f'(property "Footprint" "{FOOTPRINTS.get(lib_id, "")}" (at {x} {y} 0) {font(hide=True)})',
         f'(property "Datasheet" "{DATASHEETS.get(lib_id, "")}" (at {x} {y} 0) {font(hide=True)})',
         f'(property "Description" "" (at {x} {y} 0) {font(hide=True)})',
