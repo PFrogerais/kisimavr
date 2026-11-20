@@ -48,12 +48,13 @@ bool isKey(const std::string &word)
     const std::string k = toLower(word);
     return k == "hex" || k == "mcu" || k == "freq" || k == "in" || k == "out" || k == "io" ||
            k == "adc" || k == "vref" || k == "adcbit" || k == "txpin" ||
-           k == "uartlog" || k == "vcd" || k == "log";
+           k == "uartlog" || k == "vcd" || k == "log" || k == "i2c" || k == "lm75temp" ||
+           k == "lm75rate" || k == "i2clog" || k == "sda" || k == "scl";
 }
 
 bool isMultiValued(const std::string &key)
 {
-    return key == "in" || key == "out" || key == "io" || key == "adc";
+    return key == "in" || key == "out" || key == "io" || key == "adc" || key == "i2c";
 }
 
 bool parseChannelList(const std::string &list, std::vector<int> &channels)
@@ -84,6 +85,28 @@ bool parseChannelList(const std::string &list, std::vector<int> &channels)
         }
         start = comma + 1;
     }
+    return true;
+}
+
+/** "i2c" values: a device name, optionally followed by its 7-bit address. */
+bool applyI2c(const std::string &value, Config &cfg)
+{
+    I2cDevice::Type type{};
+    if (I2cDevice::typeFromName(value, type))
+    {
+        cfg.i2cSlaves.push_back({ type, I2cDevice::defaultAddress(type) });
+        return true;
+    }
+
+    char *end = nullptr;
+    const long addr = std::strtol(value.c_str(), &end, 0);    // "0x48" or "72"
+    if (cfg.i2cSlaves.empty() || end == value.c_str() || *end != '\0' ||
+        addr < 0x08 || addr > 0x77)
+    {
+        std::fprintf(stderr, "%s invalid I2C device or address '%s'\n", kTag, value.c_str());
+        return false;
+    }
+    cfg.i2cSlaves.back().address = static_cast<int>(addr);
     return true;
 }
 
@@ -137,6 +160,30 @@ bool applyValue(const std::string &key, const std::string &value, Config &cfg)
     else if (key == "vcd")
     {
         cfg.vcdPath = value;
+    }
+    else if (key == "i2c")
+    {
+        return applyI2c(value, cfg);
+    }
+    else if (key == "lm75temp")
+    {
+        cfg.lm75Temp = std::strtod(value.c_str(), nullptr);
+    }
+    else if (key == "lm75rate")
+    {
+        cfg.lm75Rate = std::strtod(value.c_str(), nullptr);
+    }
+    else if (key == "i2clog")
+    {
+        cfg.i2cLog = (value != "0");
+    }
+    else if (key == "sda")
+    {
+        cfg.sdaPin = value;
+    }
+    else if (key == "scl")
+    {
+        cfg.sclPin = value;
     }
     else if (key == "log")
     {
@@ -235,6 +282,18 @@ bool parseConfig(const std::vector<std::string> &args, Config &cfg)
     {
         std::fprintf(stderr, "%s vref and adcbit must be positive\n", kTag);
         return false;
+    }
+    for (size_t i = 0; i < cfg.i2cSlaves.size(); ++i)
+    {
+        for (size_t j = i + 1; j < cfg.i2cSlaves.size(); ++j)
+        {
+            if (cfg.i2cSlaves[i].address == cfg.i2cSlaves[j].address)
+            {
+                std::fprintf(stderr, "%s two I2C slaves at address 0x%02X\n", kTag,
+                             cfg.i2cSlaves[i].address);
+                return false;
+            }
+        }
     }
     return true;
 }

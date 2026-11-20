@@ -1,0 +1,11 @@
+* Red LED model (pins: anode cathode)
+.subckt LEDRED A K
+D1 A K DLEDRED
+.model DLEDRED D(IS=93.2p RS=42m N=3.73 BV=4 IBV=10u CJO=2.97p VJ=0.75 M=0.333 TT=4.32u)
+.ends LEDRED
+
+* Small-signal diode (pins: anode cathode)
+.subckt DSIG A K
+D1 A K D1N4148M
+.model D1N4148M D(IS=2.52n RS=0.568 N=1.752 BV=100 IBV=100u CJO=4p M=0.4 TT=20n)
+.ends DSIG

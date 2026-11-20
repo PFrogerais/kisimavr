@@ -6,7 +6,8 @@
 
 /**
  * @file unit_tests.cpp
- * @brief Unit tests of the simavr-independent modules (config, paths, vcd).
+ * @brief Unit tests of the simavr-independent modules (config, I2C devices,
+ *        paths, vcd).
  *
  * Usage: unit_tests <scratch directory>
  */
@@ -19,6 +20,7 @@
 #include <vector>
 
 #include "config.h"
+#include "i2c_devices.h"
 #include "paths.h"
 #include "vcd.h"
 
@@ -100,6 +102,100 @@ void testParseConfig()
     CHECK(!parse({ "hex", "a.hex", "vref", "-1" }, cfg));
 }
 
+void testI2cConfig()
+{
+    Config cfg;
+    CHECK(parse({ "hex", "fw.hex", "io", "PC4", "PC5", "i2c", "lm75", "eeprom", "0x51",
+                  "lm75temp", "-10.5", "lm75rate", "200", "i2clog", "0" }, cfg));
+    CHECK(cfg.i2cSlaves.size() == 2u);
+    CHECK(cfg.i2cSlaves[0].type == I2cDevice::Type::Lm75);
+    CHECK(cfg.i2cSlaves[0].address == 0x48);                  // Default address.
+    CHECK(cfg.i2cSlaves[1].type == I2cDevice::Type::Eeprom24c02);
+    CHECK(cfg.i2cSlaves[1].address == 0x51);
+    CHECK(cfg.lm75Temp == -10.5);
+    CHECK(cfg.lm75Rate == 200.0);
+    CHECK(!cfg.i2cLog);
+    CHECK(cfg.sdaPin == "PC4" && cfg.sclPin == "PC5");
+    CHECK(inputPortCount(cfg) == 2u && outputPortCount(cfg) == 6u);    // No I2C port.
+
+    CHECK(parse({ "hex", "fw.hex", "i2c", "lm75", "72" }, cfg));    // Decimal address.
+    CHECK(cfg.i2cSlaves.size() == 1u && cfg.i2cSlaves[0].address == 0x48);
+
+    CHECK(!parse({ "hex", "fw.hex", "i2c", "foo" }, cfg));             // Unknown device.
+    CHECK(!parse({ "hex", "fw.hex", "i2c", "0x48" }, cfg));            // Address first.
+    CHECK(!parse({ "hex", "fw.hex", "i2c", "lm75", "0x80" }, cfg));    // Not 7 bits.
+    CHECK(!parse({ "hex", "fw.hex", "i2c", "lm75", "eeprom", "0x48" }, cfg));    // Clash.
+}
+
+void testLm75()
+{
+    // Register encoding: 9 bits, 0.5 degC steps, left-justified.
+    CHECK(I2cDevice::lm75Word(25.0) == 0x1900);
+    CHECK(I2cDevice::lm75Word(25.5) == 0x1980);
+    CHECK(I2cDevice::lm75Word(-0.5) == 0xFF80);
+    CHECK(I2cDevice::lm75Word(-25.0) == 0xE700);
+    CHECK(I2cDevice::lm75Word(125.0) == 0x7D00);
+    CHECK(I2cDevice::lm75Word(200.0) == 0x7D00);    // Clamped to +125.
+    CHECK(I2cDevice::lm75Word(-80.0) == 0xC900);    // Clamped to -55.
+
+    // Pointer 0 then repeated START: temperature = 20 + 1000 * t.
+    I2cDevice lm75(I2cDevice::Type::Lm75, 0x48, 20.0, 1000.0);
+    lm75.start();
+    lm75.write(0x00);
+    lm75.start();
+    CHECK(lm75.read(0.0015) == 0x15);    // 21.5 degC
+    CHECK(lm75.read(0.0015) == 0x80);
+
+    // Without a new pointer, the next read starts again at the MSB.
+    lm75.start();
+    CHECK(lm75.read(0.0) == 0x14);       // 20.0 degC
+    CHECK(lm75.read(0.0) == 0x00);
+
+    // Tos (pointer 3): 80 degC at power-up, writable.
+    lm75.start();
+    lm75.write(0x03);
+    lm75.start();
+    CHECK(lm75.read(0.0) == 80);
+    lm75.start();
+    lm75.write(0x03);
+    lm75.write(60);
+    lm75.write(0x00);
+    lm75.start();
+    CHECK(lm75.read(0.0) == 60);
+
+    // The temperature register is read-only.
+    lm75.start();
+    lm75.write(0x00);
+    lm75.write(0x7F);
+    lm75.start();
+    CHECK(lm75.read(0.0) == 0x14);
+}
+
+void testEeprom()
+{
+    I2cDevice ee(I2cDevice::Type::Eeprom24c02, 0x50);
+    ee.start();
+    ee.write(0x10);
+    CHECK(ee.read(0.0) == 0xFF);    // Erased.
+
+    ee.start();
+    ee.write(0xFE);                 // Sequential write wraps around at 256.
+    ee.write('S');
+    ee.write('T');
+    ee.write('I');
+    ee.start();
+    ee.write(0xFE);
+    ee.start();
+    CHECK(ee.read(0.0) == 'S');
+    CHECK(ee.read(0.0) == 'T');
+    CHECK(ee.read(0.0) == 'I');     // Address 0x00.
+
+    ee.start();
+    ee.write(0x00);
+    ee.start();
+    CHECK(ee.read(0.0) == 'I');
+}
+
 void testResolvePath(const fs::path &dir)
 {
     const fs::path real = dir / "Arduino" / "Blink.hex";
@@ -167,6 +263,9 @@ int main(int argc, char *argv[])
 
     testParsePin();
     testParseConfig();
+    testI2cConfig();
+    testLm75();
+    testEeprom();
     testResolvePath(dir);
     testContentChecks();
     testVcd(dir);

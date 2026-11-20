@@ -1,9 +1,9 @@
 # Regression tests: ctest --test-dir build --output-on-failure
 #
-# - unit       : config / paths / vcd modules, without simavr
+# - unit       : config / I2C devices / paths / vcd modules, without simavr
 # - runner.*   : cosim_runner drives the plug-in without ngspice (fast)
 # - args.*     : configuration errors are reported, not crashes
-# - ngspice.*  : end-to-end run of ngspice/full_test.cir (if ngspice found)
+# - ngspice.*  : end-to-end runs of ngspice/full_test.cir and i2c_test.cir
 # - models.*   : the repository models match their generator
 #
 # The demo firmwares are built first by the "firmware" fixture (avr-gcc).
@@ -63,6 +63,9 @@ kisimavr_test(args.unreadable_hex
 kisimavr_test(args.invalid_pin
     COMMAND ${RUN} -t 0.001 ${SO} -- hex ${FW}/blink.hex out PZ9
     EXPECT [[invalid pin name 'PZ9']] [[setup failed]])
+kisimavr_test(args.invalid_i2c_device
+    COMMAND ${RUN} -t 0.001 ${SO} -- hex ${FW}/blink.hex i2c lm75 eeprom 0x48
+    EXPECT [[two I2C slaves at address 0x48]] [[setup failed]])
 kisimavr_test(args.invalid_adc_channel
     COMMAND ${RUN} -t 0.001 ${SO} -- hex ${FW}/adc_pwm.hex adc 16
     EXPECT [[invalid ADC channel '16']] [[setup failed]])
@@ -89,12 +92,12 @@ kisimavr_test(runner.blink FIXTURE firmware
            [[out1: [0-9]+ changes, [0-9]+ rising edges, mean period (3\.99|4\.00)[0-9]* ms]]
     REJECT [[setup failed]] [[MCU stopped]])
 
-# PWM on PD6 at 16 MHz / 8 / 256 = 7812.5 Hz (128 us); LED on PB5 once
-# ADC0 >= 2.5 V. The mean period between rising edges depends a little on
-# when the firmware updates OCR0A (i.e. on the avr-gcc version): +-1 %.
+# PWM on PD6 at 16 MHz / 8 / 256 = 7812.5 Hz; LED on PB5 once ADC0 >= 2.5 V.
+# Median, not mean: simavr does not buffer OCR0A until BOTTOM, so an update
+# in the middle of a period may add an isolated extra pulse.
 kisimavr_test(runner.adc_pwm_high FIXTURE firmware
     COMMAND ${RUN} -t 0.02 -a 0,5,5 ${SO} -- hex ${FW}/adc_pwm.hex out PD6 PB5 adc 0
-    EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period 0\.12[7-9][0-9]* ms]]
+    EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period [0-9.]+ ms \([0-9.]+ Hz\), median period 0\.128[0-9]* ms]]
            [[out1: [0-9]+ changes, 1 rising edges]]
     REJECT [[setup failed]])
 kisimavr_test(runner.adc_pwm_low FIXTURE firmware
@@ -111,6 +114,26 @@ kisimavr_test(runner.uart FIXTURE firmware
            [[out0: [1-9][0-9]* changes]]
     REJECT [[setup failed]])
 
+# I2C: EEPROM written then read back, LM75 at 25 degC, open-drain SDA/SCL
+# rebuilt on PC4/PC5 (out1..3 = PC4 level/oe/pu, out4..6 = PC5).
+kisimavr_test(runner.i2c FIXTURE firmware
+    COMMAND ${RUN} -t 0.006 ${SO} -- hex ${FW}/i2c_lm75.hex out PD1 io PC4 PC5
+            i2c lm75 eeprom
+    EXPECT [[I2C slave lm75 at 0x48]]
+           [[I2C> 0x50 W 00 53 54 49 32 44]]
+           [[I2C> 0x50 W 00 \| 0x50 R 53 54 49 32 44]]
+           [[I2C> 0x48 W 00 \| 0x48 R 19 00]]
+           [[UART0> EEPROM : STI2D]]
+           [[UART0> T = 25\.0 C]]
+           [[out2: [1-9][0-9]* changes]]
+           [[out5: [1-9][0-9]* changes]]
+    REJECT [[setup failed]] [[MCU stopped]])
+# Same firmware with no slave on the bus: every address is NACKed.
+kisimavr_test(runner.i2c_absent FIXTURE firmware
+    COMMAND ${RUN} -t 0.004 ${SO} -- hex ${FW}/i2c_lm75.hex out PD1
+    EXPECT [[I2C> 0x48 W \(NACK\)]] [[UART0> LM75 absent]]
+    REJECT [[setup failed]] [[I2C slave]])
+
 # ---- Generated models ---------------------------------------------------------
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
@@ -126,11 +149,26 @@ if(Python3_FOUND)
                 ${PROJECT_SOURCE_DIR}/kicad/atmega328p_full.lib)
     set_tests_properties(models.full_lib_up_to_date PROPERTIES FIXTURES_SETUP full_lib)
     set_tests_properties(models.full_lib_compare PROPERTIES FIXTURES_REQUIRED full_lib)
+
+    # Same for ngspice/atmega328p_i2c.lib (model of ngspice/i2c_test.cir).
+    kisimavr_test(models.i2c_lib_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
+        COMMAND ${Python3_EXECUTABLE} make_atmega328p_lib.py --relative
+                --hex ../firmware/i2c_lm75.hex --so ../build/mcu_cosim.so
+                --lm75temp 20 --lm75rate 1000
+                -o ${CMAKE_CURRENT_BINARY_DIR}/atmega328p_i2c.lib
+        EXPECT [[written]])
+    add_test(NAME models.i2c_lib_compare
+        COMMAND ${CMAKE_COMMAND} -E compare_files
+                ${CMAKE_CURRENT_BINARY_DIR}/atmega328p_i2c.lib
+                ${PROJECT_SOURCE_DIR}/ngspice/atmega328p_i2c.lib)
+    set_tests_properties(models.i2c_lib_up_to_date PROPERTIES FIXTURES_SETUP i2c_lib)
+    set_tests_properties(models.i2c_lib_compare PROPERTIES FIXTURES_REQUIRED i2c_lib)
 endif()
 
 # ---- End to end through ngspice -------------------------------------------------
 # ngspice/full_test.cir loads ../build/mcu_cosim.so: only meaningful when the
 # build directory is <source>/build.
+# d_cosim takes "sim_args" since ngspice 44: older versions ignore it.
 find_program(NGSPICE ngspice)
 set(NGSPICE_OK FALSE)
 if(NGSPICE)
@@ -154,6 +192,16 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                [[UART0> A0 = [0-9]+  BTN = 1]]
         REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]])
     set_tests_properties(ngspice.full PROPERTIES LABELS ngspice)
+
+    # I2C bus in SPICE: open-drain SDA/SCL with 4.7k pull-ups and 100 pF.
+    kisimavr_test(ngspice.i2c FIXTURE firmware TIMEOUT 300
+        WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+        COMMAND ${NGSPICE} -b i2c_test.cir
+        EXPECT [[I2C> 0x50 W 00 \| 0x50 R 53 54 49 32 44]]
+               [[UART0> EEPROM : STI2D]]
+               [[UART0> T = 2[0-9]\.[05] C]]
+        REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]])
+    set_tests_properties(ngspice.i2c PROPERTIES LABELS ngspice)
 elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
 endif()

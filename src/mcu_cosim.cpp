@@ -34,6 +34,10 @@
  *   vcd     VCD file of the GPIO pins, .vcd, for GTKWave / PulseView
  *           (output files are never written through a symbolic link, and an
  *           existing file is only replaced if mcu_cosim wrote it)
+ *   i2c     virtual I2C slaves: "lm75" ["0x48"] "eeprom" ["0x50"]
+ *   lm75temp / lm75rate  LM75 temperature at t = 0 (degC) and slope (degC/s)
+ *   i2clog  0 to hide the I2C transactions (default 1)
+ *   sda / scl  TWI pins rebuilt as open-drain outputs (default PC4 / PC5)
  *   log   1 to print pin activity on stderr (default 0)
  *
  * Modules:
@@ -42,6 +46,8 @@
  *   mcu_bridge.*  simavr instance <-> d_cosim ports, timing, GPIO
  *   sar_adc.*     SAR converter rebuilt across the d_cosim boundary
  *   uart0.*       UART0 console, log file and TXD frames
+ *   i2c_bus.*     TWI master: virtual slaves, transaction log, SDA/SCL
+ *   i2c_devices.* LM75 and 24C02 protocol logic (simavr independent)
  *   vcd.*         VCD trace of the pins
  * This file only holds the d_cosim entry point.
  */

@@ -5,6 +5,9 @@
 * Pins (all bidirectional, direction set by the firmware):
 *   PD0..PD7 = D0..D7   PB0..PB5 = D8..D13   PC0..PC5 = A0..A5 (+ ADC0..5)
 *   UART0: TXD = PD1 (frames rebuilt by the plug-in), text in uart_log.txt
+*   I2C  : SDA = PC4 (A4), SCL = PC5 (A5), open drain: add pull-ups
+*          (4.7k to 5 V) or enable the internal ones (Wire.begin does).
+*          Virtual slaves: lm75 eeprom
 *
 * KiCad: works with the official symbol MCU_Microchip_ATmega:ATmega328P-P;
 *   Sim.Device = SUBCKT, Sim.Name = ATMEGA328P, Sim.Pins =
@@ -20,7 +23,8 @@
 + sim_args=["hex" "../firmware/full_demo.hex" "mcu" "atmega328p" "freq" "16000000" "io"
 + "PD0" "PD1" "PD2" "PD3" "PD4" "PD5" "PD6" "PD7" "PB0" "PB1" "PB2" "PB3"
 + "PB4" "PB5" "PC0" "PC1" "PC2" "PC3" "PC4" "PC5" "adc" "0" "1" "2" "3" "4"
-+ "5" "vref" "5" "adcbit" "1e-6" "uartlog" "../uart_log.txt"]
++ "5" "vref" "5" "adcbit" "1e-6" "uartlog" "../uart_log.txt" "i2c" "lm75"
++ "eeprom" "lm75temp" "25" "lm75rate" "0"]
 + delay=100n
 
 .model m328_in  adc_bridge(in_low=1.5 in_high=3.0)

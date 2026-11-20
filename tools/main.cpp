@@ -332,6 +332,15 @@ int main(int argc, char *argv[])
             const double span = ch.risingEdges.back() - ch.risingEdges.front();
             const double mean = span / static_cast<double>(ch.risingEdges.size() - 1);
             std::printf(", mean period %.6f ms (%.3f Hz)", mean * 1e3, 1.0 / mean);
+
+            // Median: insensitive to an isolated extra edge (e.g. a PWM glitch).
+            std::vector<double> periods;
+            for (size_t e = 1; e < ch.risingEdges.size(); ++e)
+            {
+                periods.push_back(ch.risingEdges[e] - ch.risingEdges[e - 1]);
+            }
+            std::nth_element(periods.begin(), periods.begin() + periods.size() / 2, periods.end());
+            std::printf(", median period %.6f ms", periods[periods.size() / 2] * 1e3);
         }
         std::printf("\n");
     }

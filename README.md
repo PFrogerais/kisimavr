@@ -21,6 +21,7 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | Timers, interruptions, PWM | émulés par simavr (`millis()`, `analogWrite()`…) |
 | ADC A0–A5 | convertisseur SAR reconstruit dans ngspice : la dichotomie est visible |
 | UART0 | texte dans le terminal et un fichier ; trames réelles sur TXD (PD1) |
+| I²C (TWI) | esclaves virtuels LM75 et EEPROM 24C02, journal des transactions, signaux SDA/SCL réels en drain ouvert |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
 
 ---
@@ -102,6 +103,8 @@ ou de `.hex` avec bootloader.
 | `--uartlog` | fichier texte de l'UART | à côté du `.lib` |
 | `--vcd` | trace VCD (`""` = aucune) | à côté du `.lib` |
 | `--freq` | horloge CPU en Hz | `16000000` |
+| `--i2c` | esclaves I²C virtuels (`""` = aucun) | `"lm75 eeprom"` |
+| `--lm75temp`, `--lm75rate` | température du LM75 et sa pente (°C, °C/s) | `25`, `0` |
 
 ### 3.2 Le symbole
 
@@ -172,6 +175,7 @@ les essais en simulation.
 | `blink.c` | `atmega328p_cosim.lib` → `ATMEGA328P_COSIM` | `blink_test.cir` | `simAVR_demo` | Timer0 + interruption (1 kHz), entrée filtrée RC |
 | `adc_pwm.c` | `atmega328p_cosim.lib` → `ATMEGA328P_ADC` | `adc_test.cir` | `simAVR_adc` | SAR visible, PWM filtrée, seuil |
 | `uart_adc.c` | `atmega328p_cosim.lib` → `ATMEGA328P_UART` | `uart_test.cir` | `simAVR_uart` | console série, trames TXD, VCD |
+| `i2c_lm75.c` / `i2c_lm75/i2c_lm75.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `i2c_test.cir` | `simAVR_i2c` | bus I²C : capteur LM75, EEPROM, pull-ups |
 
 Les tests ngspice se lancent depuis `ngspice/` (chemins relatifs).
 
@@ -217,7 +221,33 @@ An ─────────┤ Ecmp = An − vdac → adc_bridge (comp.)    �
 - Référence AVCC = `vref` (5 V). Avec la référence interne 1,1 V la tension
   reste juste, avec la résolution du CNA 5 V (≈ 4,9 mV).
 
-### 6.4 UART0 et chronogrammes
+### 6.4 I²C (TWI)
+
+simavr émule le TWI de l'ATmega par **messages** (START + adresse, octet,
+ACK, STOP), sans piloter les broches. Le plug-in :
+
+- joue les **esclaves virtuels** déclarés par `"i2c"` :
+  - **LM75** (défaut 0x48) : registre 0 = température sur 9 bits (0,5 °C),
+    1 = configuration, 2 = Thyst (75 °C), 3 = Tos (80 °C) ; la température
+    vaut `lm75temp` + `lm75rate` × t, bornée à −55…+125 °C ;
+  - **EEPROM 24C02** (défaut 0x50) : 256 octets, effacée à 0xFF, premier
+    octet écrit = adresse, puis écriture ou lecture séquentielle ;
+  - toute autre adresse répond **NACK**, comme sur un vrai bus ;
+- affiche chaque transaction :
+  `[mcu_cosim] t=0.000001 s I2C> 0x48 W 00 | 0x48 R 19 80`
+  (`|` = START répété, `(NACK)` = pas de réponse) ;
+- reconstruit **SDA (PC4) et SCL (PC5)** au débit programmé dans TWBR
+  (100 kHz pour `Wire`), en **drain ouvert** : la broche tire à 0 ou se
+  relâche. Il faut donc des **résistances de tirage** dans le schéma
+  (4,7 kΩ vers 5 V), ou les pull-ups internes que `Wire.begin()` active.
+  SDA ne change que lorsque SCL est bas : les signaux se décodent dans
+  PulseView (décodeur I²C) ou à l'oscilloscope du simulateur.
+
+Le modèle `ATMEGA328P` déclare par défaut un LM75 et une EEPROM (options
+`--i2c`, `--lm75temp`, `--lm75rate` du script) ; ils n'ont aucun effet sur
+un firmware qui n'utilise pas l'I²C.
+
+### 6.5 UART0 et chronogrammes
 
 - **Texte** : chaque ligne (`'\n'`) s'affiche, horodatée, sur stderr
   (`[mcu_cosim] t=0.002345 s UART0> …`) et dans le fichier `uartlog`.
@@ -256,6 +286,11 @@ Chaque clé et chaque valeur est **une chaîne séparée** :
 | `txpin` | broche qui porte les trames UART0 | `PD1` |
 | `uartlog` | fichier recevant le texte de l'UART0 (`.txt` ou `.log`) | — |
 | `vcd` | trace VCD des broches (`.vcd`) | — |
+| `i2c` | esclaves virtuels : `"lm75" ["0x48"] "eeprom" ["0x50"]` | — |
+| `lm75temp` | température du LM75 à t = 0 (°C) | `25` |
+| `lm75rate` | pente de la température (°C/s) | `0` |
+| `i2clog` | `0` : ne pas afficher les transactions I²C | `1` |
+| `sda` / `scl` | broches du bus | `PC4` / `PC5` |
 | `log` | `1` : activité des broches et conversions sur stderr | `0` |
 
 Les fichiers `uartlog` et `vcd` ne sont jamais écrits à travers un lien
@@ -303,7 +338,10 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 
 ## 10. Limites actuelles
 
-- Pas encore de réception UART (RXD), ni d'I²C/SPI matériels testés.
+- Pas encore de réception UART (RXD) ni de SPI.
+- I²C : AVR maître uniquement ; esclaves virtuels LM75 et 24C02 seulement
+  (pas de composant I²C décrit dans le schéma) ; étirement d'horloge non
+  modélisé.
 - ADC : pas d'échantillonneur-bloqueur (Vin comparée pendant les 10 pas),
   pas d'entrée différentielle ni de capteur de température.
 - Seule la flash du `.hex` est chargée (pas l'EEPROM) ; un seul bloc
@@ -317,6 +355,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `src/mcu_cosim.cpp` | point d'entrée du plug-in (`Cosim_setup`) et référence des clés |
 | `src/mcu_bridge.*` | pont simavr ↔ d_cosim : temps, GPIO, ports |
 | `src/sar_adc.*`, `src/uart0.*` | convertisseur SAR, UART0 (console, log, trames TXD) |
+| `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
 | `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
 | `include/cosim_abi.h` | copie binaire-compatible de `ngspice/cosim.h` |
 | `tools/main.cpp` | `cosim_runner` : test sans ngspice |

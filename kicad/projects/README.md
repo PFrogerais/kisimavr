@@ -1,6 +1,6 @@
 # Projets KiCad : mode d'emploi pas à pas
 
-Ce dossier contient quatre projets KiCad prêts à simuler. Le principal,
+Ce dossier contient cinq projets KiCad prêts à simuler. Le principal,
 **`simAVR_atmega328p`**, utilise le **symbole officiel de la bibliothèque
 KiCad `MCU_Microchip_ATmega:ATmega328P-P`** avec son empreinte officielle
 `Package_DIP:DIP-28_W7.62mm` : le même schéma sert à la simulation **et** à
@@ -16,13 +16,15 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `simAVR_demo` | `firmware/blink.c` | Timer0 + interruption (LED à 1 kHz), entrée filtrée RC |
 | `simAVR_adc` | `firmware/adc_pwm.c` | convertisseur SAR visible, PWM filtrée |
 | `simAVR_uart` | `firmware/uart_adc.c` | console série, trames sur TXD |
+| `simAVR_i2c` | `firmware/i2c_lm75.c` ou `i2c_lm75/i2c_lm75.ino` | bus I²C : capteur LM75, EEPROM 24C02, pull-ups 4,7 kΩ (symbole officiel) |
 
 *Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la
 copie du symbole intégrée au schéma par celle de votre bibliothèque KiCad,
 sans changer le câblage ni le modèle de simulation.
 
-Seul `simAVR_atmega328p` a des empreintes : les trois autres utilisent des
-symboles simplifiés à 2–3 broches, faits uniquement pour la simulation.
+`simAVR_atmega328p` et `simAVR_i2c` utilisent le symbole et l'empreinte
+officiels de l'ATmega328P-P ; les trois autres utilisent des symboles
+simplifiés à 2–3 broches, faits uniquement pour la simulation.
 
 ---
 
@@ -172,6 +174,26 @@ montage.
 | D7 | PD7 | 13 | | VCC / AVCC | — | 7 / 20 |
 | RESET | PC6 | 1 | | GND | — | 8, 22 |
 | XTAL1/2 | PB6/PB7 | 9 / 10 | | AREF | — | 21 |
+
+## Étape 3 bis — Utiliser l'I²C
+
+1. Câbler SDA = **A4** (broche 27) et SCL = **A5** (broche 28), avec une
+   résistance de **4,7 kΩ vers +5V** sur chaque ligne (le bus est à drain
+   ouvert : sans tirage, les lignes restent basses).
+2. Le `+5V` du schéma doit exister **en simulation** : ajouter une source
+   `Simulation_SPICE:VDC` de 5 V entre `+5V` et `GND` (exclue du PCB),
+   comme V1 dans `simAVR_i2c`.
+3. Les esclaves sont **virtuels** : ils sont déclarés dans le `.lib`, pas
+   dans le schéma. Par défaut : LM75 à 0x48 et EEPROM à 0x50. Pour changer :
+   ```bash
+   python3 ~/dev/kisimavr/tools/make_atmega328p_lib.py --hex mon.hex \
+       --i2c "lm75 0x49 eeprom 0x50" --lm75temp 22 --lm75rate 500 \
+       -o atmega328p_full.lib
+   ```
+   (`--lm75rate 500` : +0,5 °C par ms, pour voir la température évoluer
+   pendant une courte simulation.)
+4. Simuler (pas `0.2u`) et sonder SDA, SCL. Le terminal liste chaque
+   transaction : `I2C> 0x48 W 00 | 0x48 R 14 80` (= 20,5 °C).
 
 ## Étape 4 — Passer au circuit imprimé
 

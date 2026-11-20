@@ -103,6 +103,7 @@ bool McuBridge::start()
         return false;
     }
     m_uart.start(m_avr.get(), m_cfg);
+    m_i2c.start(m_avr.get(), m_cfg);
 
     // VCD signals: "in", "io" (voltage read back), then "out" pins.
     std::vector<PinRef> traced = m_cfg.inputs;
@@ -318,6 +319,15 @@ Digital_t McuBridge::outputValue(size_t i) const
         bool level = ((watch.port >> pin.bit) & 1u) != 0u;
         bool oe    = ((watch.ddr  >> pin.bit) & 1u) != 0u;
         bool pu    = !oe && level;                // PORT = 1 on an input.
+        const bool sda = static_cast<int>(k) == m_i2c.sdaIoIndex();
+        if ((sda || static_cast<int>(k) == m_i2c.sclIoIndex()) && m_i2c.ownsPins())
+        {
+            // TWI owns SDA / SCL: open drain, pull low or release. The
+            // internal pull-up still follows the PORT bit (Wire sets it).
+            pu    = level;
+            oe    = !(sda ? m_i2c.sdaLine() : m_i2c.sclLine());
+            level = false;
+        }
         if (static_cast<int>(k) == m_uart.txIoIndex() && m_uart.ownsTxPin())
         {
             level = m_uart.txLine();              // UART owns TXD.
