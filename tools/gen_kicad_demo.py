@@ -7,7 +7,9 @@ Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DI
            uno (Arduino UNO R3 board around the ATmega328P, official schematic),
            spi (SPI master driving a 74HC595 and 8 LEDs, official symbols),
            lcd (character LCD 16x2 HD44780 + voltage on A0, official symbols),
-           pico (Raspberry Pi Pico, RP2040: LED, button, ADC, UART terminal)
+           pico (Raspberry Pi Pico, RP2040: LED, button, ADC, UART terminal),
+           picoboard (the Pico board itself after its official schematic, in a
+                      sub-sheet; the root sheet shows it as a Pico-shaped block)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -25,7 +27,8 @@ VARIANT = sys.argv[3] if len(sys.argv) > 3 else "gpio"
 PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
            "full": "simAVR_atmega328p", "i2c": "simAVR_i2c",
            "uno": "Arduino_UNO", "spi": "simAVR_spi",
-           "lcd": "simAVR_lcd", "pico": "simPICO"}[VARIANT]
+           "lcd": "simAVR_lcd", "pico": "simPICO",
+           "picoboard": "RaspberryPi_Pico"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -44,6 +47,7 @@ FOOTPRINTS = {
     "74xx:74HC595": "Package_DIP:DIP-16_W7.62mm",
     "Display_Character:WC1602A": "Display:WC1602A",
     "MCU_Module:RaspberryPi_Pico": "Module:RaspberryPi_Pico_Common_Unspecified",
+    "simAVR:RT6150B-33GQW": "Package_DFN_QFN:Richtek_UQFN-10_2.6x2.6mm_P0.5mm",
     "Connector_Generic:Conn_01x06": "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x08": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x10": "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
@@ -252,6 +256,25 @@ for _n in (6, 8, 10):
     LIB[f"Connector_Generic:Conn_01x{_n:02d}"] = _conn_1xn(_n)
 
 LIB.update({
+    # Richtek RT6150B-33GQW buck-boost converter of the Pico (not in the KiCad
+    # library): pins as on the Pico schematic.
+    "simAVR:RT6150B-33GQW": dict(
+        ref="U", value="RT6150B-33GQW",
+        body='(rectangle (start -7.62 7.62) (end 7.62 -7.62) '
+             '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[("5", "VIN", -10.16, 5.08, 0, "power_in"),
+              ("8", "VINA", -10.16, 2.54, 0, "power_in"),
+              ("6", "EN", -10.16, -2.54, 0, "input"),
+              ("7", "PS", -10.16, -5.08, 0, "input"),
+              ("4", "LX1", -2.54, 10.16, 270, "passive"),
+              ("2", "LX2", 2.54, 10.16, 270, "passive"),
+              ("1", "VOUT", 10.16, 2.54, 180, "power_out"),
+              ("10", "FB", 10.16, -2.54, 180, "input"),
+              ("3", "GND", 0.0, -10.16, 90, "power_in"),
+              ("9", "GND", 0.0, -10.16, 90, "passive", True),
+              ("11", "GND_PAD", 0.0, -10.16, 90, "passive", True)],
+        pin_names=True,
+        description="Buck-boost converter 3.3 V, 1 A (Richtek), as on the Raspberry Pi Pico"),
     # Official KiCad symbol MCU_Module:RaspberryPi_Pico (pins and outline
     # taken from the KiCad 10 library).
     "MCU_Module:RaspberryPi_Pico": dict(
@@ -428,7 +451,49 @@ def lib_fields(d):
             f'(property "Value" "{d["value"]}" (at 0 -7.62 0) {font()}) ')
 
 
+def load_official_symbols(filename):
+    """Official KiCad symbols stored by tools/dump_kicad_symbol.py.
+
+    Returns {lib_id: entry} with the raw s-expression (renamed "Lib:Name",
+    derived symbols flattened) and the pins for the stub builder.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kicad_symbols", filename)
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    blocks = {}
+    for part in re.split(r"^### ", text, flags=re.M)[1:]:
+        name, body = part.split("\n", 1)
+        blocks[name.strip()] = body.strip()
+    out = {}
+    for lib_id, body in blocks.items():
+        lib, name = lib_id.split(":", 1)
+        parent = re.search(r'\(extends "([^"]+)"\)', body)
+        if parent:
+            pname = parent.group(1)
+            flat = blocks[f"{lib}:{pname}"]
+            flat = flat.replace(f'(symbol "{pname}"', f'(symbol "{name}"', 1)
+            flat = flat.replace(f'(symbol "{pname}_', f'(symbol "{name}_')
+            for key, value in re.findall(r'\(property "([\w ]+)" "([^"]*)"', body):
+                flat = re.sub(rf'(\(property "{re.escape(key)}" )"[^"]*"',
+                              lambda m, v=value: f'{m.group(1)}"{v}"', flat, count=1)
+            body = flat
+        raw = body.replace(f'(symbol "{name}"', f'(symbol "{lib_id}"', 1)
+        pins = []
+        for typ, x, y, ang, hide, pname, num in re.findall(
+                r'\(pin (\w+) \w+\s*\(at ([-\d.]+) ([-\d.]+) (\d+)\)\s*\(length [\d.]+\)'
+                r'(\s*\(hide yes\))?\s*\(name "([^"]*)".*?\(number "([^"]*)"', raw, re.S):
+            pins.append((num, pname, float(x), float(y), int(ang), typ, bool(hide)))
+        props = dict(re.findall(r'\(property "([\w ]+)" "([^"]*)"', raw))
+        out[lib_id] = dict(raw=raw, body=raw, pins=pins, ref=props.get("Reference", "U"),
+                           value=props.get("Value", name), power="(power" in raw,
+                           footprint=props.get("Footprint", ""),
+                           datasheet=props.get("Datasheet", ""), pin_names=True)
+    return out
+
+
 def lib_symbol(lib_id, d):
+    if "raw" in d:
+        return d["raw"]
     short = lib_id.split(":")[1]
     power = "(power) " if d.get("power") else ""
     pn = "" if d["pin_names"] else "(pin_names (offset 0) hide) "
@@ -719,7 +784,7 @@ if VARIANT == "i2c":
     DIRECTIVES = [(".tran 0.2u 5m", 101.6, 144.78)]
 
 
-def build_stubbed(spec, hier=None):
+def build_stubbed(spec, hier=None, vlabels=False):
     """Parts from (lib_id, ref, value, X, Y, extra, {pin: net}).
 
     Every pin gets a 2.54 mm stub ending on a net label, or on a +5V / GND
@@ -733,6 +798,11 @@ def build_stubbed(spec, hier=None):
     Returns PARTS, WIRES, LABELS, NO_CONNECTS.
     """
     hier = hier or {}
+
+    def label_angle(dx, dy):
+        if vlabels and dy != 0:
+            return 90 if dy < 0 else 270     # Vertical text along a vertical stub.
+        return 180 if dx < 0 else 0
     parts, wires, labels, ncs = [], [], [], []
     stub = 2.54
     count = {"pwr": 0, "flg": 0}
@@ -761,7 +831,7 @@ def build_stubbed(spec, hier=None):
                 # or power symbol) stays next to the pin.
                 hx, hy = round(px + dx * 4 * stub, 2), round(py + dy * 4 * stub, 2)
                 HLABELS.append((hname, hx, hy, 180 if dx < 0 else 0))
-                if net in ("+5V", "GND"):
+                if net in ("+5V", "+3V3", "GND"):
                     wires.append(((px, py), (hx, hy)))
                     POWER_TIES.append((hname, net))
                 else:
@@ -769,7 +839,7 @@ def build_stubbed(spec, hier=None):
                     lx, ly = round(px + dx * stub, 2), round(py + dy * stub, 2)
                     wires.append(((px, py), (lx, ly)))
                     wires.append(((lx, ly), (hx, hy)))
-                    labels.append((net, lx, ly, 180 if dx < 0 else 0))
+                    labels.append((net, lx, ly, label_angle(dx, dy)))
                 continue
             ex, ey = round(px + dx * stub, 2), round(py + dy * stub, 2)
             wires.append(((px, py), (ex, ey)))
@@ -787,7 +857,7 @@ def build_stubbed(spec, hier=None):
                     parts.append(("power:PWR_FLAG", f"#FLG{count['flg']:02d}", "PWR_FLAG", ex, ey,
                                   {"_rot": (up + 90) % 360 if positive else (up + 270) % 360}))
             else:
-                labels.append((net, ex, ey, 180 if dx < 0 else 0))
+                labels.append((net, ex, ey, label_angle(dx, dy)))
                 if flag:
                     # Power input fed through a part (e.g. a backlight resistor).
                     count["flg"] += 1
@@ -798,6 +868,7 @@ def build_stubbed(spec, hier=None):
 
 PAPER = "A4"
 TITLE = None
+HIER_SHEET = None    # (sub-sheet file, sheet name, root sheet writer) or None
 NO_CONNECTS = []
 TEXTS = []          # Comments: (text, x, y)
 
@@ -921,6 +992,7 @@ if VARIANT == "uno":
     TEXTS.append(("Broches d'alimentation des connecteurs", 375.92, 184.15))
     JUNCTIONS = []
     NO_CONNECT_REF = None
+    HIER_SHEET = (UNO_SUBFILE, "Arduino UNO R3", lambda: uno_root_sheet())
 
 
 def uno_root_sheet():
@@ -1012,6 +1084,284 @@ def uno_root_sheet():
     text("Sonder : /Arduino UNO R3/D13, L13, D0_RX, D1_TX (ou un net de cette feuille)",
          25.4, 194.31)
     out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 25.4 200.66 0) '
+               f'(effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "{uid()}"))')
+    out.append('(sheet_instances (path "/" (page "1")))')
+    out.append(")")
+    return "\n".join(out) + "\n"
+
+
+if VARIANT == "picoboard":
+    # Raspberry Pi Pico R3 after its official schematic (RPI-PICO-R3, 2020,
+    # datasheet appendix B): references and values of the schematic, official
+    # KiCad symbols. Sub-sheet: the board; root: a Pico-shaped sheet symbol.
+    LIB.update(load_official_symbols("pico_board.kicad_sym.txt"))
+    PAPER = "A3"
+    TITLE = ("Raspberry Pi Pico R3 (simulation kisimavr)",
+             "D'apres le schema officiel RPI-PICO-R3 (datasheet Raspberry Pi Pico, annexe B)",
+             "Simulation : RP2040 = rp2040js ; U2 (RT6150) remplace par V3 ; USB = V2 (5 V)")
+    BOARDFILE = "pico_board_models.lib"
+    CHIPFILE = "rp2040.lib"
+    LIBFILE = CHIPFILE    # main() copies the model given on the command line here.
+    PICO_SUBFILE = "pico_board.kicad_sch"
+    NOSIM = {"_nosim": True}
+    R0402 = "Resistor_SMD:R_0402_1005Metric"
+    R0603 = "Resistor_SMD:R_0603_1608Metric"
+    C0201 = "Capacitor_SMD:C_0201_0603Metric"
+    C0402 = "Capacitor_SMD:C_0402_1005Metric"
+    C0805 = "Capacitor_SMD:C_0805_2012Metric"
+
+    def res(ref, value, x, y, net1, net2, fp=R0402, sim=True):
+        extra = {"_fp": fp}
+        if not sim:
+            extra.update(NOSIM)
+        return ("Device:R", ref, value, x, y, extra, {"1": net1, "2": net2})
+
+    def cap(ref, value, x, y, net1, net2, fp=C0201, sim=True):
+        extra = {"_fp": fp}
+        if not sim:
+            extra.update(NOSIM)
+        return ("Device:C", ref, value, x, y, extra, {"1": net1, "2": net2})
+
+    gpio_pins = {"2": 0, "3": 1, "4": 2, "5": 3, "6": 4, "7": 5, "8": 6, "9": 7, "11": 8,
+                 "12": 9, "13": 10, "14": 11, "15": 12, "16": 13, "17": 14, "18": 15,
+                 "27": 16, "28": 17, "29": 18, "30": 19, "31": 20, "32": 21, "34": 22,
+                 "35": 23, "36": 24, "37": 25, "38": 26, "39": 27, "40": 28, "41": 29}
+    gpio_net = {n: (f"GPIO{n}" if n < 26 else f"GPIO{n}_ADC{n - 26}") for n in range(30)}
+    u1 = {num: gpio_net[g] for num, g in gpio_pins.items()}
+    u1.update({"1": "+3V3", "44": "+3V3", "48": "+3V3", "23": "1V1", "45": "1V1",
+               "43": "ADC_VREF!", "57": "GND", "19": "GND", "20": "XIN", "21": "XOUT",
+               "24": "SWCLK", "25": "SWDIO", "26": "RUN", "46": "USB_DM", "47": "USB_DP",
+               "51": "QSPI_SD3", "52": "QSPI_SCLK", "53": "QSPI_SD0", "54": "QSPI_SD2",
+               "55": "QSPI_SD1", "56": "QSPI_SS"})
+    chip_sim_pins = " ".join(f"{num}=GPIO{g}" for num, g in
+                             sorted(gpio_pins.items(), key=lambda kv: kv[1]))
+
+    BOARD_PARTS = [
+        # --- RP2040 (co-simulated) ---
+        ("MCU_RaspberryPi:RP2040", "U1", "RP2040", 200.66, 160.02,
+         {"Sim.Device": "SUBCKT", "Sim.Library": CHIPFILE, "Sim.Name": "RP2040",
+          "Sim.Pins": chip_sim_pins}, u1),
+        # --- USB: micro-B connector, 27R series resistors, test points ---
+        ("Connector:USB_B_Micro", "J1", "690-005-298-486", 40.64, 60.96,
+         dict(NOSIM, _fp="Connector_USB:USB_Micro-B_Molex-105017-0001"),
+         {"1": "VBUS", "2": "USB_DMX", "3": "USB_DPX", "4": "NC", "5": "GND", "SH": "GND"}),
+        res("R12", "27R", 73.66, 53.34, "USB_DMX", "USB_DM", R0402, sim=False),
+        res("R13", "27R", 83.82, 53.34, "USB_DPX", "USB_DP", R0402, sim=False),
+        ("Connector:TestPoint", "TP1", "GND", 63.5, 80.01, NOSIM, {"1": "GND"}),
+        ("Connector:TestPoint", "TP2", "USB_DM", 73.66, 80.01, NOSIM, {"1": "USB_DMX"}),
+        ("Connector:TestPoint", "TP3", "USB_DP", 83.82, 80.01, NOSIM, {"1": "USB_DPX"}),
+        # --- Power: VBUS -> D1 -> VSYS -> U2 buck-boost -> 3V3 ---
+        ("Device:D_Schottky", "D1", "MBR120VLSFT1G", 124.46, 43.18,
+         {"Sim.Device": "SUBCKT", "Sim.Library": BOARDFILE, "Sim.Name": "MBR120",
+          "Sim.Pins": "1=K 2=A", "_rot": 180, "_fp": "Diode_SMD:D_SOD-123F"},
+         {"2": "VBUS", "1": "VSYS"}),
+        cap("C1", "47u", 147.32, 58.42, "VSYS!", "GND", C0805),
+        res("R2", "100K", 157.48, 58.42, "VSYS", "3V3_EN"),
+        res("R9", "1R", 167.64, 58.42, "VSYS", "VINA"),
+        cap("C18", "2u2", 167.64, 76.2, "VINA!", "GND", C0402),
+        ("simAVR:RT6150B-33GQW", "U2", "RT6150B-33GQW", 205.74, 63.5, NOSIM,
+         {"5": "VSYS", "8": "VINA", "6": "3V3_EN", "7": "GPIO23", "4": "LX1", "2": "LX2",
+          "1": "+3V3", "10": "+3V3", "3": "GND"}),
+        ("Device:L", "L1", "2u2", 233.68, 48.26, NOSIM, {"1": "LX1", "2": "LX2"}),
+        cap("C2", "47u", 246.38, 63.5, "+3V3", "GND", C0805),
+        ("Connector:TestPoint", "TP4", "GPIO23", 182.88, 83.82, NOSIM, {"1": "GPIO23"}),
+        # --- VSYS / 3 on ADC3 (Q1 isolates the pin when 3V3 is off) ---
+        res("R5", "200K", 279.4, 50.8, "VSYS", "VSYS_DIV"),
+        res("R6", "100K", 279.4, 76.2, "VSYS_DIV", "GND"),
+        ("Transistor_FET:DMG1012T", "Q1", "DMG1012T", 297.18, 63.5,
+         {"Sim.Device": "SUBCKT", "Sim.Library": BOARDFILE, "Sim.Name": "DMG1012T",
+          "Sim.Pins": "1=G 2=S 3=D"},
+         {"1": "+3V3", "3": "VSYS_DIV", "2": "GPIO29_ADC3"}),
+        cap("C3", "1n", 312.42, 76.2, "GPIO29_ADC3", "GND"),
+        # --- VBUS sense on GPIO24 ---
+        res("R10", "5K6", 335.28, 50.8, "VBUS", "GPIO24"),
+        res("R1", "10K", 335.28, 76.2, "GPIO24", "GND"),
+        # --- User LED on GPIO25 ---
+        res("R3", "470R", 358.14, 50.8, "GPIO25", "LED_A"),
+        ("Device:LED", "D2", "Green", 358.14, 73.66,
+         {"Sim.Device": "SUBCKT", "Sim.Library": BOARDFILE, "Sim.Name": "LEDVERTE",
+          "Sim.Pins": "1=K 2=A", "_rot": 90, "_fp": "LED_SMD:LED_0603_1608Metric"},
+         {"2": "LED_A", "1": "GND"}),
+        ("Connector:TestPoint", "TP5", "GPIO25", 370.84, 63.5, NOSIM, {"1": "GPIO25"}),
+        # --- ADC supply / reference: 3V3 filtered by R7 / C14 ---
+        res("R7", "200R", 279.4, 109.22, "+3V3", "ADC_VREF", R0603),
+        cap("C14", "2u2", 279.4, 127.0, "ADC_VREF", "GND", C0402),
+        # --- QSPI flash, BOOTSEL ---
+        ("Memory_Flash:W25Q16JVSS", "U3", "W25Q16JVUXIQ", 101.6, 116.84,
+         dict(NOSIM, _fp="Package_SON:Winbond_USON-8-1EP_3x2mm_P0.5mm_EP0.2x1.6mm"),
+         {"1": "QSPI_SS", "2": "QSPI_SD1", "3": "QSPI_SD2", "4": "GND", "5": "QSPI_SD0",
+          "6": "QSPI_SCLK", "7": "QSPI_SD3", "8": "+3V3"}),
+        cap("C4", "100n", 124.46, 116.84, "+3V3", "GND"),
+        res("R11", "1K", 63.5, 132.08, "QSPI_SS", "BOOTSEL", sim=False),
+        ("Switch:SW_Push", "SW1", "TP-1221U-K9K5325", 76.2, 147.32, NOSIM,
+         {"1": "BOOTSEL", "2": "GND"}),
+        ("Connector:TestPoint", "TP6", "BOOTSEL", 50.8, 147.32, NOSIM, {"1": "BOOTSEL"}),
+        # --- 12 MHz crystal ---
+        ("Device:Crystal_GND24", "X1", "12MHz ABM8-272-T3", 101.6, 187.96,
+         dict(NOSIM, _fp="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm"),
+         {"1": "XIN", "3": "XR", "2": "GND"}),
+        res("R14", "1K", 124.46, 182.88, "XOUT", "XR", sim=False),
+        cap("C16", "15p", 86.36, 203.2, "XIN", "GND", sim=False),
+        cap("C17", "15p", 116.84, 203.2, "XR", "GND", sim=False),
+        # --- Decoupling: 3V3 (100n), VREG (2u2), 1V1 core (not simulated) ---
+        cap("C5", "100n", 162.56, 236.22, "+3V3", "GND"),
+        cap("C6", "100n", 172.72, 236.22, "+3V3", "GND"),
+        cap("C7", "100n", 182.88, 236.22, "+3V3", "GND"),
+        cap("C8", "100n", 193.04, 236.22, "+3V3", "GND"),
+        cap("C9", "100n", 203.2, 236.22, "+3V3", "GND"),
+        cap("C10", "100n", 213.36, 236.22, "+3V3", "GND"),
+        cap("C11", "100n", 223.52, 236.22, "1V1", "GND", sim=False),
+        cap("C15", "100n", 233.68, 236.22, "1V1", "GND", sim=False),
+        cap("C12", "2u2", 246.38, 236.22, "+3V3", "GND", C0402),
+        cap("C13", "2u2", 256.54, 236.22, "1V1", "GND", C0402, sim=False),
+        # --- Board edge: 40-pin castellated header J0, SWD header J2 ---
+        ("Connector_Generic:Conn_02x20_Counter_Clockwise", "J0", "CON_PICO_40W",
+         370.84, 160.02, dict(NOSIM, _fp="Module:RaspberryPi_Pico_Common_Unspecified"),
+         {"1": "GPIO0", "2": "GPIO1", "3": "GND", "4": "GPIO2", "5": "GPIO3", "6": "GPIO4",
+          "7": "GPIO5", "8": "GND", "9": "GPIO6", "10": "GPIO7", "11": "GPIO8", "12": "GPIO9",
+          "13": "GND", "14": "GPIO10", "15": "GPIO11", "16": "GPIO12", "17": "GPIO13",
+          "18": "GND", "19": "GPIO14", "20": "GPIO15", "21": "GPIO16", "22": "GPIO17",
+          "23": "GND", "24": "GPIO18", "25": "GPIO19", "26": "GPIO20", "27": "GPIO21",
+          "28": "GND", "29": "GPIO22", "30": "RUN", "31": "GPIO26_ADC0",
+          "32": "GPIO27_ADC1", "33": "GND", "34": "GPIO28_ADC2", "35": "ADC_VREF",
+          "36": "+3V3", "37": "3V3_EN", "38": "GND", "39": "VSYS", "40": "VBUS"}),
+        ("Connector_Generic:Conn_01x03", "J2", "CON_PICO_3W", 370.84, 251.46,
+         NOSIM, {"1": "SWCLK", "2": "GND", "3": "SWDIO"}),
+        # --- Simulation only: PC on the USB port, U2 output ---
+        ("Simulation_SPICE:VDC", "V2", "USB 5 V", 40.64, 236.22,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=5"},
+         {"1": "VBUS", "2": "GND"}),
+        ("Simulation_SPICE:VDC", "V3", "3,3 V (U2)", 60.96, 236.22,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=3.3"},
+         {"1": "+3V3", "2": "GND"}),
+    ]
+    # Pins of the board edge -> pins of the sheet symbol (unique names).
+    PICO_EDGE = {1: "GP0", 2: "GP1", 3: "GND3", 4: "GP2", 5: "GP3", 6: "GP4", 7: "GP5",
+                 8: "GND8", 9: "GP6", 10: "GP7", 11: "GP8", 12: "GP9", 13: "GND13",
+                 14: "GP10", 15: "GP11", 16: "GP12", 17: "GP13", 18: "GND18", 19: "GP14",
+                 20: "GP15", 21: "GP16", 22: "GP17", 23: "GND23", 24: "GP18", 25: "GP19",
+                 26: "GP20", 27: "GP21", 28: "GND28", 29: "GP22", 30: "RUN", 31: "GP26",
+                 32: "GP27", 33: "AGND", 34: "GP28", 35: "ADC_VREF", 36: "3V3",
+                 37: "3V3_EN", 38: "GND38", 39: "VSYS", 40: "VBUS"}
+    PICO_HIER = {("J0", str(k)): name for k, name in PICO_EDGE.items()}
+    PICO_HIER.update({("J2", "1"): "SWCLK", ("J2", "2"): "DBG_GND", ("J2", "3"): "SWDIO"})
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(BOARD_PARTS, PICO_HIER, vlabels=True)
+    # GND / 3V3 pins of the edge: hierarchical labels tied to the power nets.
+    for k, (hname, net) in enumerate(POWER_TIES):
+        tx, ty = 314.96, round(193.04 + 5.08 * k, 2)
+        HLABELS.append((hname, tx, ty, 180))
+        WIRES.append(((tx, ty), (round(tx + 5.08, 2), ty)))
+        PARTS.append((f"power:{net}", f"#PWR{90 + k}", net, round(tx + 5.08, 2), ty,
+                      {"_rot": 270 if net != "GND" else 90}))
+    JUNCTIONS = []
+    NO_CONNECT_REF = None
+    TEXTS = [
+        ("USB micro-B", 30.48, 35.56),
+        ("Alimentation : VBUS -> D1 -> VSYS -> U2 (buck-boost 3,3 V) -> 3V3", 119.38, 30.48),
+        ("PS=0 : PFM (defaut), PS=1 : PWM (GPIO23)", 180.34, 88.9),
+        ("VSYS / 3 sur ADC3 ; Q1 bloque la fuite par ADC3 quand 3V3 est coupe", 269.24, 35.56),
+        ("Detection VBUS", 327.66, 35.56),
+        ("LED (GPIO25)", 350.52, 35.56),
+        ("Alimentation et reference de l'ADC", 266.7, 99.06),
+        ("Flash QSPI 2 Mo", 86.36, 99.06),
+        ("BOOTSEL : force le demarrage USB", 45.72, 124.46),
+        ("Quartz 12 MHz", 88.9, 172.72),
+        ("Decouplage 3V3 et 1V1", 160.02, 223.52),
+        ("Broches GND / 3V3 du bord de carte", 304.8, 186.69),
+        ("Bord de carte (40 broches)", 353.06, 124.46),
+        ("DEBUG (SWD)", 360.68, 241.3),
+        ("Simulation seulement : PC sur l'USB (V2), sortie de U2 (V3)", 30.48, 223.52),
+        ("Non simules : J0, J1, J2, U2, U3, L1, X1, SW1, TP, R11..R14, C11, C13, C15..C17",
+         30.48, 271.78),
+        ("U1 : modele RP2040 (rp2040js), seules les GPIO sont simulees", 30.48, 275.59),
+    ]
+    DIRECTIVES = []
+    HIER_SHEET = (PICO_SUBFILE, "Raspberry Pi Pico", lambda: pico_root_sheet())
+
+
+def pico_root_sheet():
+    """Root sheet of RaspberryPi_Pico: the board as a sheet symbol shaped
+    like a Pico seen from above (USB at the top), header pins at their
+    real positions (scale 3: 2.54 mm pitch = 7.62 mm)."""
+    x0, y0 = 116.84, 25.4                  # Upper left corner of the board.
+    w, h = 63.5, 152.4                     # 21 x 51 mm.
+    pins = []
+    for k in range(1, 21):                 # Left edge, pin 1 at the top.
+        pins.append((PICO_EDGE[k], x0, round(y0 + 3.81 + 7.62 * (k - 1), 2), 180))
+    for k in range(21, 41):                # Right edge, pin 40 at the top.
+        pins.append((PICO_EDGE[k], round(x0 + w, 2), round(y0 + 3.81 + 7.62 * (40 - k), 2), 0))
+    for name, dx in (("SWCLK", 24.13), ("DBG_GND", 31.75), ("SWDIO", 39.37)):
+        pins.append((name, round(x0 + dx, 2), round(y0 + h, 2), 270))
+
+    out = [f'(kicad_sch (version 20231120) (generator "eeschema") '
+           f'(generator_version "8.0") (uuid "{ROOT_UUID}") (paper "A4")']
+    out.append('(title_block (title "Raspberry Pi Pico (simulation kisimavr)") '
+               f'(comment 1 "Carte complete : feuille {PICO_SUBFILE}") '
+               '(comment 2 "Cablez vos composants sur les broches du bloc"))')
+    out.append("(lib_symbols)")
+
+    def rect(xa, ya, xb, yb, dash=False):
+        kind = "dash" if dash else "default"
+        out.append(f'(rectangle (start {xa} {ya}) (end {xb} {yb}) '
+                   f'(stroke (width 0.254) (type {kind})) (fill (type none)) (uuid "{uid()}"))')
+
+    def text(t, x, y, size=1.27, just="left bottom"):
+        out.append(f'(text "{t}" (exclude_from_sim yes) (at {x} {y} 0) '
+                   f'(effects (font (size {size} {size})) (justify {just})) (uuid "{uid()}"))')
+
+    def bx(mm):
+        return round(x0 + mm, 2)
+
+    def by(mm):
+        return round(y0 + mm, 2)
+
+    rect(bx(21.59), by(-3.81), bx(41.91), by(13.97))                 # micro-USB
+    text("USB", bx(27.94), by(8.89))
+    rect(bx(11.43), by(22.86), bx(20.32), by(31.75))                 # BOOTSEL
+    text("BOOTSEL", bx(10.16), by(35.56))
+    rect(bx(46.99), by(17.78), bx(50.8), by(21.59))                  # LED
+    text("LED (GP25)", bx(41.91), by(16.51))
+    rect(bx(19.05), by(55.88), bx(44.45), by(81.28))                 # RP2040
+    text("RP2040", bx(26.67), by(69.85), size=2.0)
+    rect(bx(21.59), by(91.44), bx(41.91), by(101.6))                 # Flash
+    text("Flash 2 Mo", bx(24.13), by(97.79))
+    rect(bx(24.13), by(110.49), bx(39.37), by(116.84))               # Crystal
+    text("12 MHz", bx(27.94), by(114.3))
+    text("Raspberry Pi Pico", bx(19.05), by(132.08), size=2.0)
+    text("DEBUG", bx(27.94), by(146.05))
+
+    # Each sheet pin: short wire and a label of the same name.
+    for (n, x, y, a) in pins:
+        if a == 180:
+            ex, ey = round(x - 5.08, 2), y
+        elif a == 0:
+            ex, ey = round(x + 5.08, 2), y
+        else:
+            ex, ey = x, round(y + 5.08, 2)
+        out.append(f'(wire (pts (xy {x} {y}) (xy {ex} {ey})) '
+                   f'(stroke (width 0) (type default)) (uuid "{uid()}"))')
+        just = "right bottom" if a in (180, 270) else "left bottom"
+        out.append(f'(label "{n}" (at {ex} {ey} {a}) (fields_autoplaced yes) '
+                   f'(effects (font (size 1.27 1.27)) (justify {just})) (uuid "{uid()}"))')
+
+    side_just = {180: "left", 0: "right", 270: "right"}
+    pin_txt = " ".join(
+        f'(pin "{n}" bidirectional (at {x} {y} {a}) '
+        f'(effects (font (size 1.27 1.27)) (justify {side_just[a]})) '
+        f'(uuid "{uid()}"))' for (n, x, y, a) in pins)
+    out.append(
+        f'(sheet (at {x0} {y0}) (size {w} {h}) (fields_autoplaced yes) '
+        f'(stroke (width 0.254) (type solid)) (fill (color 0 0 0 0.0000)) (uuid "{SHEET_UUID}") '
+        f'(property "Sheetname" "Raspberry Pi Pico" (at {x0} {round(y0 - 0.7, 2)} 0) '
+        f'(effects (font (size 1.27 1.27)) (justify left bottom))) '
+        f'(property "Sheetfile" "{PICO_SUBFILE}" (at {x0} {round(y0 + h + 9.0, 2)} 0) '
+        f'(effects (font (size 1.27 1.27)) (justify left top))) '
+        f'{pin_txt} '
+        f'(instances (project "{PROJECT}" (path "/{ROOT_UUID}" (page "2")))))')
+    text("Firmware : pico_demo.bin -> rp2040.lib (tools/make_pico_lib.py --chip)", 20.32, 186.69)
+    text("Sonder : /Raspberry Pi Pico/GPIO25, VSYS, GPIO29_ADC3... ; terminal : UART0> ...",
+         20.32, 190.5)
+    out.append(f'(text ".tran 0.5u 10m" (exclude_from_sim no) (at 20.32 196.85 0) '
                f'(effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "{uid()}"))')
     out.append('(sheet_instances (path "/" (page "1")))')
     out.append(")")
@@ -1167,7 +1517,14 @@ if VARIANT == "spi":
 
 def body_bottom_left(d):
     """Lower left corner of a symbol body (library coordinates, y up)."""
-    nums = re.findall(r"\((?:xy|start|end) (-?[0-9.]+) (-?[0-9.]+)\)", d["body"])
+    body = d["body"]
+    if "raw" in d:
+        rects = re.findall(r"\(rectangle\s*\(start (-?[0-9.]+) (-?[0-9.]+)\)\s*"
+                           r"\(end (-?[0-9.]+) (-?[0-9.]+)\)", body)
+        if rects:
+            x1, y1, x2, y2 = (float(v) for v in rects[0])
+            return min(x1, x2), min(y1, y2)
+    nums = re.findall(r"\((?:xy|start|end) (-?[0-9.]+) (-?[0-9.]+)\)", body)
     xs = [float(a) for a, _ in nums]
     ys = [float(b) for _, b in nums]
     return min(xs), min(ys)
@@ -1202,8 +1559,10 @@ def placed_symbol(lib_id, ref, value, x, y, extra):
         f'(property "Reference" "{ref}" (at {rx} {ry} 0) '
         f'{font(hide=hide_ref, justify=just)})',
         f'(property "Value" "{value}" (at {vx} {vy} 0) {font(justify=just)})',
-        f'(property "Footprint" "{FOOTPRINTS.get(lib_id, "")}" (at {x} {y} 0) {font(hide=True)})',
-        f'(property "Datasheet" "{DATASHEETS.get(lib_id, "")}" (at {x} {y} 0) {font(hide=True)})',
+        f'(property "Footprint" "{extra.pop("_fp", FOOTPRINTS.get(lib_id, d.get("footprint", "")))}" '
+        f'(at {x} {y} 0) {font(hide=True)})',
+        f'(property "Datasheet" "{DATASHEETS.get(lib_id, d.get("datasheet", ""))}" '
+        f'(at {x} {y} 0) {font(hide=True)})',
         f'(property "Description" "" (at {x} {y} 0) {font(hide=True)})',
     ]
     for k, v in extra.items():
@@ -1248,7 +1607,7 @@ def schematic(file_uuid=None, root=True):
     for label in LABELS:
         name, x, y = label[:3]
         angle = label[3] if len(label) > 3 else 0
-        just = "right bottom" if angle == 180 else "left bottom"
+        just = "right bottom" if angle in (180, 270) else "left bottom"
         parts.append(f'(label "{name}" (at {x} {y} {angle}) (fields_autoplaced yes) '
                      f'{font(justify=just)} (uuid "{uid()}"))')
     for (name, x, y, angle) in HLABELS:
@@ -1387,6 +1746,28 @@ UNO_TERMINAL = r"""# Text sent by the PC terminal to the Arduino UNO (115200 bau
 """
 
 
+PICO_BOARD_MODELS = """\
+* Models of the Raspberry Pi Pico board project (kisimavr), simplified.
+
+* Schottky diode MBR120VLSFT1G (VBUS -> VSYS), about 0.3 V at 100 mA
+.subckt MBR120 A K
+D1 A K DMBR120
+.model DMBR120 D(IS=50u RS=0.1 N=1.1 BV=20 IBV=1m CJO=100p)
+.ends MBR120
+
+* N-channel MOSFET DMG1012T (SOT-523), level 1: Vth ~ 0.7 V
+.subckt DMG1012T D G S
+M1 D G S S NDMG
+.model NDMG NMOS(LEVEL=1 VTO=0.7 KP=0.5 LAMBDA=0.02)
+.ends DMG1012T
+
+* Green LED (pins: anode cathode), about 2.0 V at 3 mA
+.subckt LEDVERTE A K
+D1 A K DLEDV
+.model DLEDV D(IS=1e-19 RS=10 N=2 BV=5 IBV=10u CJO=10p)
+.ends LEDVERTE
+"""
+
 PICO_TERMINAL = r"""# Text sent by the PC terminal to the Pico (UART0, 115200 bauds, 3.3 V).
 # One line per send: <time> <text>   (escapes: \n \r \s \xHH)
 # After a change: python3 tools/make_terminal_lib.py --vhigh 3.3 terminal.txt -o terminal.lib
@@ -1424,15 +1805,17 @@ def main():
     check()
     os.makedirs(OUT, exist_ok=True)
     sheets = [[ROOT_UUID, "Root"]]
-    if VARIANT == "uno":
+    if HIER_SHEET is not None:
+        # Board drawn as a sheet symbol on the root, schematic in a sub-sheet.
         global INSTANCE_PATH
+        subfile, sheetname, root_writer = HIER_SHEET
         INSTANCE_PATH = f"/{ROOT_UUID}/{SHEET_UUID}"
         sub = schematic(SUB_UUID, root=False)
         assert balanced(sub), "unbalanced s-expression"
-        with open(os.path.join(OUT, UNO_SUBFILE), "w") as f:
+        with open(os.path.join(OUT, subfile), "w") as f:
             f.write(sub)
-        sch = uno_root_sheet()
-        sheets.append([SHEET_UUID, "Arduino UNO R3"])
+        sch = root_writer()
+        sheets.append([SHEET_UUID, sheetname])
     else:
         sch = schematic()
     assert balanced(sch), "unbalanced s-expression"
@@ -1441,8 +1824,8 @@ def main():
 
     pro = {"meta": {"filename": PROJECT + ".kicad_pro", "version": 1},
            "sheets": sheets}
-    if VARIANT == "uno":
-        # The UNO block is a template: its pins wait for the user's parts,
+    if HIER_SHEET is not None:
+        # The board block is a template: its pins wait for the user's parts,
         # so a label alone on a pin is a warning, not an error.
         pro["erc"] = {"rule_severities": {"label_dangling": "warning"}}
     with open(os.path.join(OUT, PROJECT + ".kicad_pro"), "w") as f:
@@ -1466,6 +1849,9 @@ def main():
         write_uno_models()
     if VARIANT == "pico":
         write_pico_terminal()
+    if VARIANT == "picoboard":
+        with open(os.path.join(OUT, BOARDFILE), "w") as f:
+            f.write(PICO_BOARD_MODELS)
     if VARIANT == "spi":
         here = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(here, "..", "kicad", HC595FILE)) as f:

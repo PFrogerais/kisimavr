@@ -18,3 +18,4 @@ kicad/projects/*/atmega328p_full.lib
 kicad/projects/*/lcd1602.lib
 firmware/pico/*.bin
 kicad/projects/*/pico.lib
+kicad/projects/*/rp2040.lib

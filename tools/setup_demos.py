@@ -76,6 +76,12 @@ def main():
                     "--vhigh", "3.3", os.path.join(pico, "terminal.txt"),
                     "-o", os.path.join(pico, "terminal.lib")], check=True)
 
+    # Raspberry Pi Pico board (official schematic): RP2040 chip model.
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_pico_lib.py"), "--chip",
+                    "--fw", os.path.join(ROOT, "firmware", "pico", "pico_demo.bin"),
+                    "--so", so, "-o", os.path.join(PROJECTS, "RaspberryPi_Pico", "rp2040.lib")],
+                   check=True)
+
     # Arduino UNO board (official schematic): uno_demo firmware, and the
     # terminal model rebuilt from terminal.txt (the text sent to RX).
     uno = os.path.join(PROJECTS, "Arduino_UNO")

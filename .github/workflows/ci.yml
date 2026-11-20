@@ -66,12 +66,7 @@ jobs:
       # After the tools: checkout then uses git.
       - uses: actions/checkout@v4
 
-      - name: Dump KiCad symbols (temporary)
-        if: matrix.name == 'release'
-        run: |
-          # Temporary: symbols for the Pico board project.
-          python3 tools/dump_kicad_symbol.py Memory_Flash:W25Q32JVSS Device:R_Small \
-              Device:C_Polarized | sed 's/^/KSYM|/' || true
+
       - name: Cache simavr
         id: simavr-cache
         uses: actions/cache@v4

@@ -1,0 +1,34 @@
+RaspberryPi_Pico - la carte Raspberry Pi Pico d'apres son schema officiel
+=========================================================================
+
+Schema : RPI-PICO-R3 (Raspberry Pi, 2020), annexe B de la datasheet
+https://pip-assets.raspberrypi.com/categories/610-raspberry-pi-pico/documents/RP-008307-DS-3-pico-datasheet.pdf
+Reperes et valeurs repris du schema ; symboles officiels KiCad 10
+(MCU_RaspberryPi:RP2040, Memory_Flash, Device:Crystal_GND24, Connector:USB_B_Micro,
+Transistor_FET:DMG1012T...) ; le RT6150B (absent de la bibliotheque) est dessine.
+
+Deux feuilles :
+  - RaspberryPi_Pico.kicad_sch (racine) : la Pico vue de dessus (USB en haut),
+    bloc hierarchique ; broches 1..20 a gauche, 21..40 a droite, SWD en bas,
+    a leur position reelle (echelle 3). Chaque broche porte un label de meme
+    nom : cablez vos composants sur ces labels (GP0, GP15, 3V3, GND3...).
+  - pico_board.kicad_sch (A3) : la carte. J0 = bord de carte 40 broches,
+    J2 = SWD ; chaque broche porte un label hierarchique (GND3..GND38, AGND,
+    DBG_GND et 3V3 sont relies aux nets GND / +3V3).
+
+Modele : genere par "cmake --build build --target demos" :
+  - rp2040.lib : U1 = RP2040 (rp2040js dans le plug-in), firmware
+                 firmware/pico/pico_demo.bin (make -C firmware/pico)
+  - pico_board_models.lib : D1 (Schottky), Q1 (DMG1012T), D2 (LED verte)
+
+Simulation :
+  - V2 : PC branche sur l'USB (5 V sur VBUS), V3 : sortie du RT6150 (3,3 V)
+  - VBUS -> D1 -> VSYS (~4,7 V) -> R5 / R6 -> Q1 -> GPIO29 (ADC3) = VSYS / 3
+  - VBUS -> R10 / R1 -> GPIO24 : detection de l'USB
+  - GPIO25 -> R3 -> D2 : LED de la carte (clignote a 1 kHz avec pico_demo)
+  Non simules : J0, J1, J2, U2, U3, L1, X1, SW1, TP1..TP6, R11..R14,
+  C11, C13, C15..C17 (USB, flash, quartz, BOOTSEL, regulateur, 1V1).
+  Terminal : "UART0> VSYS = 4.7x V, USB : oui", "UART0> ADC0 = ..."
+
+Simulation : transitoire, pas 0.5u, duree 10m, depuis la feuille racine.
+Sondes : /Raspberry Pi Pico/VSYS, /Raspberry Pi Pico/GPIO29_ADC3, GPIO25...

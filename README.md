@@ -189,6 +189,7 @@ les essais en simulation.
 | `uart_cmd.c` / `uart_cmd/uart_cmd.ino` | `--uartin` ou RXD câblé | `uart_rx_test.cir` (2 MCU) | — | réception série : commandes `LED ON` / `LED OFF` |
 | `spi_595.c` / `spi_595/spi_595.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `spi_test.cir` | `simAVR_spi` (symboles officiels) | SPI maître : 74HC595, chenillard 8 LED, relecture par MISO |
 | `lcd_demo.c` / `lcd_demo/lcd_demo.ino` | `atmega328p_full.lib` + `lcd1602.lib` → `LCD1602` | `lcd_test.cir` | `simAVR_lcd` (symboles officiels) | afficheur 16x2 en 4 bits, tension de A0 |
+| `pico/pico_demo.c` (RP2040, clang) | `rp2040.lib` → `RP2040` (`--chip`) | — | `RaspberryPi_Pico` (carte complète, schéma officiel, feuille hiérarchique) | VSYS / 3 sur ADC3, détection VBUS, LED de la carte |
 | `pico/pico_demo.c` (RP2040, clang) | `pico.lib` → `PICO` | `pico_test.cir` | `simPICO` (symbole officiel `RaspberryPi_Pico`) | LED, bouton, ADC, UART avec terminal simulé |
 | `uno_demo.c` / `uno_demo/uno_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | netlist exportée par `kicad-cli` | `Arduino_UNO` (schéma officiel UNO R3) | blink + UART RX/TX avec un terminal simulé (`terminal.txt`) |
 
@@ -336,6 +337,9 @@ Flatpak. Le temps de rp2040js n'avance qu'au rythme de ngspice.
 - **ADC** : GP26–GP28 (ADC0–2), convertisseur SAR 12 bits reconstruit dans
   ngspice comme pour l'AVR (2 µs par conversion), Vref = 3,3 V.
 - **LED de la carte** : GP25, dans le modèle (470 Ω + LED verte).
+- **Puce seule** : `make_pico_lib.py --chip` donne le sous-circuit `RP2040`
+  (GPIO0–GPIO29, symbole officiel `MCU_RaspberryPi:RP2040`), utilisé par le
+  projet `RaspberryPi_Pico` qui redessine la carte entière.
 - **Modèle** : `tools/make_pico_lib.py --fw prog.uf2 -o pico.lib` ;
   sous-circuit `PICO`, compatible avec le symbole officiel
   `MCU_Module:RaspberryPi_Pico` (broches 1–40 de la carte ; masses
@@ -524,7 +528,8 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `tools/make_atmega328p_lib.py` | génère le modèle `ATMEGA328P` pour un projet |
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
-| `kicad/projects/` | 9 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
+| `tools/kicad_symbols/`, `tools/dump_kicad_symbol.py` | symboles officiels KiCad 10 utilisés par la carte Pico, et l'outil qui les extrait |
+| `kicad/projects/` | 10 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
 | `tools/make_terminal_lib.py` | modèle SPICE d'un terminal série (trames sur TXD) depuis un fichier texte |
 | `tools/setup_demos.py` | écrit les `.lib` des projets de démo (chemins de la machine) |
 | `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |

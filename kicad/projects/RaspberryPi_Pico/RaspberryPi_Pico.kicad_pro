@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "filename": "RaspberryPi_Pico.kicad_pro",
+    "version": 1
+  },
+  "sheets": [
+    [
+      "56ee689d-9e20-4db4-828b-23bd844997c3",
+      "Root"
+    ],
+    [
+      "df442d2e-6913-442f-9a62-c88f50c57beb",
+      "Raspberry Pi Pico"
+    ]
+  ],
+  "erc": {
+    "rule_severities": {
+      "label_dangling": "warning"
+    }
+  }
+}

@@ -10,9 +10,10 @@
  *
  * - GP25 (on-board LED) and GP15: square wave, 1 kHz (toggled every 500 us).
  * - GP14: push-button to GND (internal pull-up); GP16 = LED lit while pressed.
- * - UART0 115200 bauds 8N1 on GP0 (TX) / GP1 (RX): "Pico pret", then
- *   "ADC0 = 2048 (1.65 V)" every 4 ms (GP26), and "Recu : <line>" for
- *   every line received.
+ * - UART0 115200 bauds 8N1 on GP0 (TX) / GP1 (RX): "Pico pret", then every
+ *   4 ms "ADC0 = 2048 (1.65 V)" (GP26) and "VSYS = 4.72 V, USB : oui"
+ *   (ADC3 = GP29 reads VSYS / 3 on the board, GP24 senses VBUS), and
+ *   "Recu : <line>" for every line received.
  *
  * Build: make -C firmware/pico   (clang + lld, thumbv6m), gives pico_demo.bin.
  * Real Pico projects use the Pico SDK or Arduino-pico: their .uf2 files run
@@ -177,7 +178,10 @@ int main(void)
     REG(SIO_OE_SET)  = (1u << 25) | (1u << 15) | (1u << 16);
     REG(IO_CTRL(14)) = FUNC_SIO;                     /* Button, pull-up      */
     REG(PADS(14))    = PADS_IE | PADS_PUE;
-    REG(PADS(26))    = 0u;                           /* Analog input         */
+    REG(PADS(26))    = 0u;                           /* Analog inputs        */
+    REG(PADS(29))    = 0u;
+    REG(IO_CTRL(24)) = FUNC_SIO;                     /* VBUS sense: input    */
+    REG(PADS(24))    = PADS_IE;
 
     uartInit();
     uartPuts("Pico pret\r\n");
@@ -204,6 +208,15 @@ int main(void)
                 uartPutc('.');
                 uartDec(cV % 100u, 2);
                 uartPuts(" V)\r\n");
+
+                /* Board: VSYS / 3 on ADC3 (GP29), VBUS sense on GP24. */
+                const uint32_t vsys = (adcRead(3u) * 990u + 2048u) / 4096u;   /* 3 x 3.3 V */
+                uartPuts("VSYS = ");
+                uartDec(vsys / 100u, 1);
+                uartPutc('.');
+                uartDec(vsys % 100u, 2);
+                uartPuts(" V, USB : ");
+                uartPuts((REG(SIO_IN) & (1u << 24)) ? "oui\r\n" : "non\r\n");
             }
         }
 

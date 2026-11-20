@@ -20,6 +20,7 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `simAVR_spi` | `firmware/spi_595.c` ou `spi_595/spi_595.ino` | SPI maître : 74HC595 (symbole officiel, modèle XSPICE) et 8 LED en chenillard, relecture par MISO |
 | `simAVR_lcd` | `firmware/lcd_demo.c` ou `lcd_demo/lcd_demo.ino` | afficheur LCD 16x2 (symbole officiel WC1602A) en 4 bits, câblage `LiquidCrystal`, tension de A0 |
 | `simPICO` | `firmware/pico/pico_demo.c` (RP2040, bare-metal) | Raspberry Pi Pico (symbole officiel `MCU_Module:RaspberryPi_Pico`) : LED de la carte, bouton, ADC, UART avec terminal 3,3 V |
+| `RaspberryPi_Pico` | `firmware/pico/pico_demo.c` | la carte Pico entière d'après son schéma officiel (feuille hiérarchique), bloc racine dessiné comme une Pico ; ADC3 = VSYS / 3, détection VBUS |
 | `Arduino_UNO` | `firmware/uno_demo.c` ou `uno_demo/uno_demo.ino` | carte UNO R3 d'après le schéma officiel : LED L (tampon LMV358), reset, liaison série 1 kΩ vers le 16U2, connecteurs ; blink + UART RX/TX |
 
 *Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la
@@ -278,6 +279,26 @@ LMV358 de la LED L, U3 pour l'ATmega16U2. Les blocs sont reliés par des
 - **Sondes utiles** : `D13` et `L13` (le clignotement, qui s'arrête vers
   5 ms sur `BLINK OFF` et reprend vers 7,5 ms), `D0_RX` (ce que reçoit le
   MCU) et `D1_TX` (ses réponses).
+
+## Étape 3 quinquies — La carte Raspberry Pi Pico (`RaspberryPi_Pico`)
+
+Même principe que `Arduino_UNO`. La **feuille racine** montre la Pico vue de
+dessus (USB en haut), et chaque broche du bord de carte est à sa place :
+1 à 20 à gauche, 21 à 40 à droite, et SWD en bas. Les masses portent le
+numéro de leur broche (`GND3`, `GND8`…). La **feuille `pico_board.kicad_sch`**
+redessine le schéma officiel RPI-PICO-R3 avec ses repères et ses valeurs,
+et les symboles officiels de KiCad 10 (RP2040, flash, quartz, micro-USB,
+DMG1012T…). Le régulateur RT6150 n'existe pas dans la bibliothèque : son
+symbole est dessiné.
+
+- **Simulés** : le RP2040 (modèle `RP2040`, seules les GPIO), D1, le pont
+  VSYS / 3 avec Q1 et C3 (ADC3), la détection VBUS (R10 / R1 sur GPIO24),
+  la LED (R3, D2), R7 / C14 (ADC_VREF), les condensateurs sur 3V3 / VSYS.
+- **Remplacés pour la simulation** : le PC sur l'USB par V2 (5 V sur VBUS),
+  la sortie du RT6150 par V3 (3,3 V).
+- **Non simulés** (exclus) : USB, flash, quartz, BOOTSEL, RT6150 et L1,
+  points de test, condensateurs du 1V1.
+- Le firmware de démo affiche `VSYS = 4.7x V, USB : oui`.
 
 ## Étape 4 — Passer au circuit imprimé
 

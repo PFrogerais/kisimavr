@@ -347,6 +347,7 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
             COMMAND ${NGSPICE} -b pico_test.cir
             EXPECT [[UART0> Pico pret]]
                    [=[UART0> ADC0 = 1[23][0-9][0-9] \(1\.0[4-7] V\)]=]
+                   [[UART0> VSYS = 0.00 V, USB : non]]
             REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
         set_tests_properties(ngspice.pico PROPERTIES LABELS ngspice)
     endif()
@@ -433,6 +434,27 @@ if(KICAD_CLI AND Python3_FOUND)
                 REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
             set_tests_properties(ngspice.kicad_pico PROPERTIES LABELS "ngspice;kicad"
                                  FIXTURES_REQUIRED "firmware_pico;demos;pico_netlist")
+        endif()
+
+        # Pico board after the official schematic (hierarchical sheet).
+        if(PICO_TESTS)
+            set(pboard_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/RaspberryPi_Pico.cir)
+            add_test(NAME kicad.picoboard_netlist
+                COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${pboard_net}
+                        -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/RaspberryPi_Pico/RaspberryPi_Pico.kicad_sch
+                        -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+            set_tests_properties(kicad.picoboard_netlist PROPERTIES
+                                 FIXTURES_SETUP picoboard_netlist LABELS kicad TIMEOUT 120)
+            # USB present (V2): VSYS = 5 V - D1, read on ADC3 through R5 / R6 and
+            # Q1; GPIO24 senses VBUS through R10 / R1.
+            kisimavr_test(ngspice.kicad_picoboard TIMEOUT 600
+                WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/RaspberryPi_Pico
+                COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/RaspberryPi_Pico.raw
+                        ${pboard_net}
+                EXPECT [[UART0> Pico pret]] [=[UART0> VSYS = 4\.[5-9][0-9] V, USB : oui]=]
+                REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
+            set_tests_properties(ngspice.kicad_picoboard PROPERTIES LABELS "ngspice;kicad"
+                                 FIXTURES_REQUIRED "firmware_pico;demos;picoboard_netlist")
         endif()
 
         # LCD project: the display is a second co-simulated part.
