@@ -32,7 +32,7 @@ Cline line 0 100p
 Rbtx btx 0 100k
 
 .control
-tran 0.5u 6m
+tran 0.5u 8m
 plot v(line) v(btx)+6
 .endc
 .end
