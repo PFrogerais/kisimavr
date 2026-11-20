@@ -1,0 +1,30 @@
+simPICO_radar - capteur a ultrasons HC-SR04 et servomoteur
+=======================================================
+
+Modeles : generes par "cmake --build build --target demos" (tools/setup_demos.py) :
+  - pico_radar.lib : Raspberry Pi Pico (RP2040), firmware firmware/pico/pico_radar.bin (make -C firmware/pico)
+  - hcsr04.lib : J1 = module HC-SR04 (VCC TRIG ECHO GND) ; obstacle a 40 cm qui se
+                 rapproche a 100 cm/s
+  - servo.lib  : M1 = servomoteur SG90 ; sortie ANGLE (1 V = 1 degre) pour le tracer
+Regenerer avec d'autres valeurs :
+  python3 tools/make_module_lib.py hcsr04 --dist 30 --rate 0 --log -o hcsr04.lib
+  python3 tools/make_module_lib.py servo --min 1000 --max 2000 --speed 300 -o servo.lib
+
+Le HC-SR04 et le servo sont co-simules par le plug-in (temps exacts) :
+  - TRIG >= 10 us -> ECHO monte 250 us apres et dure 58,3 us par cm (38 ms : rien)
+  - largeur de l'impulsion du servo : 544 us -> 0 deg, 2400 us -> 180 deg (bibliotheque
+    Servo d'Arduino), vitesse 600 deg/s ; chaque position atteinte est affichee
+
+Cablage :
+  GP2 -> TRIG, GP3 <- ECHO par le pont R1 1k / R2 2k (ECHO du module en 5 V),
+  GP15 (PWM, 50 Hz) -> SIG du servo
+
+Firmware : firmware/pico/pico_radar.c
+  une mesure toutes les 60 ms ; servo = (distance - 5 cm) x 180 / 50 cm
+  "Distance = 40.2 cm, servo 126 deg"
+
+Ou voir quoi ?
+  - Terminal : UART0> Distance = .., HCSR04> 40.0 cm (echo 2332 us), SERVO> 126 deg
+  - Simulateur : sonder TRIG, ECHO, SIG et ANGLE
+
+Simulation : transitoire, pas 2u, duree 300m.

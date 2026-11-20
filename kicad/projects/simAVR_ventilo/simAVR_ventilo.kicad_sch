@@ -1,0 +1,756 @@
+(kicad_sch (version 20231120) (generator "eeschema") (generator_version "8.0") (uuid "fbcf38c0-4e6f-481b-8687-1b5a80362f47") (paper "A4")
+(lib_symbols (symbol "MCU_Microchip_ATmega:ATmega328P-P" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "U" (at -12.7 -38.1 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Value" "ATmega328P-P" (at -12.7 -40.64 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Footprint" "Package_DIP:DIP-28_W7.62mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "http://ww1.microchip.com/downloads/en/DeviceDoc/ATmega328_P%20AVR%20MCU%20with%20picoPower%20Technology%20Data%20Sheet%2040001984A.pdf" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "20MHz, 32kB Flash, 2kB SRAM, 1kB EEPROM, DIP-28" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "ki_keywords" "AVR 8bit Microcontroller MegaAVR PicoPower" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "ki_fp_filters" "DIP*W7.62mm*" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "ATmega328P-P_0_1" (rectangle (start -12.7 35.56) (end 12.7 -35.56) (stroke (width 0.254) (type default)) (fill (type background)))) (symbol "ATmega328P-P_1_1" (pin bidirectional line (at 15.24 -7.62 180) (length 2.54) (name "~{RESET}/PC6" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -12.7 180) (length 2.54) (name "PD0" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -15.24 180) (length 2.54) (name "PD1" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -17.78 180) (length 2.54) (name "PD2" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -20.32 180) (length 2.54) (name "PD3" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -22.86 180) (length 2.54) (name "PD4" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27))))) (pin power_in line (at 0.0 38.1 270) (length 2.54) (name "VCC" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27))))) (pin power_in line (at 0.0 -38.1 90) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 15.24 180) (length 2.54) (name "XTAL1/PB6" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 12.7 180) (length 2.54) (name "XTAL2/PB7" (effects (font (size 1.27 1.27)))) (number "10" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -25.4 180) (length 2.54) (name "PD5" (effects (font (size 1.27 1.27)))) (number "11" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -27.94 180) (length 2.54) (name "PD6" (effects (font (size 1.27 1.27)))) (number "12" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -30.48 180) (length 2.54) (name "PD7" (effects (font (size 1.27 1.27)))) (number "13" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 30.48 180) (length 2.54) (name "PB0" (effects (font (size 1.27 1.27)))) (number "14" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 27.94 180) (length 2.54) (name "PB1" (effects (font (size 1.27 1.27)))) (number "15" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 25.4 180) (length 2.54) (name "PB2" (effects (font (size 1.27 1.27)))) (number "16" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 22.86 180) (length 2.54) (name "PB3" (effects (font (size 1.27 1.27)))) (number "17" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 20.32 180) (length 2.54) (name "PB4" (effects (font (size 1.27 1.27)))) (number "18" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 17.78 180) (length 2.54) (name "PB5" (effects (font (size 1.27 1.27)))) (number "19" (effects (font (size 1.27 1.27))))) (pin power_in line (at 2.54 38.1 270) (length 2.54) (name "AVCC" (effects (font (size 1.27 1.27)))) (number "20" (effects (font (size 1.27 1.27))))) (pin passive line (at -15.24 30.48 0) (length 2.54) (name "AREF" (effects (font (size 1.27 1.27)))) (number "21" (effects (font (size 1.27 1.27))))) (pin passive line (at 0.0 -38.1 90) (length 2.54) hide (name "GND" (effects (font (size 1.27 1.27)))) (number "22" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 7.62 180) (length 2.54) (name "PC0" (effects (font (size 1.27 1.27)))) (number "23" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 5.08 180) (length 2.54) (name "PC1" (effects (font (size 1.27 1.27)))) (number "24" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 2.54 180) (length 2.54) (name "PC2" (effects (font (size 1.27 1.27)))) (number "25" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 0.0 180) (length 2.54) (name "PC3" (effects (font (size 1.27 1.27)))) (number "26" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -2.54 180) (length 2.54) (name "PC4" (effects (font (size 1.27 1.27)))) (number "27" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -5.08 180) (length 2.54) (name "PC5" (effects (font (size 1.27 1.27)))) (number "28" (effects (font (size 1.27 1.27))))))) (symbol "Device:R" (pin_names (offset 0) hide) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "R" (at 0 7.62 0) (effects (font (size 1.27 1.27)))) (property "Value" "R" (at 0 -7.62 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "R_0_1" (rectangle (start -1.016 2.54) (end 1.016 -2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "R_1_1" (pin passive line (at 0 3.81 270) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))))) (symbol "Device:C" (pin_names (offset 0) hide) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "C" (at 0 7.62 0) (effects (font (size 1.27 1.27)))) (property "Value" "C" (at 0 -7.62 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "C_0_1" (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) (stroke (width 0.508) (type default)) (fill (type none)))) (symbol "C_1_1" (pin passive line (at 0 3.81 270) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))))) (symbol "Simulation_SPICE:VDC" (pin_names (offset 0) hide) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "V" (at 0 7.62 0) (effects (font (size 1.27 1.27)))) (property "Value" "VDC" (at 0 -7.62 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "VDC_0_1" (circle (center 0 0) (radius 2.54) (stroke (width 0.254) (type default)) (fill (type background))) (polyline (pts (xy -1.27 0.508) (xy 1.27 0.508)) (stroke (width 0.2) (type default)) (fill (type none))) (polyline (pts (xy -0.762 -0.508) (xy 0.762 -0.508)) (stroke (width 0.2) (type default)) (fill (type none)))) (symbol "VDC_1_1" (pin passive line (at 0 5.08 270) (length 2.54) (name "+" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -5.08 90) (length 2.54) (name "-" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))))) (symbol "power:+5V" (power) (pin_names (offset 0) hide) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "#PWR" (at 0 7.62 0) (effects (font (size 1.27 1.27)))) (property "Value" "+5V" (at 0 -7.62 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "+5V_0_1" (polyline (pts (xy -0.762 1.27) (xy 0 2.54) (xy 0.762 1.27)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy 0 0) (xy 0 2.54)) (stroke (width 0) (type default)) (fill (type none)))) (symbol "+5V_1_1" (pin power_in line (at 0 0 90) (length 0) hide (name "+5V" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))))) (symbol "power:PWR_FLAG" (power) (pin_names (offset 0) hide) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "#FLG" (at 0 7.62 0) (effects (font (size 1.27 1.27)))) (property "Value" "PWR_FLAG" (at 0 -7.62 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "PWR_FLAG_0_1" (polyline (pts (xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)) (stroke (width 0) (type default)) (fill (type none)))) (symbol "PWR_FLAG_1_1" (pin power_out line (at 0 0 90) (length 0) hide (name "pwr" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))))) (symbol "power:GND" (power) (pin_names (offset 0) hide) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "#PWR" (at 0 7.62 0) (effects (font (size 1.27 1.27)))) (property "Value" "GND" (at 0 -7.62 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "GND_0_1" (polyline (pts (xy 0 0) (xy 0 -1.27) (xy 1.27 -1.27) (xy 0 -2.54) (xy -1.27 -1.27) (xy 0 -1.27)) (stroke (width 0) (type default)) (fill (type none)))) (symbol "GND_1_1" (pin power_in line (at 0 0 270) (length 0) hide (name "GND" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))))) (symbol "simAVR:MOTOR_DC" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "M" (at 0 7.62 0) (effects (font (size 1.27 1.27)))) (property "Value" "MOTOR_DC" (at 0 -7.62 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "Brushed DC motor, SPEED output: 1 V per 1000 rpm (simulation)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide)) (symbol "MOTOR_DC_0_1" (circle (center 0 0) (radius 3.81) (stroke (width 0.254) (type default)) (fill (type background))) (text "M" (at 0 0 0) (effects (font (size 2.54 2.54))))) (symbol "MOTOR_DC_1_1" (pin passive line (at 0.0 6.35 270) (length 2.54) (name "+" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0.0 -6.35 90) (length 2.54) (name "-" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))) (pin output line (at 7.62 0.0 180) (length 2.54) (name "SPEED" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27))))))) (symbol "Driver_Motor:L298N"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "U"
+			(at -10.16 16.51 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "L298N"
+			(at 12.7 16.51 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-220-15_P2.54x5.08mm_StaggerOdd_Lead4.58mm_Vertical"
+			(at 1.27 -16.51 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Datasheet" "http://www.st.com/st-web-ui/static/active/en/resource/technical/document/datasheet/CD00000240.pdf"
+			(at 3.81 6.35 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Dual full bridge motor driver, up to 46V, 4A, Multiwatt15-V"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "H-bridge motor driver"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "TO?220*StaggerOdd*Vertical*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "L298N_0_1"
+			(rectangle
+				(start -12.7 15.24)
+				(end 12.7 -15.24)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "L298N_1_1"
+			(pin input line
+				(at -7.62 -17.78 90)
+				(length 2.54)
+				(name "SENSE_A"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 15.24 5.08 180)
+				(length 2.54)
+				(name "OUT1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 15.24 2.54 180)
+				(length 2.54)
+				(name "OUT2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 2.54 17.78 270)
+				(length 2.54)
+				(name "Vs"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 12.7 0)
+				(length 2.54)
+				(name "IN1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "5"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 7.62 0)
+				(length 2.54)
+				(name "EnA"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "6"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 10.16 0)
+				(length 2.54)
+				(name "IN2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "7"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 -17.78 90)
+				(length 2.54)
+				(name "GND"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "8"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 17.78 270)
+				(length 2.54)
+				(name "Vss"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "9"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 2.54 0)
+				(length 2.54)
+				(name "IN3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "10"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 -2.54 0)
+				(length 2.54)
+				(name "EnB"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "11"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -15.24 0 0)
+				(length 2.54)
+				(name "IN4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "12"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 15.24 -2.54 180)
+				(length 2.54)
+				(name "OUT3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "13"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at 15.24 -5.08 180)
+				(length 2.54)
+				(name "OUT4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "14"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -5.08 -17.78 90)
+				(length 2.54)
+				(name "SENSE_B"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "15"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	) (symbol "Device:Thermistor_NTC"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "TH"
+			(at -4.445 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Thermistor_NTC"
+			(at 3.175 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 1.27 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 1.27 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Temperature dependent resistor, negative temperature coefficient"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "thermistor NTC resistor sensor RTD"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_* RV_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(symbol "Thermistor_NTC_0_1"
+			(arc
+				(start -3.175 2.413)
+				(mid -3.0506 2.3165)
+				(end -3.048 2.159)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -3.048 2.794)
+				(mid -2.9736 2.9736)
+				(end -2.794 3.048)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.794 3.048)
+				(mid -2.6144 2.9736)
+				(end -2.54 2.794)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.794 2.54)
+				(mid -2.9736 2.6144)
+				(end -3.048 2.794)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.794 1.905)
+				(mid -2.9736 1.9794)
+				(end -3.048 2.159)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.54 2.159)
+				(mid -2.6144 1.9794)
+				(end -2.794 1.905)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -2.159 2.794)
+				(mid -2.434 2.5608)
+				(end -2.794 2.54)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 2.159) (xy -2.54 2.794)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 -3.683) (xy -2.54 -1.397) (xy -2.794 -2.159) (xy -2.286 -2.159) (xy -2.54 -1.397) (xy -2.54 -1.651)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.778 2.54) (xy -1.778 1.524) (xy 1.778 -1.524) (xy 1.778 -2.54)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.778 -1.397) (xy -1.778 -3.683) (xy -2.032 -2.921) (xy -1.524 -2.921) (xy -1.778 -3.683)
+					(xy -1.778 -3.429)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(rectangle
+				(start -1.016 2.54)
+				(end 1.016 -2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "Thermistor_NTC_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	))
+(wire (pts (xy 91.44 114.3) (xy 93.98 114.3)) (stroke (width 0) (type default)) (uuid "a52b62c2-5f2e-4e2f-bd8c-76a9f91b4a2f"))
+(wire (pts (xy 76.2 60.96) (xy 76.2 58.42)) (stroke (width 0) (type default)) (uuid "b5607d3e-910d-4a35-b5c9-4d8c47d74f76"))
+(wire (pts (xy 76.2 137.16) (xy 76.2 139.7)) (stroke (width 0) (type default)) (uuid "6ccb3e5f-4485-4f55-a9b2-4bf73e4401f2"))
+(wire (pts (xy 91.44 127.0) (xy 93.98 127.0)) (stroke (width 0) (type default)) (uuid "43a767c4-c1f0-4149-800f-6a627af7cf18"))
+(wire (pts (xy 91.44 129.54) (xy 93.98 129.54)) (stroke (width 0) (type default)) (uuid "3dcd4a17-eb24-46c3-8ac2-21b850ca77b8"))
+(wire (pts (xy 91.44 68.58) (xy 93.98 68.58)) (stroke (width 0) (type default)) (uuid "1ecc344a-3df0-4430-a826-99fc080fe8cc"))
+(wire (pts (xy 78.74 60.96) (xy 78.74 58.42)) (stroke (width 0) (type default)) (uuid "7738196e-ba1c-43e5-ab29-b8b6fd462547"))
+(wire (pts (xy 91.44 91.44) (xy 93.98 91.44)) (stroke (width 0) (type default)) (uuid "de098840-80dc-4b2b-8845-7366eff681a6"))
+(wire (pts (xy 40.64 140.97) (xy 40.64 138.43)) (stroke (width 0) (type default)) (uuid "9e850f36-3af2-4a08-8d81-02450e42a5c1"))
+(wire (pts (xy 40.64 148.59) (xy 40.64 151.13)) (stroke (width 0) (type default)) (uuid "8a194ef3-34eb-412f-bd6a-595d6af60781"))
+(wire (pts (xy 30.48 162.56) (xy 30.48 160.02)) (stroke (width 0) (type default)) (uuid "ae2fcd2c-b6ed-4d56-8763-081e760d3e69"))
+(wire (pts (xy 30.48 172.72) (xy 30.48 175.26)) (stroke (width 0) (type default)) (uuid "11429a7f-c593-49f0-b273-39fe19056533"))
+(wire (pts (xy 129.54 72.39) (xy 129.54 69.85)) (stroke (width 0) (type default)) (uuid "08c716f9-26f2-42b3-9143-e46e31e45e53"))
+(wire (pts (xy 129.54 80.01) (xy 129.54 82.55)) (stroke (width 0) (type default)) (uuid "7de7e8b9-dae1-4019-b69a-287de0650664"))
+(wire (pts (xy 129.54 95.25) (xy 129.54 92.71)) (stroke (width 0) (type default)) (uuid "99f1339f-4acb-4082-99b6-d2ca3345d769"))
+(wire (pts (xy 129.54 102.87) (xy 129.54 105.41)) (stroke (width 0) (type default)) (uuid "bfcea473-95e3-499e-b360-d2f6ba34798c"))
+(wire (pts (xy 142.24 95.25) (xy 142.24 92.71)) (stroke (width 0) (type default)) (uuid "7d092e0b-b689-4f83-923a-d7fe5810e4ea"))
+(wire (pts (xy 142.24 102.87) (xy 142.24 105.41)) (stroke (width 0) (type default)) (uuid "9b2f6c5e-bdf4-4131-a148-1961ad5d8cb0"))
+(wire (pts (xy 182.88 119.38) (xy 182.88 121.92)) (stroke (width 0) (type default)) (uuid "5b6a6f57-2229-4a93-a0c9-b36f13bc03e3"))
+(wire (pts (xy 205.74 96.52) (xy 208.28 96.52)) (stroke (width 0) (type default)) (uuid "125efc77-cd5f-4cce-9872-5b4493788b69"))
+(wire (pts (xy 205.74 99.06) (xy 208.28 99.06)) (stroke (width 0) (type default)) (uuid "846f90af-b911-44cd-84ff-e902aec99a90"))
+(wire (pts (xy 193.04 83.82) (xy 193.04 81.28)) (stroke (width 0) (type default)) (uuid "3220335d-ff29-4195-a402-bbcf0be73e56"))
+(wire (pts (xy 175.26 88.9) (xy 172.72 88.9)) (stroke (width 0) (type default)) (uuid "1d4203c6-8289-41ab-a101-8760dc909f7f"))
+(wire (pts (xy 175.26 93.98) (xy 172.72 93.98)) (stroke (width 0) (type default)) (uuid "6f1a44c5-d267-4a25-80fc-ece7092198a9"))
+(wire (pts (xy 175.26 91.44) (xy 172.72 91.44)) (stroke (width 0) (type default)) (uuid "7b51b160-a3f0-4fc6-adde-5b0222c976fd"))
+(wire (pts (xy 190.5 119.38) (xy 190.5 121.92)) (stroke (width 0) (type default)) (uuid "b13e825a-3543-454f-9406-947e58ba83ad"))
+(wire (pts (xy 190.5 83.82) (xy 190.5 81.28)) (stroke (width 0) (type default)) (uuid "dfa025f5-a0c0-4504-a8dd-6e16ad63ee99"))
+(wire (pts (xy 175.26 99.06) (xy 172.72 99.06)) (stroke (width 0) (type default)) (uuid "e6b6c3b6-b7dd-4b5c-b62e-af07b82290a4"))
+(wire (pts (xy 175.26 104.14) (xy 172.72 104.14)) (stroke (width 0) (type default)) (uuid "21d15df8-1501-4895-b599-4befe509d03c"))
+(wire (pts (xy 175.26 101.6) (xy 172.72 101.6)) (stroke (width 0) (type default)) (uuid "fb61e84f-771f-4d78-adad-0da026e870b2"))
+(wire (pts (xy 185.42 119.38) (xy 185.42 121.92)) (stroke (width 0) (type default)) (uuid "3b4c7f2e-4417-40b3-a558-ef92752f25af"))
+(wire (pts (xy 233.68 95.25) (xy 233.68 92.71)) (stroke (width 0) (type default)) (uuid "f94b0013-773c-4a8d-a0c0-92887ec27ec5"))
+(wire (pts (xy 233.68 107.95) (xy 233.68 110.49)) (stroke (width 0) (type default)) (uuid "ffd8198a-2cb3-47c1-b8ed-653f6733b34f"))
+(wire (pts (xy 241.3 101.6) (xy 243.84 101.6)) (stroke (width 0) (type default)) (uuid "25c6c400-a199-471c-965c-0fdaf31d4ff2"))
+(wire (pts (xy 50.8 162.56) (xy 50.8 160.02)) (stroke (width 0) (type default)) (uuid "a2f4ee21-dbbd-42d0-82ef-a0228609ad11"))
+(wire (pts (xy 50.8 172.72) (xy 50.8 175.26)) (stroke (width 0) (type default)) (uuid "8e240bc7-15eb-4fd8-b0be-e71ca6580b69"))
+(no_connect (at 91.44 106.68) (uuid "852cefa7-5672-474f-8e46-644b5d5dbb9a"))
+(no_connect (at 91.44 111.76) (uuid "072b4155-471c-4f1b-b7f0-3722a37b0d06"))
+(no_connect (at 91.44 116.84) (uuid "be3bb409-c93a-4e8b-9314-974b467b0993"))
+(no_connect (at 91.44 119.38) (uuid "2fd358f7-6a5a-4a09-afec-05cf10b9a004"))
+(no_connect (at 91.44 121.92) (uuid "3ca76ed9-c51f-4f3f-b5c4-9cb843bead3c"))
+(no_connect (at 91.44 83.82) (uuid "48adc4f3-667d-449b-b475-936b24e0f241"))
+(no_connect (at 91.44 86.36) (uuid "8512ffdf-1af5-42a9-bc23-3d7e060d0b16"))
+(no_connect (at 91.44 124.46) (uuid "a7e7ffff-2440-4150-8576-7df5e6287942"))
+(no_connect (at 91.44 71.12) (uuid "033e3e4f-ac52-48e0-860c-77296db5c567"))
+(no_connect (at 91.44 73.66) (uuid "c0f4c3fa-cf43-447c-985b-ff16f635292d"))
+(no_connect (at 91.44 76.2) (uuid "194326d3-b50d-4fac-b6e4-a8ee0d1e3977"))
+(no_connect (at 91.44 78.74) (uuid "cb9d4db5-2a0b-4088-b720-ac8909abe9cf"))
+(no_connect (at 91.44 81.28) (uuid "d773a31d-57b2-4c1a-9353-9adf9755bd7a"))
+(no_connect (at 60.96 68.58) (uuid "8ef9a80f-b50b-442f-b4dd-13ffe8cefa90"))
+(no_connect (at 91.44 93.98) (uuid "3fef056c-b243-4aed-ab03-10c8d67cf00a"))
+(no_connect (at 91.44 96.52) (uuid "97438e22-11b3-4ea7-a31c-9f64ea7e7b91"))
+(no_connect (at 91.44 99.06) (uuid "cf050812-e1ae-4b1e-9035-345f7cf415a6"))
+(no_connect (at 91.44 101.6) (uuid "1a4100fd-cc9d-48ae-a203-2602b32ab80c"))
+(no_connect (at 91.44 104.14) (uuid "7e7d7ae5-7eb5-4cfc-b6d7-f2761bdbe298"))
+(no_connect (at 205.74 104.14) (uuid "12384a14-043d-47ba-967c-54db23e7f983"))
+(no_connect (at 205.74 106.68) (uuid "3a3ecc63-eb03-49cb-987e-872f1bb42d42"))
+(label "TX" (at 93.98 114.3 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "fe60c332-69af-4a68-b3ef-5b7b1cd8ac7d"))
+(label "ENA" (at 93.98 127.0 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "60c63a81-b0a5-4f39-a35f-5043ab6162c8"))
+(label "IN1" (at 93.98 129.54 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "845a4955-40fc-49c3-9fb0-fec5886e3315"))
+(label "IN2" (at 93.98 68.58 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "25e3ff1f-e76f-432f-a8c4-8d9c9dce8eed"))
+(label "NTC" (at 93.98 91.44 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f2923128-c66b-4fa6-b6f9-de9152452ea1"))
+(label "TX" (at 40.64 138.43 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "683161cd-a432-4673-bd06-adc278519eb7"))
+(label "NTC" (at 129.54 82.55 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "3f9ac3d3-8022-4bc1-84e3-c4be0acf7976"))
+(label "NTC" (at 129.54 92.71 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "2d3b2ca9-6e64-4245-ac25-8181925a4aab"))
+(label "NTC" (at 142.24 92.71 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4315237f-0f98-4a8f-a588-8f30c9c20acf"))
+(label "M1" (at 208.28 96.52 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f99cca04-fee0-4996-8c47-59d78198dbb4"))
+(label "M2" (at 208.28 99.06 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "bf95452e-11c8-4247-9791-f2391cf33fd7"))
+(label "V9" (at 193.04 81.28 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "bee1efbd-83a4-4760-9bcc-7982deadb6ec"))
+(label "IN1" (at 172.72 88.9 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "7bdf40ff-c333-4425-8dfb-5f7c5fd8432b"))
+(label "ENA" (at 172.72 93.98 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "e9482957-8dce-4fcc-b0c3-f54748f039c8"))
+(label "IN2" (at 172.72 91.44 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "32e10d60-0523-4486-b27d-6e322064a748"))
+(label "M1" (at 233.68 92.71 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f16df38a-431c-483a-9118-43b482fbffa4"))
+(label "M2" (at 233.68 110.49 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "b8d35e63-8ae9-4397-97a7-fa3f45314661"))
+(label "SPEED" (at 243.84 101.6 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "76be97d1-70fb-4a0a-9d0b-037225e07cb1"))
+(label "V9" (at 50.8 160.02 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "14888ff4-719c-4327-ab8e-411dec98ab51"))
+(text "Ventilateur regule : CTN 10 kOhm (pont R1 / TH1), pont en H L298N, moteur a courant continu 9 V" (exclude_from_sim yes) (at 25.4 30.48 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "9d116e99-bdb3-4cfa-941c-086e4c18d4ef"))
+(text "A0 <- CTN, D6 (PWM 976 Hz) -> ENA, D7 -> IN1, D8 -> IN2" (exclude_from_sim yes) (at 25.4 34.29 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4534c3fa-b031-4246-b1dc-53fcfb457112"))
+(text "Moteur arrete sous 25 C, de 30 a 100 % entre 25 et 35 C ; TH1 chauffe de 20 C a 100 C/s (Sim.Params)" (exclude_from_sim yes) (at 25.4 38.1 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "045133f5-c0f1-4bae-92fa-04e935498b07"))
+(text "Terminal : UART0> T = 27.4 C, moteur 51 % ; sonder SPEED (1 V = 1000 tr/min), ENA, M1" (exclude_from_sim yes) (at 25.4 41.91 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "15e1687f-c8de-4e8b-b9c6-02790be13812"))
+(text ".tran 2u 300m" (exclude_from_sim no) (at 25.4 185.42 0) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "1238b552-7d83-433f-9136-be3d4847a7a4"))
+(symbol (lib_id "MCU_Microchip_ATmega:ATmega328P-P") (at 76.2 99.06 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "91eb0dfa-d70c-49c3-beb9-88c78a346421") (property "Reference" "U1" (at 63.5 137.16 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Value" "ATmega328P-P" (at 63.5 139.7 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Footprint" "Package_DIP:DIP-28_W7.62mm" (at 76.2 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "http://ww1.microchip.com/downloads/en/DeviceDoc/ATmega328_P%20AVR%20MCU%20with%20picoPower%20Technology%20Data%20Sheet%2040001984A.pdf" (at 76.2 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 76.2 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Device" "SUBCKT" (at 76.2 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Library" "atmega328p_ventilo.lib" (at 76.2 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Name" "ATMEGA328P" (at 76.2 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Pins" "2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5" (at 76.2 99.06 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "8a4f0fcf-78a1-4ca3-8fab-861abccc1667")) (pin "2" (uuid "5cfc0182-aeef-419f-887f-6aa81f58b47a")) (pin "3" (uuid "fd108890-2f26-499c-b9eb-810a0493849a")) (pin "4" (uuid "65eb0bdd-498f-499b-899b-299d8b37810a")) (pin "5" (uuid "61cb4289-e8ca-4b65-84ce-93be5e220d5f")) (pin "6" (uuid "03a87284-98af-4b57-87f3-a3e897c7437b")) (pin "7" (uuid "c4ce204a-03b4-40a8-b1ed-3e5c7d8649d0")) (pin "8" (uuid "aa0616b4-077d-4875-8b85-33fd8669229a")) (pin "9" (uuid "0ed5eec5-9308-407d-b16b-cad32a829e79")) (pin "10" (uuid "294cc8ea-fe21-482e-a421-1e855eda6603")) (pin "11" (uuid "b0a69e55-f61b-4529-b5b5-5ce519aef9ad")) (pin "12" (uuid "04a66941-a2f9-41c1-9c5a-f3dd7aed2a28")) (pin "13" (uuid "c0f8070e-00d1-4117-8015-a9c93a868703")) (pin "14" (uuid "96a31d2f-d3f4-4ede-a935-a75e15d7f19f")) (pin "15" (uuid "fbfbd6b7-3536-44c1-b7b2-8786f3d9366a")) (pin "16" (uuid "38229352-7a4c-4041-8b40-9ba1e4a4421e")) (pin "17" (uuid "688f0610-ba8a-425a-acd3-31fa606b3730")) (pin "18" (uuid "aa342c9c-a9f7-441e-a29c-d9a538a439a6")) (pin "19" (uuid "94cfc17b-a198-483b-96d0-ee3c4d83c94d")) (pin "20" (uuid "05b184cf-d490-4986-b92c-58dc09196ccf")) (pin "21" (uuid "e989605d-29ba-4016-8741-2f889610c0d8")) (pin "22" (uuid "20e5f74e-e19f-4124-b6e7-0e2e395ae745")) (pin "23" (uuid "2a25bd82-d333-4d13-bac7-7ba4244aeacf")) (pin "24" (uuid "b0d76d66-0ec2-40ea-8e9d-28b43c9cbe34")) (pin "25" (uuid "7009f7ea-a938-410d-9bc8-86f187915d79")) (pin "26" (uuid "14725776-15ac-43e7-b026-5a08b1180edd")) (pin "27" (uuid "c67a1a8b-e6c5-418d-baf0-7c9f3ecd7ef3")) (pin "28" (uuid "941d4406-d64c-4724-91bc-6a4646d12421")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "U1") (unit 1)))))
+(symbol (lib_id "power:+5V") (at 76.2 58.42 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "54a2a0cc-b796-4510-902b-f14d92e14375") (property "Reference" "#PWR01" (at 80.01 57.15 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "+5V" (at 80.01 59.690000000000005 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 76.2 58.42 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 76.2 58.42 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 76.2 58.42 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "fb36b00c-d92d-44b6-b326-641132397332")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR01") (unit 1)))))
+(symbol (lib_id "power:GND") (at 76.2 139.7 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "8faa0f09-b5e5-444a-bfed-1f9e9ce6c1c9") (property "Reference" "#PWR02" (at 80.01 138.42999999999998 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 80.01 140.97 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 76.2 139.7 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 76.2 139.7 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 76.2 139.7 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "2951a693-c38d-4451-897c-c85b7b218f22")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR02") (unit 1)))))
+(symbol (lib_id "power:+5V") (at 78.74 58.42 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "846214f3-8fc3-400d-ba68-24c65559b218") (property "Reference" "#PWR03" (at 82.55 57.15 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "+5V" (at 82.55 59.690000000000005 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 78.74 58.42 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 78.74 58.42 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 78.74 58.42 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "34e31f27-1911-47bd-a1da-ef9dad96c7d7")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR03") (unit 1)))))
+(symbol (lib_id "Device:R") (at 40.64 144.78 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "ab367ffa-2c6e-49f6-9f8e-71833f00f2b3") (property "Reference" "R9" (at 44.45 143.51 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "100k" (at 44.45 146.05 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" (at 40.64 144.78 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 40.64 144.78 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 40.64 144.78 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "f1e1541c-be2e-4b2f-81c3-f54186d259ce")) (pin "2" (uuid "080dd985-5124-4bb1-b7de-b248ccb720d6")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "R9") (unit 1)))))
+(symbol (lib_id "power:GND") (at 40.64 151.13 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "f2524565-19b6-4343-b73e-71dcdc5ab57a") (property "Reference" "#PWR04" (at 44.45 149.85999999999999 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 44.45 152.4 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 40.64 151.13 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 40.64 151.13 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 40.64 151.13 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "ca6bd43f-581f-41d1-a66c-9b8466519d64")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR04") (unit 1)))))
+(symbol (lib_id "Simulation_SPICE:VDC") (at 30.48 167.64 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board no) (dnp no) (uuid "bf31f766-b1e7-4626-9dd3-da841f011811") (property "Reference" "V1" (at 34.29 166.36999999999998 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "5V" (at 34.29 168.91 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 30.48 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 30.48 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 30.48 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Device" "V" (at 30.48 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Type" "DC" (at 30.48 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Pins" "1=+ 2=-" (at 30.48 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Params" "dc=5" (at 30.48 167.64 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "73135da0-74e5-43e7-9fe4-f18fb290edb0")) (pin "2" (uuid "52faa63c-f3d4-4647-bf56-152bb5359007")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "V1") (unit 1)))))
+(symbol (lib_id "power:+5V") (at 30.48 160.02 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "31f56835-f85d-47e1-a1e9-66c2a4ae93a6") (property "Reference" "#PWR05" (at 34.29 158.75 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "+5V" (at 34.29 161.29000000000002 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 30.48 160.02 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 30.48 160.02 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 30.48 160.02 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "7fa7c3c8-0fe5-4531-8cb8-cdfe8ca3e648")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR05") (unit 1)))))
+(symbol (lib_id "power:PWR_FLAG") (at 30.48 160.02 90) (unit 1) (exclude_from_sim no) (in_bom no) (on_board no) (dnp no) (uuid "10c36849-f0fd-45be-92aa-956b4f03d060") (property "Reference" "#FLG01" (at 34.29 158.75 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "PWR_FLAG" (at 34.29 161.29000000000002 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 30.48 160.02 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 30.48 160.02 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 30.48 160.02 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "0ab8e398-e485-4401-8234-2b36f93e3d72")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#FLG01") (unit 1)))))
+(symbol (lib_id "power:GND") (at 30.48 175.26 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "252f5119-06c2-4967-b5fa-a65f67cb1e21") (property "Reference" "#PWR06" (at 34.29 173.98999999999998 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 34.29 176.53 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 30.48 175.26 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 30.48 175.26 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 30.48 175.26 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "6c81b076-4d05-4a72-9a7e-33c60de9f032")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR06") (unit 1)))))
+(symbol (lib_id "power:PWR_FLAG") (at 30.48 175.26 90) (unit 1) (exclude_from_sim no) (in_bom no) (on_board no) (dnp no) (uuid "d15c7525-7b8c-4f66-8b80-1365b445eb93") (property "Reference" "#FLG02" (at 34.29 173.98999999999998 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "PWR_FLAG" (at 34.29 176.53 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 30.48 175.26 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 30.48 175.26 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 30.48 175.26 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "f9168784-887f-4869-a05e-497de79b8dea")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#FLG02") (unit 1)))))
+(symbol (lib_id "Device:R") (at 129.54 76.2 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "1380a1b1-8d4d-434a-bdc1-dcaa119e304a") (property "Reference" "R1" (at 133.35 74.93 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "10k" (at 133.35 77.47 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" (at 129.54 76.2 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 129.54 76.2 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 129.54 76.2 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "b1d6edd9-4b5f-4ad9-b9f0-fa961f66baa8")) (pin "2" (uuid "b627fc70-cf31-4a34-8d87-702774daf683")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "R1") (unit 1)))))
+(symbol (lib_id "power:+5V") (at 129.54 69.85 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "c683c55c-4522-4a29-a30c-c845351ccda1") (property "Reference" "#PWR07" (at 133.35 68.58 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "+5V" (at 133.35 71.11999999999999 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 129.54 69.85 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 129.54 69.85 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 129.54 69.85 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "db9d2b80-bb12-4338-aa45-aa2c40aeabc2")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR07") (unit 1)))))
+(symbol (lib_id "Device:Thermistor_NTC") (at 129.54 99.06 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "9456db6e-81e0-4648-bcd5-27ccc990c057") (property "Reference" "TH1" (at 133.35 97.79 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "10k B3950" (at 133.35 100.33 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Device" "SUBCKT" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Library" "ntc.lib" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Name" "NTC10K" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Pins" "1=A 2=B" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Params" "T0=20 RATE=100" (at 129.54 99.06 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "c18d0eb4-251f-4103-a588-039b55c9e908")) (pin "2" (uuid "0b8bb13b-2739-47a3-83cc-cd98b6e76e58")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "TH1") (unit 1)))))
+(symbol (lib_id "power:GND") (at 129.54 105.41 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "23d24016-1d75-41ae-b89b-59787ae5f37a") (property "Reference" "#PWR08" (at 133.35 104.14 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 133.35 106.67999999999999 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 129.54 105.41 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 129.54 105.41 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 129.54 105.41 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "a0791a08-6b41-469d-b447-7f3cd6847455")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR08") (unit 1)))))
+(symbol (lib_id "Device:C") (at 142.24 99.06 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "40a0ea7e-dcf6-48d2-b018-8835edb66870") (property "Reference" "C1" (at 146.05 97.79 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "100n" (at 146.05 100.33 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P5.00mm" (at 142.24 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 142.24 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 142.24 99.06 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "59d0dc86-98db-4654-b539-c823d2f5dd59")) (pin "2" (uuid "5f8fb434-d211-49c0-8f32-21e718c9839a")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "C1") (unit 1)))))
+(symbol (lib_id "power:GND") (at 142.24 105.41 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "1823ac20-3072-4f25-9db6-dc1ff2620116") (property "Reference" "#PWR09" (at 146.05 104.14 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 146.05 106.67999999999999 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 142.24 105.41 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 142.24 105.41 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 142.24 105.41 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "4bd77ec0-e74d-4957-8a3e-74b801998ade")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR09") (unit 1)))))
+(symbol (lib_id "Driver_Motor:L298N") (at 190.5 101.6 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "db2ebe5a-a04e-4f9c-aa72-430c123e2bc0") (property "Reference" "U2" (at 177.8 119.38 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Value" "L298N" (at 177.8 121.92 0) (effects (font (size 1.27 1.27)) (justify left bottom))) (property "Footprint" "Package_TO_SOT_THT:TO-220-15_P2.54x5.08mm_StaggerOdd_Lead4.58mm_Vertical" (at 190.5 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "http://www.st.com/st-web-ui/static/active/en/resource/technical/document/datasheet/CD00000240.pdf" (at 190.5 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 190.5 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Device" "SUBCKT" (at 190.5 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Library" "motor.lib" (at 190.5 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Name" "L298N" (at 190.5 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Pins" "1=SENSE_A 2=OUT1 3=OUT2 4=VS 5=IN1 6=ENA 7=IN2 8=GND 9=VSS 10=IN3 11=ENB 12=IN4 13=OUT3 14=OUT4 15=SENSE_B" (at 190.5 101.6 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "78f158c9-ed98-4870-aa26-8477c6c8999b")) (pin "2" (uuid "6fb15031-2b85-4f9a-88e1-3d3d9347be88")) (pin "3" (uuid "954ea50c-743f-4df2-9206-e78f0cc04433")) (pin "4" (uuid "856f9b66-014f-4b92-a38c-689a839e095d")) (pin "5" (uuid "d0f98bd1-621c-4b9b-80c7-d3ee984407cb")) (pin "6" (uuid "907ea0a8-906a-4156-85ce-bc6ceacecee5")) (pin "7" (uuid "41fe0bbd-b1d2-4463-bf59-341b6132d4b3")) (pin "8" (uuid "92703105-febf-430c-834d-865548618d10")) (pin "9" (uuid "8acd5746-81f9-40a7-8c93-319fbbe4b3bd")) (pin "10" (uuid "583db57c-75bf-4d6c-a78b-03c0cbf03033")) (pin "11" (uuid "6de694a0-632d-49b1-9b90-93bcf452b0ba")) (pin "12" (uuid "43de3ec4-ba32-48ea-aca5-e10af1fd3a72")) (pin "13" (uuid "62eb946e-f1fd-4f91-9806-6c7513170ab4")) (pin "14" (uuid "e5f4120f-f774-44ed-8b41-72c00288ad9a")) (pin "15" (uuid "a5be8e9c-6ac3-4d8f-ae91-41a5acb6d35a")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "U2") (unit 1)))))
+(symbol (lib_id "power:GND") (at 182.88 121.92 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "da65b6be-8f8d-466f-902e-239aefabfdb1") (property "Reference" "#PWR10" (at 186.69 120.65 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 186.69 123.19 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 182.88 121.92 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 182.88 121.92 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 182.88 121.92 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "95519145-32e8-431a-b423-db6bf4901423")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR10") (unit 1)))))
+(symbol (lib_id "power:GND") (at 190.5 121.92 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b658afc9-0f7d-4d39-bf56-a50c8462c18a") (property "Reference" "#PWR11" (at 194.31 120.65 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 194.31 123.19 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 190.5 121.92 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 190.5 121.92 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 190.5 121.92 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "44d94a7c-a23c-41af-b8e3-6f06ce9acf2c")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR11") (unit 1)))))
+(symbol (lib_id "power:+5V") (at 190.5 81.28 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "bfa80635-6d5a-4cb9-8521-18d8beef2cb1") (property "Reference" "#PWR12" (at 194.31 80.01 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "+5V" (at 194.31 82.55 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 190.5 81.28 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 190.5 81.28 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 190.5 81.28 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "9840e9a6-a924-4780-a47b-65d977988884")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR12") (unit 1)))))
+(symbol (lib_id "power:GND") (at 172.72 99.06 270) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "fc3d19fe-1b97-46c9-bcbe-1b9d16e33f59") (property "Reference" "#PWR13" (at 176.53 97.79 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 176.53 100.33 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 172.72 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 172.72 99.06 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 172.72 99.06 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "5d16e77e-6ffa-4fc2-a3f7-0a2df4c22e8b")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR13") (unit 1)))))
+(symbol (lib_id "power:GND") (at 172.72 104.14 270) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "6a7e64a9-bd10-4770-85a0-372f7da09e9c") (property "Reference" "#PWR14" (at 176.53 102.87 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 176.53 105.41 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 172.72 104.14 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 172.72 104.14 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 172.72 104.14 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "581fe094-7f29-4ff2-b123-f6053bcb08fa")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR14") (unit 1)))))
+(symbol (lib_id "power:GND") (at 172.72 101.6 270) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "55de16d7-cb82-4989-9eb8-4cd525de2045") (property "Reference" "#PWR15" (at 176.53 100.33 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 176.53 102.86999999999999 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 172.72 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 172.72 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 172.72 101.6 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "d6c8aefc-96e7-4c57-88b9-8f73c49f40f7")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR15") (unit 1)))))
+(symbol (lib_id "power:GND") (at 185.42 121.92 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "34e07e96-19e6-42b5-9266-00e700adc9a1") (property "Reference" "#PWR16" (at 189.23 120.65 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 189.23 123.19 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 185.42 121.92 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 185.42 121.92 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 185.42 121.92 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "7644c588-65c8-47ee-992e-e870e46668ee")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR16") (unit 1)))))
+(symbol (lib_id "simAVR:MOTOR_DC") (at 233.68 101.6 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "fc1f05cb-bfb8-4680-a445-e7cf5211cfe1") (property "Reference" "M1" (at 237.49 100.33 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "MOTOR_DC" (at 237.49 102.86999999999999 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" (at 233.68 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 233.68 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 233.68 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Device" "SUBCKT" (at 233.68 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Library" "motor.lib" (at 233.68 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Name" "MOTOR_DC" (at 233.68 101.6 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Pins" "1=P 2=N 3=SPEED" (at 233.68 101.6 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "cc714715-2d4e-44d0-99f1-851d1acc83c8")) (pin "2" (uuid "13309041-2284-4503-9b8f-a5dc607a3ba3")) (pin "3" (uuid "0d79a654-d521-412e-b49b-1cca1ff70d4d")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "M1") (unit 1)))))
+(symbol (lib_id "Simulation_SPICE:VDC") (at 50.8 167.64 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board no) (dnp no) (uuid "46a7c277-6b98-44ea-a326-53258e817664") (property "Reference" "V2" (at 54.61 166.36999999999998 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "9V" (at 54.61 168.91 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 50.8 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 50.8 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 50.8 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Device" "V" (at 50.8 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Type" "DC" (at 50.8 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Pins" "1=+ 2=-" (at 50.8 167.64 0) (effects (font (size 1.27 1.27)) hide)) (property "Sim.Params" "dc=9" (at 50.8 167.64 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "c59aca68-4cea-4819-92f9-5578fd0bc117")) (pin "2" (uuid "e45eda8d-1e0f-4547-ba7e-79fe7b9a4150")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "V2") (unit 1)))))
+(symbol (lib_id "power:PWR_FLAG") (at 50.8 160.02 90) (unit 1) (exclude_from_sim no) (in_bom no) (on_board no) (dnp no) (uuid "c29253bf-60a7-4e5b-8c0a-88d4a7bd383c") (property "Reference" "#FLG03" (at 54.61 158.75 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "PWR_FLAG" (at 54.61 161.29000000000002 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 50.8 160.02 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 50.8 160.02 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 50.8 160.02 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "ea4160f3-66bb-4764-9acb-1eab6a0c13b9")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#FLG03") (unit 1)))))
+(symbol (lib_id "power:GND") (at 50.8 175.26 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "0a6ebf36-aadb-4738-8be6-aebd5bc7c13b") (property "Reference" "#PWR17" (at 54.61 173.98999999999998 0) (effects (font (size 1.27 1.27)) (justify left) hide)) (property "Value" "GND" (at 54.61 176.53 0) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "" (at 50.8 175.26 0) (effects (font (size 1.27 1.27)) hide)) (property "Datasheet" "" (at 50.8 175.26 0) (effects (font (size 1.27 1.27)) hide)) (property "Description" "" (at 50.8 175.26 0) (effects (font (size 1.27 1.27)) hide)) (pin "1" (uuid "27b2406e-0d40-4859-892f-543bdd042c57")) (instances (project "simAVR_ventilo" (path "/fbcf38c0-4e6f-481b-8687-1b5a80362f47" (reference "#PWR17") (unit 1)))))
+(sheet_instances (path "/" (page "1")))
+)

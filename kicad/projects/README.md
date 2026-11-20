@@ -23,6 +23,8 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `RaspberryPi_Pico` | `firmware/pico/pico_demo.c` | la carte Pico entière d'après son schéma officiel (feuille hiérarchique), bloc racine dessiné comme une Pico ; ADC3 = VSYS / 3, détection VBUS |
 | `simPICO_i2c` | `firmware/pico/pico_i2c.c` | bus I²C électrique : capteur LM75 et afficheur LCD 16x2 I²C (PCF8574), pull-ups 4,7 kΩ |
 | `simPICO_spi` | `firmware/pico/pico_spi.c` | bus SPI électrique : 74HC595 alimenté en 3,3 V, chenillard 8 LED, relecture par MISO |
+| `simAVR_radar`, `simPICO_radar` | `firmware/radar.c`, `firmware/pico/pico_radar.c` | capteur à ultrasons HC-SR04 et servomoteur qui suit la distance (sortie ANGLE) |
+| `simAVR_ventilo`, `simPICO_ventilo` | `firmware/ventilo.c`, `firmware/pico/pico_ventilo.c` | ventilateur régulé : CTN 10 kΩ, pont en H L298N (symbole officiel), moteur à courant continu (sortie SPEED) |
 | `simPICO2` | `firmware/pico2/pico2_demo.c` (RP2350, cœurs RISC-V, bare-metal) | le montage de `simPICO` avec une Raspberry Pi Pico 2 (même brochage) |
 | `RaspberryPi_Pico2` | `firmware/pico2/pico2_demo.c` | la carte Pico 2 entière, reconstruite (son schéma n'est publié qu'en image) : RP2350A, régulateur du cœur, feuille hiérarchique comme `RaspberryPi_Pico` |
 | `Arduino_UNO` | `firmware/uno_demo.c` ou `uno_demo/uno_demo.ino` | carte UNO R3 d'après le schéma officiel : LED L (tampon LMV358), reset, liaison série 1 kΩ vers le 16U2, connecteurs ; blink + UART RX/TX |

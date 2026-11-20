@@ -12,7 +12,9 @@ Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DI
                       sub-sheet; the root sheet shows it as a Pico-shaped block),
            pico2, pico2board (the same for the Raspberry Pi Pico 2, RP2350),
            picoi2c (Pico I2C master: LM75 and LCD 16x2 I2C modules),
-           picospi (Pico SPI master: 74HC595 and 8 LEDs)
+           picospi (Pico SPI master: 74HC595 and 8 LEDs),
+           radar, picoradar (HC-SR04 + servo, ATmega328P or Pico),
+           ventilo, picoventilo (NTC + L298N + DC motor, ATmega328P or Pico)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -33,7 +35,8 @@ PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
            "lcd": "simAVR_lcd", "pico": "simPICO",
            "picoboard": "RaspberryPi_Pico", "pico2": "simPICO2",
            "pico2board": "RaspberryPi_Pico2", "picoi2c": "simPICO_i2c",
-           "picospi": "simPICO_spi"}[VARIANT]
+           "picospi": "simPICO_spi", "radar": "simAVR_radar", "ventilo": "simAVR_ventilo",
+           "picoradar": "simPICO_radar", "picoventilo": "simPICO_ventilo"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -53,6 +56,9 @@ FOOTPRINTS = {
     "Display_Character:WC1602A": "Display:WC1602A",
     "MCU_Module:RaspberryPi_Pico": "Module:RaspberryPi_Pico_Common_Unspecified",
     "simAVR:RT6150B-33GQW": "Package_DFN_QFN:Richtek_UQFN-10_2.6x2.6mm_P0.5mm",
+    "simAVR:SERVO": "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical",
+    "simAVR:MOTOR_DC": "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical",
+    "Device:Thermistor_NTC": "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal",
     "Connector_Generic:Conn_01x04": "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x06": "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x08": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
@@ -282,6 +288,33 @@ LIB.update({
               ("11", "GND_PAD", 0.0, -10.16, 90, "passive", True)],
         pin_names=True,
         description="Buck-boost converter 3.3 V, 1 A (Richtek), as on the Raspberry Pi Pico"),
+    # RC servomotor of tools/make_module_lib.py (Motor:Motor_Servo has no
+    # ANGLE output): SIG VCC GND, and ANGLE = 1 V per degree.
+    "simAVR:SERVO": dict(
+        ref="M", value="SERVO",
+        body='(rectangle (start -5.08 5.08) (end 5.08 -5.08) '
+             '(stroke (width 0.254) (type default)) (fill (type background))) '
+             '(circle (center 0 0) (radius 2.54) '
+             '(stroke (width 0.254) (type default)) (fill (type none))) '
+             '(polyline (pts (xy 0 0) (xy 2.032 1.524)) '
+             '(stroke (width 0.508) (type default)) (fill (type none)))',
+        pins=[("1", "SIG", -7.62, 2.54, 0, "input"),
+              ("2", "VCC", -7.62, 0.0, 0, "power_in"),
+              ("3", "GND", -7.62, -2.54, 0, "power_in"),
+              ("4", "ANGLE", 7.62, 0.0, 180, "output")],
+        pin_names=True,
+        description="RC servomotor (SG90), ANGLE output: 1 V per degree (simulation)"),
+    # DC motor of kicad/motor.lib (Motor:Motor_DC has no SPEED output).
+    "simAVR:MOTOR_DC": dict(
+        ref="M", value="MOTOR_DC",
+        body='(circle (center 0 0) (radius 3.81) '
+             '(stroke (width 0.254) (type default)) (fill (type background))) '
+             '(text "M" (at 0 0 0) (effects (font (size 2.54 2.54))))',
+        pins=[("1", "+", 0.0, 6.35, 270, "passive"),
+              ("2", "-", 0.0, -6.35, 90, "passive"),
+              ("3", "SPEED", 7.62, 0.0, 180, "output")],
+        pin_names=True,
+        description="Brushed DC motor, SPEED output: 1 V per 1000 rpm (simulation)"),
     # Official KiCad symbol MCU_Module:RaspberryPi_Pico (pins and outline
     # taken from the KiCad 10 library).
     "MCU_Module:RaspberryPi_Pico": dict(
@@ -1735,6 +1768,115 @@ if VARIANT in ("picoi2c", "picospi"):
     NO_CONNECT_REF = None
 
 
+if VARIANT in ("radar", "ventilo", "picoradar", "picoventilo"):
+    # Sensors and actuators: HC-SR04 + servo, NTC + L298N + DC motor.
+    LIB.update(load_official_symbols("modules.kicad_sym.txt"))
+    PICO = VARIANT.startswith("pico")
+    RADAR = VARIANT.endswith("radar")
+    name = "radar" if RADAR else "ventilo"
+    if PICO:
+        MCUFILE = f"pico_{name}.lib"
+        mcu = ("MCU_Module:RaspberryPi_Pico", "A1", "RaspberryPi_Pico", 76.2, 99.06,
+               {"Sim.Device": "SUBCKT", "Sim.Library": MCUFILE, "Sim.Name": f"PICO_{name.upper()}",
+                "Sim.Pins": ("1=GP0 2=GP1 4=GP2 5=GP3 6=GP4 7=GP5 9=GP6 10=GP7 11=GP8 12=GP9 "
+                             "14=GP10 15=GP11 16=GP12 17=GP13 19=GP14 20=GP15 21=GP16 22=GP17 "
+                             "24=GP18 25=GP19 26=GP20 27=GP21 29=GP22 30=RUN 31=GP26 32=GP27 "
+                             "34=GP28 35=ADC_VREF 36=V3V3 37=V3V3_EN 39=VSYS 40=VBUS")},
+               {"*": "NC", "3": "GND", "36": "+3V3", "1": "TX"})
+        if RADAR:
+            mcu[6].update({"4": "TRIG", "5": "ECHO_3V3", "20": "SIG"})
+        else:
+            mcu[6].update({"21": "ENA", "22": "IN1", "24": "IN2", "31": "NTC"})
+        gnd = "GND"           # Driven by the Pico (power output pin)
+    else:
+        MCUFILE = f"atmega328p_{name}.lib"
+        mcu = ("MCU_Microchip_ATmega:ATmega328P-P", "U1", "ATmega328P-P", 76.2, 99.06,
+               {"Sim.Device": "SUBCKT", "Sim.Library": MCUFILE, "Sim.Name": "ATMEGA328P",
+                "Sim.Pins": ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
+                             "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 "
+                             "28=PC5")},
+               {"7": "+5V", "20": "+5V", "8": "GND", "*": "NC", "3": "TX"})
+        if RADAR:
+            mcu[6].update({"13": "TRIG", "14": "ECHO", "15": "SIG"})
+        else:
+            mcu[6].update({"12": "ENA", "13": "IN1", "14": "IN2", "23": "NTC"})
+        gnd = "GND!"
+    LIBFILE = MCUFILE     # main() copies the model given on the command line here.
+    MOD_PARTS = [mcu,
+                 ("Device:R", "R9", "100k", 40.64, 144.78, {}, {"1": "TX", "2": "GND"}),
+                 ("Simulation_SPICE:VDC", "V1", "5V", 30.48, 167.64,
+                  {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-",
+                   "Sim.Params": "dc=5"},
+                  {"1": "+5V!", "2": gnd})]
+    if RADAR:
+        echo = "ECHO_5V" if PICO else "ECHO"
+        MOD_PARTS += [
+            ("Connector_Generic:Conn_01x04", "J1", "HC-SR04", 165.1, 86.36,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "hcsr04.lib", "Sim.Name": "HCSR04",
+              "Sim.Pins": "1=VCC 2=TRIG 3=ECHO 4=GND"},
+             {"1": "+5V", "2": "TRIG", "3": echo, "4": "GND"}),
+            ("simAVR:SERVO", "M1", "SG90", 165.1, 121.92,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "servo.lib", "Sim.Name": "SERVO",
+              "Sim.Pins": "1=SIG 2=VCC 3=GND 4=ANGLE"},
+             {"1": "SIG", "2": "+5V", "3": "GND", "4": "ANGLE"}),
+        ]
+        if PICO:
+            MOD_PARTS += [
+                ("Device:R", "R1", "1k", 129.54, 76.2, {}, {"1": "ECHO_5V", "2": "ECHO_3V3"}),
+                ("Device:R", "R2", "2k", 129.54, 93.98, {}, {"1": "ECHO_3V3", "2": "GND"}),
+            ]
+        pins_txt = ("GP2 -> TRIG, GP3 <- ECHO par le pont R1 / R2 (5 V -> 3,3 V), GP15 -> servo"
+                    if PICO else "D7 -> TRIG, D8 <- ECHO, D9 (OC1A) -> servo")
+        TEXTS = [
+            ("Radar : le servo suit la distance mesuree par le HC-SR04 (5 cm -> 0, 55 cm -> 180 deg)",
+             25.4, 30.48),
+            (pins_txt, 25.4, 34.29),
+            ("Obstacle : 40 cm, se rapproche a 100 cm/s (hcsr04.lib : --dist, --rate)", 25.4, 38.1),
+            ("Terminal : UART0> Distance = .., HCSR04> .., SERVO> .. deg ; sonder ANGLE (1 V = 1 deg)",
+             25.4, 41.91),
+        ]
+        DIRECTIVES = [(".tran 2u 300m", 25.4, 185.42)]
+    else:
+        vcc = "+3V3" if PICO else "+5V"
+        MOD_PARTS += [
+            ("Device:R", "R1", "10k", 129.54, 76.2, {}, {"1": vcc, "2": "NTC"}),
+            ("Device:Thermistor_NTC", "TH1", "10k B3950", 129.54, 99.06,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "ntc.lib", "Sim.Name": "NTC10K",
+              "Sim.Pins": "1=A 2=B", "Sim.Params": "T0=20 RATE=100"},
+             {"1": "NTC", "2": "GND"}),
+            ("Device:C", "C1", "100n", 142.24, 99.06, {}, {"1": "NTC", "2": "GND"}),
+            ("Driver_Motor:L298N", "U2", "L298N", 190.5, 101.6,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "motor.lib", "Sim.Name": "L298N",
+              "Sim.Pins": ("1=SENSE_A 2=OUT1 3=OUT2 4=VS 5=IN1 6=ENA 7=IN2 8=GND 9=VSS 10=IN3 "
+                           "11=ENB 12=IN4 13=OUT3 14=OUT4 15=SENSE_B")},
+             {"1": "GND", "2": "M1", "3": "M2", "4": "V9", "5": "IN1", "6": "ENA", "7": "IN2",
+              "8": "GND", "9": "+5V", "10": "GND", "11": "GND", "12": "GND", "13": "NC",
+              "14": "NC", "15": "GND"}),
+            ("simAVR:MOTOR_DC", "M1", "MOTOR_DC", 233.68, 101.6,
+             {"Sim.Device": "SUBCKT", "Sim.Library": "motor.lib", "Sim.Name": "MOTOR_DC",
+              "Sim.Pins": "1=P 2=N 3=SPEED"},
+             {"1": "M1", "2": "M2", "3": "SPEED"}),
+            ("Simulation_SPICE:VDC", "V2", "9V", 50.8, 167.64,
+             {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=9"},
+             {"1": "V9!", "2": "GND"}),
+        ]
+        pins_txt = ("GP26 (ADC0) <- CTN, GP16 (PWM 1 kHz) -> ENA, GP17 -> IN1, GP18 -> IN2"
+                    if PICO else "A0 <- CTN, D6 (PWM 976 Hz) -> ENA, D7 -> IN1, D8 -> IN2")
+        TEXTS = [
+            ("Ventilateur regule : CTN 10 kOhm (pont R1 / TH1), pont en H L298N, moteur a courant "
+             "continu 9 V", 25.4, 30.48),
+            (pins_txt, 25.4, 34.29),
+            ("Moteur arrete sous 25 C, de 30 a 100 % entre 25 et 35 C ; TH1 chauffe de 20 C a "
+             "100 C/s (Sim.Params)", 25.4, 38.1),
+            ("Terminal : UART0> T = 27.4 C, moteur 51 % ; sonder SPEED (1 V = 1000 tr/min), ENA, M1",
+             25.4, 41.91),
+        ]
+        DIRECTIVES = [((".tran 0.5u 300m" if PICO else ".tran 2u 300m"), 25.4, 185.42)]
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(MOD_PARTS)
+    JUNCTIONS = []
+    NO_CONNECT_REF = None
+
+
 if VARIANT == "lcd":
     SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
                 "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
@@ -2190,6 +2332,13 @@ def main():
     if VARIANT == "pico2board":
         with open(os.path.join(OUT, BOARDFILE), "w") as f:
             f.write(PICO2_BOARD_MODELS)
+    if VARIANT in ("ventilo", "picoventilo"):
+        here = os.path.dirname(os.path.abspath(__file__))
+        for model in ("ntc.lib", "motor.lib"):
+            with open(os.path.join(here, "..", "kicad", model)) as f:
+                text = f.read()
+            with open(os.path.join(OUT, model), "w") as f:
+                f.write(text)
     if VARIANT in ("spi", "picospi"):
         here = os.path.dirname(os.path.abspath(__file__))
         with open(os.path.join(here, "..", "kicad", "74hc595.lib")) as f:

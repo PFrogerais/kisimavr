@@ -1,0 +1,29 @@
+simPICO_ventilo - ventilateur regule : CTN, pont en H L298N, moteur
+=================================================================
+
+Modeles :
+  - pico_ventilo.lib : Raspberry Pi Pico (RP2040), firmware firmware/pico/pico_ventilo.bin (make -C firmware/pico)
+    (genere par "cmake --build build --target demos")
+  - ntc.lib   : TH1 = thermistance CTN 10 kOhm a 25 C, B = 3950 ; temperature
+                T0 = 20 C qui monte de RATE = 100 C/s (Sim.Params, accelere) ;
+                noeud interne "temp" = la temperature (1 V = 1 C)
+  - motor.lib : U2 = L298N (symbole officiel Driver_Motor:L298N, entrees 3,3 / 5 V,
+                chute de tension des transistors, diodes de roue libre) ;
+                M1 = moteur a courant continu (R, L, f.c.e.m., inertie),
+                sortie SPEED : 1 V = 1000 tr/min
+
+Cablage :
+  GP26 (ADC0) <- point milieu R1 10k (vers 3,3 V) / CTN TH1 (vers GND)
+  GP16 (PWM 1 kHz) -> ENA, GP17 -> IN1 = 1, GP18 -> IN2 = 0
+  OUT1 / OUT2 -> moteur, VS = 9 V (V2), VSS = 5 V (V1)
+
+Firmware : firmware/pico/pico_ventilo.c
+  temperature par la table de la CTN (pas de 5 C, interpolation) ;
+  moteur arrete sous 25 C, de 30 % a 100 % entre 25 et 35 C
+  "T = 27.4 C, moteur 51 %" toutes les 20 ms
+
+Ou voir quoi ?
+  - Terminal : UART0> T = .. C, moteur .. %
+  - Simulateur : SPEED (vitesse du moteur), ENA (MLI), M1 - M2, NTC
+
+Simulation : transitoire, pas 0.5u (ADC de la Pico), duree 300m.

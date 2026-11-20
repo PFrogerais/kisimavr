@@ -27,6 +27,7 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | Raspberry Pi Pico (RP2040) | composant `PICO` 3,3 V : rp2040js (Wokwi) exécuté par QuickJS dans le plug-in ; GPIO, PWM, UART (texte + trames), I²C et SPI maîtres (signaux réels), USB série (texte), ADC GP26–GP28 ; firmwares `.uf2` (Pico SDK, Arduino-pico), `.bin`, `.hex` |
 | Modules I²C | composant `I2C_…` câblé sur SDA / SCL : capteur LM75, EEPROM 24C02, afficheur LCD 16x2 I²C (PCF8574), décodés bit à bit depuis les tensions, ACK et données en drain ouvert ; pour tout maître (Pico, ATmega, sources) |
 | Raspberry Pi Pico 2 (RP2350) | composant `PICO2`, même brochage : rp2350js dans QuickJS, cœurs RISC-V (Hazard3) ou Arm (Cortex-M33) selon le firmware, démarrage par la bootrom A2 ; mêmes GPIO, UART, ADC |
+| Capteurs et actionneurs | HC-SR04 et servomoteur co-simulés (temps exacts, messages dans le terminal), CTN 10 kΩ, moteur à courant continu et pont en H L298N en SPICE ; démos ATmega328P et Pico |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
 
 ---
@@ -404,6 +405,26 @@ Exemple : `firmware/pico2/pico2_demo.c` (bare-metal, compilé pour les deux
 architectures), `ngspice/pico2_test.cir` et les projets `simPICO2` et
 `RaspberryPi_Pico2`.
 
+### 6.4 sexies Capteurs et actionneurs
+
+- **HC-SR04** et **servomoteur** : `tools/make_module_lib.py hcsr04 --dist 40
+  --rate -100` (sous-circuit `HCSR04`, broches VCC TRIG ECHO GND) et
+  `make_module_lib.py servo` (`SERVO`, broches SIG VCC GND ANGLE, ANGLE en
+  volts = degrés). Le plug-in mesure TRIG et la largeur des impulsions
+  exactement ; le terminal affiche `HCSR04> 40.0 cm (echo 2332 us)` et
+  `SERVO> 126 deg (pulse 1843 us)`.
+- **CTN** : `kicad/ntc.lib`, sous-circuit `NTC10K` (10 kΩ à 25 °C, B = 3950),
+  température `T0` qui varie de `RATE` °C/s (`Sim.Params = T0=20 RATE=100`).
+- **Moteur et pont en H** : `kicad/motor.lib`, `MOTOR_DC` (R, L, f.c.é.m.,
+  inertie ; sortie SPEED, 1 V = 1000 tr/min) et `L298N` (brochage du symbole
+  officiel `Driver_Motor:L298N`, entrées 3,3 / 5 V, chutes de tension,
+  diodes de roue libre).
+
+Exemples : `firmware/radar.c`, `firmware/ventilo.c` (ATmega328P),
+`firmware/pico/pico_radar.c`, `pico_ventilo.c` ; `ngspice/radar_test.cir`,
+`ventilo_test.cir`, `pico_radar_test.cir`, `pico_ventilo_test.cir` ; projets
+`simAVR_radar`, `simAVR_ventilo`, `simPICO_radar`, `simPICO_ventilo`.
+
 ### 6.5 UART0 et chronogrammes
 
 - **Texte** : chaque ligne (`'\n'`) s'affiche, horodatée, sur stderr
@@ -577,6 +598,8 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `rp2040/rp2350_bridge.js`, `rp2040/pico_common.js` | RP2350 : pont vers rp2350js ; code commun aux deux ponts (broches, UART, USB, ADC) |
 | `third_party/rp2350js/` | rp2350js compilé en JavaScript (MIT) + bootroms ; `tools/vendor_rp2350js.sh` le reconstruit |
 | `tools/make_pico_lib.py` | génère le modèle `PICO` / `PICO2` (ou la puce `RP2040` / `RP2350`) pour un projet |
+| `src/sensor_devices.*`, `tools/make_module_lib.py` | HC-SR04 et servomoteur co-simulés (testés unitairement) ; leurs modèles SPICE |
+| `kicad/ntc.lib`, `kicad/motor.lib` | CTN, moteur à courant continu, L298N (SPICE comportemental) |
 | `src/i2c_slave_device.*`, `tools/make_i2c_lib.py` | modules I²C du circuit (LM75, 24C02, LCD PCF8574) décodés bit à bit ; leur modèle SPICE |
 | `kicad/74hc595.lib` | modèle XSPICE du 74HC595 (symbole officiel `74xx:74HC595`) |
 | `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
@@ -588,7 +611,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
 | `tools/kicad_symbols/`, `tools/dump_kicad_symbol.py` | symboles officiels KiCad 10 utilisés par la carte Pico, et l'outil qui les extrait |
-| `kicad/projects/` | 15 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
+| `kicad/projects/` | 19 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
 | `tools/make_terminal_lib.py` | modèle SPICE d'un terminal série (trames sur TXD) depuis un fichier texte |
 | `tools/setup_demos.py` | écrit les `.lib` des projets de démo (chemins de la machine) |
 | `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |

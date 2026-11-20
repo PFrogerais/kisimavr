@@ -24,3 +24,6 @@ kicad/projects/*/rp2350.lib
 kicad/projects/*/pico2.lib
 kicad/projects/*/pico_*.lib
 kicad/projects/*/i2c_*.lib
+kicad/projects/*/atmega328p_*.lib
+kicad/projects/*/hcsr04.lib
+kicad/projects/*/servo.lib

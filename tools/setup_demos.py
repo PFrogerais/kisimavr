@@ -99,6 +99,27 @@ def main():
                     "--lcd", "0x27", "--irreversible", "12",
                     "--so", so, "-o", os.path.join(i2c, "i2c_lcd.lib")], check=True)
 
+    # Sensors and actuators: radar (HC-SR04 + servo) and fan (NTC + L298N),
+    # with an ATmega328P and with a Pico.
+    for name in ("radar", "ventilo"):
+        avr = os.path.join(PROJECTS, f"simAVR_{name}")
+        subprocess.run([sys.executable, os.path.join(tools, "make_atmega328p_lib.py"),
+                        "--hex", os.path.join(ROOT, "firmware", f"{name}.hex"), "--i2c=",
+                        "--so", so, "-o", os.path.join(avr, f"atmega328p_{name}.lib")],
+                       check=True)
+        pico_dir = os.path.join(PROJECTS, f"simPICO_{name}")
+        subprocess.run([sys.executable, os.path.join(tools, "make_pico_lib.py"),
+                        "--fw", os.path.join(ROOT, "firmware", "pico", f"pico_{name}.bin"),
+                        "--name", name, "--so", so,
+                        "-o", os.path.join(pico_dir, f"pico_{name}.lib")], check=True)
+    for project in ("simAVR_radar", "simPICO_radar"):
+        out = os.path.join(PROJECTS, project)
+        subprocess.run([sys.executable, os.path.join(tools, "make_module_lib.py"), "hcsr04",
+                        "--dist", "40", "--rate", "-100", "--log", "--so", so,
+                        "-o", os.path.join(out, "hcsr04.lib")], check=True)
+        subprocess.run([sys.executable, os.path.join(tools, "make_module_lib.py"), "servo",
+                        "--so", so, "-o", os.path.join(out, "servo.lib")], check=True)
+
     # Raspberry Pi Pico 2 (RP2350, RISC-V cores): firmware built by
     # "make -C firmware/pico2"; simPICO2 and the board project.
     pico2 = os.path.join(PROJECTS, "simPICO2")

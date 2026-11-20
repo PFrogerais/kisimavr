@@ -605,6 +605,31 @@ if(KICAD_CLI AND Python3_FOUND)
                     FIXTURES_REQUIRED "firmware_pico;demos;pico_${bus}_netlist")
             endforeach()
 
+            # Sensors and actuators: simAVR_radar / simAVR_ventilo / simPICO_radar /
+            # simPICO_ventilo, netlists exported by KiCad.
+            foreach(project IN ITEMS simAVR_radar simAVR_ventilo simPICO_radar simPICO_ventilo)
+                set(mnet ${CMAKE_CURRENT_BINARY_DIR}/kicad/${project}.cir)
+                add_test(NAME kicad.${project}_netlist
+                    COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${mnet}
+                            -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/${project}/${project}.kicad_sch
+                            -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+                set_tests_properties(kicad.${project}_netlist PROPERTIES
+                                     FIXTURES_SETUP ${project}_netlist LABELS kicad TIMEOUT 120)
+                if(project MATCHES "radar")
+                    set(expect [=[UART0> Distance = (39|40)\.[0-9] cm, servo 12[0-9] deg]=]
+                               [=[SERVO> [0-9]+ deg]=])
+                else()
+                    set(expect [=[UART0> T = 4[0-9]\.[0-9] C, moteur 100 %]=])
+                endif()
+                kisimavr_test(ngspice.kicad_${project} TIMEOUT 900
+                    WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/${project}
+                    COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/${project}.raw ${mnet}
+                    EXPECT ${expect}
+                    REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[RP2040: ]])
+                set_tests_properties(ngspice.kicad_${project} PROPERTIES LABELS "ngspice;kicad"
+                    FIXTURES_REQUIRED "firmware;firmware_pico;demos;${project}_netlist")
+            endforeach()
+
             # Pico 2 (RP2350, RISC-V cores): the same two projects.
             set(pico2_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simPICO2.cir)
             add_test(NAME kicad.pico2_netlist

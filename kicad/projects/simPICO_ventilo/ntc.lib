@@ -1,0 +1,14 @@
+* NTC10K: thermistor (CTN) 10 kohm at 25 degC, B = 3950 K (kisimavr)
+* kisimavr - SPDX-License-Identifier: GPL-3.0-or-later
+*
+* Pins: A B (KiCad symbol Device:Thermistor_NTC, Sim.Pins = 1=A 2=B)
+* R(T) = R25 * exp(BETA * (1/T - 1/298.15)), T in kelvin;
+* temperature T0 (degC) at t = 0, changing at RATE degC/s:
+*   KiCad: Sim.Params = T0=20 RATE=100   (20 degC, +100 degC/s)
+* Internal node "temp": the temperature, 1 V = 1 degC (to plot it).
+* Self-heating is not modelled.
+.subckt NTC10K A B params: R25=10k BETA=3950 T0=25 RATE=0
+Btemp temp 0 V = {T0} + {RATE} * time
+Rt temp 0 1meg
+Bntc A B I = V(A,B) / ({R25} * exp({BETA} * (1 / (V(temp) + 273.15) - 1 / 298.15)))
+.ends NTC10K
