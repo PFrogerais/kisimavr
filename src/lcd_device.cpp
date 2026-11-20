@@ -11,6 +11,7 @@
 
 #include "lcd_device.h"
 
+#include <cctype>
 #include <cstdlib>
 #include <utility>
 
@@ -106,7 +107,12 @@ bool parseLcdConfig(const std::vector<std::string> &args, LcdConfig &cfg)
         }
         else if (key == "name")
         {
+            // ngspice lower-cases the netlist: labels are shown in capitals.
             cfg.name = value;
+            for (char &c : cfg.name)
+            {
+                c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            }
         }
         else
         {

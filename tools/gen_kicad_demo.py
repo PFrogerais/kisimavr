@@ -645,7 +645,8 @@ def build_stubbed(spec):
 
     Every pin gets a 2.54 mm stub ending on a net label, or on a +5V / GND
     power symbol ("+5V!" / "GND!" also adds a PWR_FLAG); "NC" = no-connect
-    flag; the key "*" gives the net of the pins not listed.
+    flag; a label net ending with "!" also gets a PWR_FLAG (power input fed
+    through a resistor); the key "*" gives the net of the pins not listed.
     Returns PARTS, WIRES, LABELS, NO_CONNECTS.
     """
     parts, wires, labels, ncs = [], [], [], []
@@ -687,6 +688,11 @@ def build_stubbed(spec):
                                   {"_rot": (up + 90) % 360 if net == "+5V" else (up + 270) % 360}))
             else:
                 labels.append((net, ex, ey, 180 if dx < 0 else 0))
+                if flag:
+                    # Power input fed through a part (e.g. a backlight resistor).
+                    count["flg"] += 1
+                    parts.append(("power:PWR_FLAG", f"#FLG{count['flg']:02d}", "PWR_FLAG", ex, ey,
+                                  {"_rot": 0 if dy == 0 else 90}))
     return parts, wires, labels, ncs
 
 
@@ -816,7 +822,7 @@ if VARIANT == "lcd":
          {"1": "GND", "2": "+5V", "3": "VO", "4": "LCD_RS", "5": "GND", "6": "LCD_E",
           "7": "NC", "8": "NC", "9": "NC", "10": "NC",
           "11": "LCD_D4", "12": "LCD_D5", "13": "LCD_D6", "14": "LCD_D7",
-          "15": "BL_A", "16": "GND"}),
+          "15": "BL_A!", "16": "GND"}),
         # Contrast: divider in place of the usual 10k potentiometer.
         ("Device:R", "R1", "4.7k", 195.58, 63.5, {}, {"1": "+5V", "2": "VO"}),
         ("Device:R", "R2", "4.7k", 195.58, 81.28, {}, {"1": "VO", "2": "GND"}),
