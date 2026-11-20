@@ -285,7 +285,8 @@ if(Python3_FOUND)
     # I2C slaves model.
     kisimavr_test(models.i2c_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
         COMMAND ${Python3_EXECUTABLE} make_i2c_lib.py --relative --so ../build/mcu_cosim.so
-                --lm75 0x48 --lcd 0x27 --log -o ${CMAKE_CURRENT_BINARY_DIR}/models/i2c_slaves.lib
+                --lm75 0x48 --temp 25.5 --lcd 0x27 --log
+                -o ${CMAKE_CURRENT_BINARY_DIR}/models/i2c_slaves.lib
         EXPECT [[written]])
     add_test(NAME models.i2c_compare
         COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_BINARY_DIR}/models/i2c_slaves.lib

@@ -14,7 +14,7 @@
 * =============================================================================
 
 .model i2c_slaves_core d_cosim simulation="../build/mcu_cosim.so"
-+ sim_args=["device" "i2c" "lm75" "0x48" "lcd" "0x27" "temp" "25" "rate" "0" "cols"
++ sim_args=["device" "i2c" "lm75" "0x48" "lcd" "0x27" "temp" "25.5" "rate" "0" "cols"
 + "16" "rows" "2" "lcdlog" "../lcd_log.txt" "log" "1"]
 + irreversible=11
 .model i2c_slaves_in adc_bridge(in_low=1.5 in_high=3.5)

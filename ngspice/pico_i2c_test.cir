@@ -7,7 +7,7 @@
 * Models generated for this firmware:
 *   python3 ../tools/make_pico_lib.py --relative --fw ../firmware/pico/pico_i2c.bin \
 *       --name i2c --so ../build/mcu_cosim.so -o pico_i2c.lib
-*   python3 ../tools/make_i2c_lib.py --relative --lm75 0x48 --lcd 0x27 --log \
+*   python3 ../tools/make_i2c_lib.py --relative --lm75 0x48 --temp 25.5 --lcd 0x27 --log \
 *       --so ../build/mcu_cosim.so -o i2c_slaves.lib
 .include pico_i2c.lib
 .include i2c_slaves.lib
