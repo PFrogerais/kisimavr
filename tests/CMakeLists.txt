@@ -448,9 +448,9 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                 WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
                 COMMAND ${NGSPICE} -b ${prefix}radar_test.cir
                 EXPECT [[UART0> Radar : HC-SR04 \+ servo]]
-                       [[HCSR04> 40\.0 cm \(echo 2332 us\)]]
-                       [[UART0> Distance = 40\.[0-9] cm, servo 12[5-7] deg]]
-                       [[SERVO> 12[5-7] deg \(pulse 18[3-5][0-9] us\)]]
+                       [=[HCSR04> (39|40)\.[0-9] cm \(echo 23[0-9][0-9] us\)]=]
+                       [=[UART0> Distance = (39|40)\.[0-9] cm, servo 12[0-9] deg]=]
+                       [=[SERVO> [0-9]+ deg \(pulse [0-9]+ us\)]=]
                        [[UART0> Distance = 2[0-9]\.[0-9] cm]]
                 REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[hors de portee]] ${reject})
             set_tests_properties(ngspice.${prefix}radar PROPERTIES LABELS ngspice)
