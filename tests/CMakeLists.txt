@@ -153,7 +153,7 @@ kisimavr_test(runner.uart_rx_file FIXTURE firmware
 # UART reception from frames on the RXD pin (runner -u: 8N1 at the baud
 # rate of the firmware, 16 MHz / 8 / 17 = 117647 bauds).
 kisimavr_test(runner.uart_rx_pin FIXTURE firmware
-    COMMAND ${RUN} -t 0.004 -u 117647,LED\sON\n ${SO} -- hex ${FW}/uart_cmd.hex
+    COMMAND ${RUN} -t 0.004 -u [[117647,LED\sON\n]] ${SO} -- hex ${FW}/uart_cmd.hex
             in PD0 out PD1 PB5
     EXPECT [[UART0< LED ON]] [[UART0> OK LED ON]] [[out1: 1 changes, 1 rising edges]]
     REJECT [[setup failed]] [[framing error]])
