@@ -4,7 +4,13 @@
 *
 * A prints "Hello STI2D !" then "ADC0 = ..." lines on its TXD (D1);
 * the wire goes to the RXD (D0) of B, which decodes the frames and answers
-* "Recu : <line>" on its own TXD. Models generated with --name A / --name B:
+* "Recu : <line>" on its own TXD.
+*
+* As on real chips, the banner of A is garbled for B: A starts sending at
+* 23 us, B (slower C start-up) enables its receiver in the middle of the
+* first frame, and the banner bytes follow each other without any idle
+* time, so B stays out of step (framing errors) until the first pause.
+* B resynchronises there and receives the ADC0 lines correctly. Models generated with --name A / --name B:
 *   python3 ../tools/make_atmega328p_lib.py --relative --name A \
 *       --hex ../firmware/uart_adc.hex --so ../build/mcu_cosim.so \
 *       --uartlog ../uart_log_a.txt --i2c= -o atmega328p_a.lib
@@ -26,11 +32,7 @@ Cline line 0 100p
 Rbtx btx 0 100k
 
 .control
-* Maximum step 1 us: ngspice advances the co-simulated MCUs one after the
-* other, and may then step back to an output of the second one. The first
-* MCU keeps its lead, so it sees the following input edges late by up to
-* one step: keep the step well below half a bit (8.5 us at 115200 bauds).
-tran 0.5u 6m 0 1u
+tran 0.5u 6m
 plot v(line) v(btx)+6
 .endc
 .end

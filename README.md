@@ -297,6 +297,19 @@ est à 1, RXD est une entrée (le pull-up suit PORTD0, comme sur la puce).
 réception : une réponse arrive donc environ 85 µs (115200 bauds) plus tard
 que sur la vraie puce.
 
+Comme sur une vraie puce, un récepteur activé **au milieu d'une trame**
+(ici : un MCU dont le programme démarre plus lentement que l'émetteur) se
+cale sur un mauvais front ; si les octets se suivent sans silence, il reste
+désynchronisé (`framing error`, texte brouillé) jusqu'à la première pause,
+puis reçoit correctement. C'est ce que montre la première ligne de
+`ngspice/uart_rx_test.cir`.
+
+**Plusieurs MCU dans une netlist** : chaque modèle doit avoir son propre
+nom (`--name`) et son propre rang `d_cosim` (`--irreversible 1`, `2`…),
+sinon ngspice plante. ngspice fait avancer les MCU l'un après l'autre :
+il signale alors souvent `XSPICE time is behind vtime` pour le second,
+sans conséquence sur les résultats.
+
 ## 7. Référence `sim_args`
 
 Chaque clé et chaque valeur est **une chaîne séparée** :

@@ -215,7 +215,8 @@ Pour un programme qui lit le port série (`Serial.read`, `readStringUntil`) :
 
 **Deux ATmega qui dialoguent** : générer deux modèles avec `--name A` et
 `--name B` (sous-circuits `ATMEGA328P_A` et `ATMEGA328P_B`, un `.lib` chacun,
-`--uartlog` différent), mettre `Sim.Name` = `ATMEGA328P_A` sur l'un et
+`--uartlog` différent, et `--irreversible 2` pour le second : ngspice exige
+un rang différent par MCU), mettre `Sim.Name` = `ATMEGA328P_A` sur l'un et
 `ATMEGA328P_B` sur l'autre, puis relier D1 (TXD) de l'un à D0 (RXD) de
 l'autre. Exemple complet : `ngspice/uart_rx_test.cir`.
 
