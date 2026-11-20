@@ -93,9 +93,11 @@ kisimavr_test(runner.blink FIXTURE firmware
     REJECT [[setup failed]] [[MCU stopped]])
 
 # PWM on PD6 at 16 MHz / 8 / 256 = 7812.5 Hz; LED on PB5 once ADC0 >= 2.5 V.
+# Median, not mean: simavr does not buffer OCR0A until BOTTOM, so an update
+# in the middle of a period may add an isolated extra pulse.
 kisimavr_test(runner.adc_pwm_high FIXTURE firmware
     COMMAND ${RUN} -t 0.02 -a 0,5,5 ${SO} -- hex ${FW}/adc_pwm.hex out PD6 PB5 adc 0
-    EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period 0\.128000 ms]]
+    EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period [0-9.]+ ms \([0-9.]+ Hz\), median period 0\.128[0-9]* ms]]
            [[out1: [0-9]+ changes, 1 rising edges]]
     REJECT [[setup failed]])
 kisimavr_test(runner.adc_pwm_low FIXTURE firmware
@@ -166,7 +168,19 @@ endif()
 # ---- End to end through ngspice -------------------------------------------------
 # ngspice/full_test.cir loads ../build/mcu_cosim.so: only meaningful when the
 # build directory is <source>/build.
+# d_cosim takes "sim_args" since ngspice 44: older versions ignore it.
 find_program(NGSPICE ngspice)
+if(NGSPICE)
+    execute_process(COMMAND ${NGSPICE} -v OUTPUT_VARIABLE _ngv ERROR_VARIABLE _ngv
+                    TIMEOUT 20)
+    string(REGEX MATCH "ngspice-([0-9]+)" _ngm "${_ngv}")
+    set(NGSPICE_VERSION "${CMAKE_MATCH_1}")
+    if(NOT NGSPICE_VERSION OR NGSPICE_VERSION LESS 44)
+        message(STATUS "ngspice tests disabled: ngspice ${NGSPICE_VERSION} found, "
+                       "44 or later needed (d_cosim sim_args)")
+        set(NGSPICE "")
+    endif()
+endif()
 if(NGSPICE AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
     # Button with internal pull-up, ADC ramp on A0 and UART, all in SPICE.
     kisimavr_test(ngspice.full FIXTURE firmware TIMEOUT 300

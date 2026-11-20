@@ -49,7 +49,7 @@ cmake --build build --target demos             # -> modèles .lib des projets Ki
 - Tests de non-régression : `ctest --test-dir build --output-on-failure`
   (firmwares compilés automatiquement ; le test de bout en bout ngspice
   n'est actif que si le dossier de build est `build/`).
-- ngspice **≥ 42** est requis (modèle `d_cosim`) : `ngspice -v`.
+- ngspice **≥ 44** est requis (modèle `d_cosim` avec son paramètre `sim_args`) : `ngspice -v`. Ubuntu 24.04 fournit la version 42, trop ancienne ; validé avec ngspice 47 (Fedora).
 - Le `.so` mémorise l'emplacement de `libsimavr.so` (RPATH) : pas besoin
   de `LD_LIBRARY_PATH`, y compris depuis KiCad.
 - Debian/Ubuntu : `sudo apt install cmake g++ libelf-dev gcc-avr avr-libc ngspice`,

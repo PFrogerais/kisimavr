@@ -3,7 +3,7 @@
  * @brief Binary-compatible copy of the ngspice d_cosim interface.
  *
  * Mirrors <ngspice/cosim.h> and the Digital_t type of <ngspice/cmtypes.h>
- * (ngspice >= 42, modified BSD license) so this project builds without the
+ * (ngspice >= 44, modified BSD license) so this project builds without the
  * ngspice development headers. Field order and enum values MUST stay
  * identical to the upstream definitions.
  *

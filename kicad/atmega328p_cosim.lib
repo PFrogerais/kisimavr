@@ -2,7 +2,7 @@
 *
 * Pins : PD2 (input), PB5 PB0 (outputs) - extend the lists to add pins.
 * Edit : the two paths in the mcu_core model (absolute paths are safest).
-* Needs: ngspice >= 42 with XSPICE code models, mcu_cosim.so (this project).
+* Needs: ngspice >= 44 with XSPICE code models, mcu_cosim.so (this project).
 *
 * numparam pitfalls (ngspice preprocessor):
 *  - keep the d_cosim .model OUTSIDE the .subckt;
