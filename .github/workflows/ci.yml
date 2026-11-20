@@ -1,0 +1,58 @@
+# Build the plug-in and run the ctest suite (cosim_runner + ngspice).
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # simavr is not packaged with its headers everywhere: built from source,
+  # pinned for reproducible results. Bump deliberately.
+  SIMAVR_REPO: https://github.com/buserror/simavr.git
+  SIMAVR_REV: 13d4ed32433ad7a37bb757b7e0f7dbb5373396c0
+
+jobs:
+  build-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              cmake g++ make pkg-config libelf-dev gcc-avr avr-libc binutils-avr \
+              ngspice python3
+          ngspice -v | head -n 3
+
+      - name: Cache simavr
+        id: simavr-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local
+          key: simavr-${{ runner.os }}-${{ env.SIMAVR_REV }}
+
+      - name: Build simavr
+        if: steps.simavr-cache.outputs.cache-hit != 'true'
+        run: |
+          git init -q simavr-src
+          git -C simavr-src fetch -q --depth 1 "$SIMAVR_REPO" "$SIMAVR_REV"
+          git -C simavr-src checkout -q FETCH_HEAD
+          make -C simavr-src/simavr RELEASE=1 -j"$(nproc)"
+          make -C simavr-src/simavr install RELEASE=1 DESTDIR="$HOME/.local"
+
+      # build/ (not another folder): ngspice/full_test.cir loads
+      # ../build/mcu_cosim.so, so the ngspice test is only enabled there.
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-Werror
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
