@@ -52,7 +52,11 @@ def main():
         return
     for item in args:
         lib, name = item.split(":", 1)
-        symbols = library(lib)
+        try:
+            symbols = library(lib)
+        except OSError as err:
+            print(f"### {item}: {err}", file=sys.stderr)
+            continue
         if name not in symbols:
             print(f"### {item}: not found", file=sys.stderr)
             continue

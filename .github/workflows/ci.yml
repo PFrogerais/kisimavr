@@ -70,13 +70,10 @@ jobs:
         if: matrix.name == 'release'
         run: |
           # Temporary: symbols for the Pico board project.
-          python3 tools/dump_kicad_symbol.py MCU_RaspberryPi:RP2040 Device:Crystal_GND24 \
-              Connector:USB_B_Micro Device:Q_NMOS_GSD Device:D_Schottky Device:L \
-              TestPoint:TestPoint Connector_Generic:Conn_02x20_Counter_Clockwise \
-              Connector_Generic:Conn_01x03 | sed 's/^/KSYM|/' || true
-          for l in Memory_Flash Regulator_Switching Device Transistor_FET; do
-              python3 tools/dump_kicad_symbol.py --list $l | grep -i -E "W25Q16|RT6150|Q_NMOS|DMG1012|Crystal_GND|D_Schottky$" | sed 's/^/KLIST|/'
-          done || true
+          python3 tools/dump_kicad_symbol.py Connector:TestPoint Transistor_FET:DMG1012T \
+              Memory_Flash:W25Q16JVSS Connector_Generic:Conn_02x20_Counter_Clockwise \
+              Connector_Generic:Conn_01x03 Switch:SW_Push Device:C Device:R Device:LED \
+              Device:Crystal_GND24 power:+3V3 | sed 's/^/KSYM|/' || true
       - name: Cache simavr
         id: simavr-cache
         uses: actions/cache@v4
