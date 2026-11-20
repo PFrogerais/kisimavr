@@ -89,10 +89,12 @@ kisimavr_test(runner.blink FIXTURE firmware
            [[out1: [0-9]+ changes, [0-9]+ rising edges, mean period (3\.99|4\.00)[0-9]* ms]]
     REJECT [[setup failed]] [[MCU stopped]])
 
-# PWM on PD6 at 16 MHz / 8 / 256 = 7812.5 Hz; LED on PB5 once ADC0 >= 2.5 V.
+# PWM on PD6 at 16 MHz / 8 / 256 = 7812.5 Hz (128 us); LED on PB5 once
+# ADC0 >= 2.5 V. The mean period between rising edges depends a little on
+# when the firmware updates OCR0A (i.e. on the avr-gcc version): +-1 %.
 kisimavr_test(runner.adc_pwm_high FIXTURE firmware
     COMMAND ${RUN} -t 0.02 -a 0,5,5 ${SO} -- hex ${FW}/adc_pwm.hex out PD6 PB5 adc 0
-    EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period 0\.128000 ms]]
+    EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period 0\.12[7-9][0-9]* ms]]
            [[out1: [0-9]+ changes, 1 rising edges]]
     REJECT [[setup failed]])
 kisimavr_test(runner.adc_pwm_low FIXTURE firmware
@@ -130,7 +132,19 @@ endif()
 # ngspice/full_test.cir loads ../build/mcu_cosim.so: only meaningful when the
 # build directory is <source>/build.
 find_program(NGSPICE ngspice)
-if(NGSPICE AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
+set(NGSPICE_OK FALSE)
+if(NGSPICE)
+    # sim_args reach the plug-in from ngspice 44 on.
+    execute_process(COMMAND ${NGSPICE} -v OUTPUT_VARIABLE ngspice_banner
+                    ERROR_VARIABLE ngspice_banner TIMEOUT 20)
+    string(REGEX MATCH "ngspice-([0-9]+)" _ "${ngspice_banner}")
+    if(NOT CMAKE_MATCH_1 OR CMAKE_MATCH_1 LESS 44)
+        message(STATUS "ngspice test disabled: ngspice >= 44 required (found '${CMAKE_MATCH_1}')")
+    else()
+        set(NGSPICE_OK TRUE)
+    endif()
+endif()
+if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
     # Button with internal pull-up, ADC ramp on A0 and UART, all in SPICE.
     kisimavr_test(ngspice.full FIXTURE firmware TIMEOUT 300
         WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
@@ -140,7 +154,7 @@ if(NGSPICE AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                [[UART0> A0 = [0-9]+  BTN = 1]]
         REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]])
     set_tests_properties(ngspice.full PROPERTIES LABELS ngspice)
-elseif(NGSPICE)
+elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
 endif()
 

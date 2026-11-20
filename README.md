@@ -48,7 +48,10 @@ cmake --build build --target demos             # -> modèles .lib des projets Ki
 - Tests de non-régression : `ctest --test-dir build --output-on-failure`
   (firmwares compilés automatiquement ; le test de bout en bout ngspice
   n'est actif que si le dossier de build est `build/`).
-- ngspice **≥ 42** est requis (modèle `d_cosim`) : `ngspice -v`.
+- ngspice **≥ 44** est requis (`d_cosim` avec `sim_args`) : `ngspice -v`.
+  ngspice 42 et 43 ne transmettent pas `sim_args` au plug-in (erreur
+  `missing firmware`) : c'est le cas d'Ubuntu 24.04, compiler alors ngspice
+  depuis ses sources ou utiliser une distribution plus récente.
 - Le `.so` mémorise l'emplacement de `libsimavr.so` (RPATH) : pas besoin
   de `LD_LIBRARY_PATH`, y compris depuis KiCad.
 - Debian/Ubuntu : `sudo apt install cmake g++ libelf-dev gcc-avr avr-libc ngspice`,
@@ -284,6 +287,7 @@ Charge le plug-in comme `d_cosim`, pilote l'entrée 0 par un signal carré
 | Symptôme | Cause | Remède |
 |---|---|---|
 | `Undefined parameter [...]` | numparam évalue `"clé=valeur"` ou un `.model` placé dans le `.subckt` | une chaîne par clé et par valeur ; `.model d_cosim` hors du `.subckt` |
+| `missing firmware` alors que `"hex"` est bien dans `sim_args` | ngspice 42 ou 43 | ngspice ≥ 44 (`ngspice -v`) |
 | `cannot open firmware '...'` | chemin faux, ou relatif au mauvais dossier | chemins absolus (le script les génère) |
 | `mismatched ... counts` | les ports de `aMcu` ne correspondent pas aux `sim_args` | voir l'ordre des ports (§ 7) |
 | `'.probe alli' and digital nodes are not compatible` | option « Sauvegarder tous les courants » | la décocher |

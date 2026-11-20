@@ -3,7 +3,7 @@
  * @brief Binary-compatible copy of the ngspice d_cosim interface.
  *
  * Mirrors <ngspice/cosim.h> and the Digital_t type of <ngspice/cmtypes.h>
- * (ngspice >= 42, modified BSD license) so this project builds without the
+ * (ngspice >= 44, modified BSD license) so this project builds without the
  * ngspice development headers. Field order and enum values MUST stay
  * identical to the upstream definitions.
  *
@@ -73,7 +73,8 @@ struct co_info
     volatile double vtime;    /* Co-simulation time in seconds. */
     Cosim_method    method;
 
-    /* Strings from the lib_args / sim_args parameters of the .model card. */
+    /* Strings from the lib_args / sim_args parameters of the .model card.
+     * Added in ngspice 44: ngspice 42/43 end the structure at "method". */
     unsigned int              lib_argc;
     unsigned int              sim_argc;
     const char *const *const  lib_argv;

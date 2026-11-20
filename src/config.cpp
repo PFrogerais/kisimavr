@@ -221,7 +221,9 @@ bool parseConfig(const std::vector<std::string> &args, Config &cfg)
 
     if (cfg.hexPath.empty())
     {
-        std::fprintf(stderr, "%s missing firmware: add \"hex\" \"file.hex\" to sim_args\n", kTag);
+        std::fprintf(stderr,
+                     "%s missing firmware: add \"hex\" \"file.hex\" to sim_args"
+                     " (needs ngspice >= 44: older versions do not pass sim_args)\n", kTag);
         return false;
     }
     if (cfg.frequency == 0u)

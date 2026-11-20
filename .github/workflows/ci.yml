@@ -1,4 +1,8 @@
 # Build the plug-in and run the ctest suite (cosim_runner + ngspice).
+#
+# Runs in a Fedora container: the plug-in needs ngspice >= 44 (sim_args),
+# while Ubuntu 24.04 ships ngspice 42. Fedora is also the reference
+# platform of the README.
 name: CI
 
 on:
@@ -19,6 +23,7 @@ jobs:
   build-test:
     name: ${{ matrix.name }}
     runs-on: ubuntu-24.04
+    container: fedora:45
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -42,22 +47,23 @@ jobs:
       ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
       UBSAN_OPTIONS: print_stacktrace=1
     steps:
-      - uses: actions/checkout@v4
-
       - name: Install tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-              cmake g++ make pkg-config libelf-dev gcc-avr avr-libc binutils-avr \
-              ngspice python3
+          dnf install -y --setopt=install_weak_deps=False \
+              git cmake gcc-c++ make pkgconf-pkg-config elfutils-libelf-devel \
+              avr-gcc avr-libc avr-binutils ngspice ngspice-codemodel python3 \
+              libasan libubsan which   # which: used by the simavr Makefiles
           ngspice -v | head -n 3
+
+      # After the tools: checkout then uses git.
+      - uses: actions/checkout@v4
 
       - name: Cache simavr
         id: simavr-cache
         uses: actions/cache@v4
         with:
           path: ~/.local
-          key: simavr-${{ runner.os }}-${{ env.SIMAVR_REV }}
+          key: simavr-fedora45-${{ env.SIMAVR_REV }}
 
       - name: Build simavr
         if: steps.simavr-cache.outputs.cache-hit != 'true'
