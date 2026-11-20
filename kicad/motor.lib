@@ -1,0 +1,75 @@
+* DC motor and L298N dual H-bridge (kisimavr), behavioural models
+* kisimavr - SPDX-License-Identifier: GPL-3.0-or-later
+
+* -----------------------------------------------------------------------------
+* MOTOR_DC: small brushed DC motor (6..12 V, about 8500 rpm at 9 V, no load)
+* Pins: P N SPEED   (SPEED: voltage output, 1 V = 1000 rpm)
+* Electrical: R, L and back-EMF KE * w; mechanical: J dw/dt = KT * i - B * w - TL
+* (w in rad/s); mechanical time constant J * R / (KE * KT) = 20 ms.
+*   KiCad: Sim.Params = R=2 L=1m KE=0.01 J=1u TL=0 ...
+* -----------------------------------------------------------------------------
+.subckt MOTOR_DC P N SPEED params: R=2 L=1m KE=0.01 KT=0.01 J=1u B=1u TL=0
+Rm P n1 {R}
+Lm n1 n2 {L}
+Vi n2 n3 0
+Bemf n3 N V = {KE} * V(w)
+* Mechanics: node w = speed in rad/s (1 V = 1 rad/s)
+Cj w 0 {J}
+Rb w 0 {1 / B}
+Bt 0 w I = {KT} * I(Vi) - {TL} * tanh(V(w) / 10)
+Bspeed SPEED 0 V = V(w) * 60 / (2 * 3.14159265) / 1000
+.ends MOTOR_DC
+
+* -----------------------------------------------------------------------------
+* L298N: dual full bridge, pins in the order of the KiCad symbol
+* Driver_Motor:L298N (Multiwatt15):
+*   1 SENSE_A  2 OUT1  3 OUT2  4 VS  5 IN1  6 ENA  7 IN2  8 GND
+*   9 VSS  10 IN3  11 ENB  12 IN4  13 OUT3  14 OUT4  15 SENSE_B
+* Inputs: high above 2.3 V (3.3 V and 5 V logic). EN low: outputs released.
+* Outputs: high side VS - 1.35 V - 1.0 ohm * I, low side SENSE + 1.2 V
+* + 1.0 ohm * I (about 2 V total drop at 0.5 A, as the datasheet);
+* free-wheel diodes OUTx -> VS and GND -> OUTx (as on the L298N modules).
+* SENSE_A / SENSE_B: tie to GND, or through a sense resistor.
+* -----------------------------------------------------------------------------
+.subckt L298N SENSE_A OUT1 OUT2 VS IN1 ENA IN2 GND VSS IN3 ENB IN4 OUT3 OUT4 SENSE_B
+* Logic levels (smooth threshold at 2.3 V): 1 = high
+Bena ena 0 V = 1 / (1 + exp(-(V(ENA,GND) - 2.3) * 40))
+Benb enb 0 V = 1 / (1 + exp(-(V(ENB,GND) - 2.3) * 40))
+Bin1 in1 0 V = 1 / (1 + exp(-(V(IN1,GND) - 2.3) * 40))
+Bin2 in2 0 V = 1 / (1 + exp(-(V(IN2,GND) - 2.3) * 40))
+Bin3 in3 0 V = 1 / (1 + exp(-(V(IN3,GND) - 2.3) * 40))
+Bin4 in4 0 V = 1 / (1 + exp(-(V(IN4,GND) - 2.3) * 40))
+* Half bridges: high side to VS, low side to SENSE
+B1h GND OUT1 I = V(ena) * V(in1) * max(V(VS,GND) - 1.35 - V(OUT1,GND), 0) / 1.0
+B1l OUT1 SENSE_A I = V(ena) * (1 - V(in1)) * max(V(OUT1,SENSE_A) - 1.2, 0) / 1.0
+B2h GND OUT2 I = V(ena) * V(in2) * max(V(VS,GND) - 1.35 - V(OUT2,GND), 0) / 1.0
+B2l OUT2 SENSE_A I = V(ena) * (1 - V(in2)) * max(V(OUT2,SENSE_A) - 1.2, 0) / 1.0
+B3h GND OUT3 I = V(enb) * V(in3) * max(V(VS,GND) - 1.35 - V(OUT3,GND), 0) / 1.0
+B3l OUT3 SENSE_B I = V(enb) * (1 - V(in3)) * max(V(OUT3,SENSE_B) - 1.2, 0) / 1.0
+B4h GND OUT4 I = V(enb) * V(in4) * max(V(VS,GND) - 1.35 - V(OUT4,GND), 0) / 1.0
+B4l OUT4 SENSE_B I = V(enb) * (1 - V(in4)) * max(V(OUT4,SENSE_B) - 1.2, 0) / 1.0
+* Free-wheel diodes
+D1h OUT1 VS dfw
+D1l GND OUT1 dfw
+D2h OUT2 VS dfw
+D2l GND OUT2 dfw
+D3h OUT3 VS dfw
+D3l GND OUT3 dfw
+D4h OUT4 VS dfw
+D4l GND OUT4 dfw
+.model dfw D(IS=1n RS=0.1 N=1.5 CJO=50p TT=50n)
+* Leakage of the released outputs, logic inputs (about 100 uA at 5 V)
+Ro1 OUT1 GND 100k
+Ro2 OUT2 GND 100k
+Ro3 OUT3 GND 100k
+Ro4 OUT4 GND 100k
+Rin1 IN1 GND 50k
+Rin2 IN2 GND 50k
+Rin3 IN3 GND 50k
+Rin4 IN4 GND 50k
+Rena ENA GND 50k
+Renb ENB GND 50k
+* Supplies: logic (about 13 mA on VSS), power stage at rest (about 10 mA on VS)
+Rvss VSS GND 390
+Rvs VS GND 1.2k
+.ends L298N
