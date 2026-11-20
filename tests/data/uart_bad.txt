@@ -1,0 +1,2 @@
+1m  ok\n
+2x  bad time

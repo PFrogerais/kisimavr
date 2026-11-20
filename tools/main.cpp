@@ -14,7 +14,10 @@
  *
  * Usage:
  *   cosim_runner [-t duration_s] [-s step_s] [-p in0_period_s] [-o out.vcd]
- *                [-a vstart,vend[,vref]] plugin.so -- sim_args...
+ *                [-a vstart,vend[,vref]] [-u baud,text] plugin.so -- sim_args...
+ *
+ * -u drives input 0 with UART frames (8N1, idle high) carrying text from
+ * t = 1 ms; "\n" in text stands for a line feed, "\s" for a space.
  *
  * -a emulates the analog side of the SAR ADC model for one channel: the
  * last 10 outputs are the DAC bits, the last input is the comparator, and
@@ -177,6 +180,7 @@ void usage(const char *prog)
 {
     std::fprintf(stderr,
                  "Usage: %s [-t duration_s] [-s step_s] [-p in0_period_s] [-o out.vcd]\n"
+                 "          [-a vstart,vend[,vref]] [-u baud,text]\n"
                  "          plugin.so -- sim_args...\n", prog);
 }
 
@@ -187,6 +191,8 @@ int main(int argc, char *argv[])
     double      duration = 0.01;
     double      stepSize = 10e-6;
     double      period   = 0.0;
+    double      uartBaud = 0.0;
+    std::string uartText;
     const char *vcdPath  = nullptr;
     const char *plugin   = nullptr;
     std::vector<const char *> simArgs;
@@ -201,10 +207,26 @@ int main(int argc, char *argv[])
             ++i;
             break;
         }
-        if ((a == "-t" || a == "-s" || a == "-p" || a == "-o" || a == "-a") && i + 1 < argc)
+        if ((a == "-t" || a == "-s" || a == "-p" || a == "-o" || a == "-a" || a == "-u") &&
+            i + 1 < argc)
         {
             const char *v = argv[++i];
-            if (a == "-a")
+            if (a == "-u")
+            {
+                const std::string u = v;
+                const size_t comma = u.find(',');
+                uartBaud = std::atof(u.substr(0, comma).c_str());
+                uartText = (comma == std::string::npos) ? "" : u.substr(comma + 1);
+                for (size_t pos; (pos = uartText.find("\\n")) != std::string::npos;)
+                {
+                    uartText.replace(pos, 2, "\n");
+                }
+                for (size_t pos; (pos = uartText.find("\\s")) != std::string::npos;)
+                {
+                    uartText.replace(pos, 2, " ");
+                }
+            }
+            else if (a == "-a")
             {
                 AnalogModel &m = g_runner.analog;
                 m.enabled = std::sscanf(v, "%lf,%lf,%lf", &m.vStart, &m.vEnd, &m.vref) >= 2;
@@ -287,16 +309,44 @@ int main(int argc, char *argv[])
     {
         info->in_fn(info, k, &level);    // Inputs settle at t = 0.
     }
-    vcdWrite(0.0, "i0", '0');
+
+    // -u: level changes of input 0 carrying UART frames (8N1, idle high).
+    std::vector<std::pair<double, bool>> uartEdges;
+    if (uartBaud > 0.0 && info->in_count > 0)
+    {
+        level.state = ONE;
+        info->in_fn(info, 0, &level);
+        const double bit = 1.0 / uartBaud;
+        double at = 1e-3;
+        bool line = true;
+        for (unsigned char c : uartText)
+        {
+            for (int k = -1; k <= 8; ++k)
+            {
+                const bool b = (k < 0) ? false : (k < 8 ? ((c >> k) & 1u) != 0u : true);
+                if (b != line)
+                {
+                    uartEdges.emplace_back(at, b);
+                    line = b;
+                }
+                at += bit;
+            }
+        }
+    }
+    size_t uartNext = 0;
+    vcdWrite(0.0, "i0", level.state == ONE ? '1' : '0');
     runTo(info, 0.0);
 
-    double nextToggle = (period > 0.0 && info->in_count > 0)
+    double nextToggle = (period > 0.0 && info->in_count > 0 && uartEdges.empty())
                             ? period / 2.0
                             : std::numeric_limits<double>::infinity();
     double t = 0.0;
     while (t < duration)
     {
-        const double next = std::min({ t + stepSize, nextToggle, duration });
+        const double nextUart = (uartNext < uartEdges.size())
+                                    ? uartEdges[uartNext].first
+                                    : std::numeric_limits<double>::infinity();
+        const double next = std::min({ t + stepSize, nextToggle, nextUart, duration });
         runTo(info, next);
         if (next == nextToggle)
         {
@@ -304,6 +354,13 @@ int main(int argc, char *argv[])
             info->in_fn(info, 0, &level);
             vcdWrite(next, "i0", level.state == ONE ? '1' : '0');
             nextToggle += period / 2.0;
+        }
+        if (next == nextUart)
+        {
+            level.state = uartEdges[uartNext].second ? ONE : ZERO;
+            info->in_fn(info, 0, &level);
+            vcdWrite(next, "i0", level.state == ONE ? '1' : '0');
+            ++uartNext;
         }
         t = next;
     }

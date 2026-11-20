@@ -1,0 +1,4 @@
+# Commands sent to firmware/uart_cmd.hex (runner.uart_rx_file)
+1m    LED ON\n
+2.5m  Bonjour\n
+4m    LED OFF\n

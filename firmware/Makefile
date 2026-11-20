@@ -6,7 +6,7 @@ CC      = avr-gcc
 OBJCOPY = avr-objcopy
 CFLAGS  = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -std=c11 -Wall -Wextra
 
-TARGETS = blink.hex adc_pwm.hex uart_adc.hex full_demo.hex i2c_lm75.hex
+TARGETS = blink.hex adc_pwm.hex uart_adc.hex full_demo.hex i2c_lm75.hex uart_cmd.hex
 
 all: $(TARGETS)
 

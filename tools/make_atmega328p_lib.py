@@ -53,6 +53,10 @@ def parse_args():
     ap.add_argument("--so", default=os.path.join(here, "..", "build", "mcu_cosim.so"),
                     help="mcu_cosim.so (default: ../build/mcu_cosim.so)")
     ap.add_argument("--uartlog", help="UART text file (default: next to the .lib)")
+    ap.add_argument("--uartin", help="timed text sent to the UART receiver (default: none)")
+    ap.add_argument("--name", default="",
+                    help="suffix of the sub-circuit and model names, e.g. B -> ATMEGA328P_B "
+                         "(several MCUs in one schematic)")
     ap.add_argument("--vcd", help="VCD trace (default: next to the .lib, '' = none)")
     ap.add_argument("--freq", default="16000000", help="CPU clock in Hz")
     ap.add_argument("--i2c", default="lm75 eeprom",
@@ -72,6 +76,10 @@ def parse_args():
     args.so = os.path.abspath(os.path.expanduser(args.so))
     args.uartlog = os.path.abspath(os.path.expanduser(
         args.uartlog or os.path.join(base, "uart_log.txt")))
+    if args.uartin:
+        args.uartin = os.path.abspath(os.path.expanduser(args.uartin))
+        if not os.path.isfile(args.uartin):
+            print(f"warning: UART input not found: {args.uartin}", file=sys.stderr)
     if args.vcd is None:
         args.vcd = os.path.join(base, "trace.vcd")
     elif args.vcd:
@@ -98,6 +106,7 @@ def main():
              '"io"'] + [f'"{p}"' for p in PINS] +
             ['"adc"'] + [f'"{c}"' for c in ADC] +
             ['"vref"', '"5"', '"adcbit"', '"1e-6"', '"uartlog"', f'"{a.uartlog}"'] +
+            (['"uartin"', f'"{a.uartin}"'] if a.uartin else []) +
             ((['"i2c"'] + [f'"{t}"' for t in a.i2c.split()] +
               ['"lm75temp"', f'"{a.lm75temp}"', '"lm75rate"', f'"{a.lm75rate}"'])
              if a.i2c.split() else []) +
@@ -181,6 +190,14 @@ def main():
     w("")
     w(".ends ATMEGA328P")
     text = "\n".join(out) + "\n"
+    if a.name:
+        # Unique names, so that several MCUs can share one netlist.
+        n = "".join(ch for ch in a.name if ch.isalnum() or ch == "_")
+        text = (text.replace(".subckt ATMEGA328P ", f".subckt ATMEGA328P_{n.upper()} ")
+                    .replace(".ends ATMEGA328P", f".ends ATMEGA328P_{n.upper()}")
+                    .replace("Sim.Name = ATMEGA328P,", f"Sim.Name = ATMEGA328P_{n.upper()},")
+                    .replace("atmega328p_core", f"atmega328p_{n.lower()}_core")
+                    .replace("m328_", f"m328{n.lower()}_"))
     if a.output:
         with open(a.output, "w") as f:
             f.write(text)

@@ -7,7 +7,7 @@
 /**
  * @file unit_tests.cpp
  * @brief Unit tests of the simavr-independent modules (config, I2C devices,
- *        paths, vcd).
+ *        UART script, paths, vcd).
  *
  * Usage: unit_tests <scratch directory>
  */
@@ -22,6 +22,7 @@
 #include "config.h"
 #include "i2c_devices.h"
 #include "paths.h"
+#include "uart_script.h"
 #include "vcd.h"
 
 namespace fs = std::filesystem;
@@ -196,6 +197,48 @@ void testEeprom()
     CHECK(ee.read(0.0) == 'I');
 }
 
+void testUartScript()
+{
+    double t = 0.0;
+    CHECK(parseSpiceTime("1m", t) && t == 1e-3);
+    CHECK(parseSpiceTime("2.5e-3", t) && t == 2.5e-3);
+    CHECK(parseSpiceTime("250u", t) && t == 250e-6);
+    CHECK(parseSpiceTime("3ms", t) && t == 3e-3);
+    CHECK(parseSpiceTime("0", t) && t == 0.0);
+    CHECK(!parseSpiceTime("1meg", t));    // Far beyond a simulation.
+    CHECK(!parseSpiceTime("1k", t));
+    CHECK(!parseSpiceTime("abc", t));
+    CHECK(!parseSpiceTime("-1m", t));
+
+    std::vector<UartEvent> ev;
+    std::string err;
+    CHECK(parseUartScript("# commands\r\n"
+                          "\n"
+                          "3m   LED OFF\\n   \r\n"      // Trailing blanks dropped
+                          "1m\tLED ON\\r\\n\n"
+                          "2m   \\sA\\x42\\\\\\t\n"
+                          "1m   second at 1m\n",
+                          ev, err));
+    CHECK(ev.size() == 4u);
+    if (ev.size() == 4u)
+    {
+        CHECK(ev[0].time == 1e-3 && ev[0].bytes == "LED ON\r\n");
+        CHECK(ev[1].time == 1e-3 && ev[1].bytes == "second at 1m");    // Stable order.
+        CHECK(ev[2].time == 2e-3 && ev[2].bytes == " AB\\\t");
+        CHECK(ev[3].time == 3e-3 && ev[3].bytes == "LED OFF\n");
+    }
+
+    CHECK(!parseUartScript("1m ok\n2x bad\n", ev, err));
+    CHECK(err == "line 2: invalid time '2x'");
+    CHECK(!parseUartScript("1m\n", ev, err));
+    CHECK(err == "line 1: no text after the time");
+    CHECK(!parseUartScript("1m bad \\q\n", ev, err));
+    CHECK(err == "line 1: unknown escape '\\q'");
+    CHECK(!parseUartScript("1m \\x4\n", ev, err));
+    CHECK(err == "line 1: \\x needs two hexadecimal digits");
+    CHECK(!parseUartScript("1m end\\\n", ev, err));
+}
+
 void testResolvePath(const fs::path &dir)
 {
     const fs::path real = dir / "Arduino" / "Blink.hex";
@@ -266,6 +309,7 @@ int main(int argc, char *argv[])
     testI2cConfig();
     testLm75();
     testEeprom();
+    testUartScript();
     testResolvePath(dir);
     testContentChecks();
     testVcd(dir);

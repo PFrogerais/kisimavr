@@ -1,0 +1,31 @@
+* Two ATmega328P talking over a serial line (UART reception)
+* Run from this folder:  ngspice uart_rx_test.cir
+* Firmwares: ../firmware/uart_adc.hex (A) and ../firmware/uart_cmd.hex (B)
+*
+* A prints "Hello STI2D !" then "ADC0 = ..." lines on its TXD (D1);
+* the wire goes to the RXD (D0) of B, which decodes the frames and answers
+* "Recu : <line>" on its own TXD. Models generated with --name A / --name B:
+*   python3 ../tools/make_atmega328p_lib.py --relative --name A \
+*       --hex ../firmware/uart_adc.hex --so ../build/mcu_cosim.so \
+*       --uartlog ../uart_log_a.txt --i2c= -o atmega328p_a.lib
+*   (same with --name B, uart_cmd.hex, uart_log_b.txt)
+
+.include atmega328p_a.lib
+.include atmega328p_b.lib
+
+*      D0  D1    D2  D3  D4  D5  D6  D7  D8  D9  D10 D11 D12 D13 A0  A1  A2  A3  A4  A5
+XA     ra0 line  a2  a3  a4  a5  a6  a7  a8  a9  a10 a11 a12 a13 ain a15 a16 a17 a18 a19 ATMEGA328P_A
+XB     line btx  b2  b3  b4  b5  b6  b7  b8  b9  b10 b11 b12 led b14 b15 b16 b17 b18 b19 ATMEGA328P_B
+
+* A0 of A: 2.5 V
+Vain ain 0 2.5
+
+* Serial line A -> B, with some wiring capacitance; B's answer to a load
+Cline line 0 100p
+Rbtx btx 0 100k
+
+.control
+tran 0.5u 6m
+plot v(line) v(btx)+6
+.endc
+.end

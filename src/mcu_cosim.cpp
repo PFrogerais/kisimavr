@@ -31,6 +31,8 @@
  *   adcbit  duration of one SAR step in seconds (default 1e-6)
  *   txpin   output pin that carries the UART0 TX frames (default PD1)
  *   uartlog file receiving the UART0 text, .txt or .log (default: none)
+ *   uartin  timed text sent to the UART0 receiver (see uart_script.h)
+ *   rxpin   pin whose frames are decoded by the receiver (default PD0)
  *   vcd     VCD file of the GPIO pins, .vcd, for GTKWave / PulseView
  *           (output files are never written through a symbolic link, and an
  *           existing file is only replaced if mcu_cosim wrote it)
@@ -45,7 +47,8 @@
  *   paths.*       KiCad lower-case path recovery, guarded output files
  *   mcu_bridge.*  simavr instance <-> d_cosim ports, timing, GPIO
  *   sar_adc.*     SAR converter rebuilt across the d_cosim boundary
- *   uart0.*       UART0 console, log file and TXD frames
+ *   uart0.*       UART0 console, log file, TXD frames and reception
+ *   uart_script.* "uartin" file parser (simavr independent)
  *   i2c_bus.*     TWI master: virtual slaves, transaction log, SDA/SCL
  *   i2c_devices.* LM75 and 24C02 protocol logic (simavr independent)
  *   vcd.*         VCD trace of the pins

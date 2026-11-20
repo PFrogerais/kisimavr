@@ -3,6 +3,7 @@ build/
 *.hex
 *.vcd
 uart_log.txt
+uart_log_*.txt
 *-backups/
 *.kicad_prl
 fp-info-cache

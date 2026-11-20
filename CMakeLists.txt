@@ -35,7 +35,7 @@ message(STATUS "simavr library: ${SIMAVR_LIBRARIES}")
 # ---- Helpers without simavr (config, I2C devices, paths, VCD): unit-tested ---
 set(KISIMAVR_WARNINGS -Wall -Wextra -Wpedantic)
 add_library(kisimavr_core STATIC
-    src/config.cpp src/i2c_devices.cpp src/paths.cpp src/vcd.cpp)
+    src/config.cpp src/i2c_devices.cpp src/paths.cpp src/uart_script.cpp src/vcd.cpp)
 target_include_directories(kisimavr_core PUBLIC include src)
 target_compile_options(kisimavr_core PRIVATE ${KISIMAVR_WARNINGS})
 set_target_properties(kisimavr_core PROPERTIES

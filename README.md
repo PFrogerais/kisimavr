@@ -20,7 +20,7 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | GPIO | sens choisi par le firmware (DDRx), sortie 25 Ω, pull-up interne 35 kΩ, lecture de la tension réelle |
 | Timers, interruptions, PWM | émulés par simavr (`millis()`, `analogWrite()`…) |
 | ADC A0–A5 | convertisseur SAR reconstruit dans ngspice : la dichotomie est visible |
-| UART0 | texte dans le terminal et un fichier ; trames réelles sur TXD (PD1) |
+| UART0 | émission : texte dans le terminal et un fichier, trames réelles sur TXD (PD1) ; réception : fichier de commandes horodaté ou trames venant du circuit sur RXD (PD0) |
 | I²C (TWI) | esclaves virtuels LM75 et EEPROM 24C02, journal des transactions, signaux SDA/SCL réels en drain ouvert |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
 
@@ -101,6 +101,8 @@ ou de `.hex` avec bootloader.
 | `-o` | `.lib` à écrire | sortie standard |
 | `--so` | plug-in `mcu_cosim.so` | `../build/mcu_cosim.so` (relatif au script) |
 | `--uartlog` | fichier texte de l'UART | à côté du `.lib` |
+| `--uartin` | fichier de commandes envoyées au récepteur de l'UART | — |
+| `--name` | suffixe des noms (`B` → sous-circuit `ATMEGA328P_B`) : plusieurs MCU dans un schéma | — |
 | `--vcd` | trace VCD (`""` = aucune) | à côté du `.lib` |
 | `--freq` | horloge CPU en Hz | `16000000` |
 | `--i2c` | esclaves I²C virtuels (`""` = aucun) | `"lm75 eeprom"` |
@@ -176,6 +178,7 @@ les essais en simulation.
 | `adc_pwm.c` | `atmega328p_cosim.lib` → `ATMEGA328P_ADC` | `adc_test.cir` | `simAVR_adc` | SAR visible, PWM filtrée, seuil |
 | `uart_adc.c` | `atmega328p_cosim.lib` → `ATMEGA328P_UART` | `uart_test.cir` | `simAVR_uart` | console série, trames TXD, VCD |
 | `i2c_lm75.c` / `i2c_lm75/i2c_lm75.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `i2c_test.cir` | `simAVR_i2c` | bus I²C : capteur LM75, EEPROM, pull-ups |
+| `uart_cmd.c` / `uart_cmd/uart_cmd.ino` | `--uartin` ou RXD câblé | `uart_rx_test.cir` (2 MCU) | — | réception série : commandes `LED ON` / `LED OFF` |
 
 Les tests ngspice se lancent depuis `ngspice/` (chemins relatifs).
 
@@ -261,6 +264,39 @@ un firmware qui n'utilise pas l'I²C.
 - Si `main()` se termine (`cli; rjmp .`), le CPU s'arrête mais les
   périphériques continuent : la dernière trame part jusqu'au bout.
 
+### 6.6 UART0 : réception (`Serial.read`)
+
+Deux sources, utilisables ensemble :
+
+- **Fichier de commandes** (`"uartin"`, option `--uartin`) : une ligne par
+  envoi, un instant puis le texte :
+  ```
+  # Commandes pour firmware/uart_cmd.hex
+  1m    LED ON\n
+  2.5m  Bonjour\n
+  4m    LED OFF\n
+  ```
+  Instants en secondes avec les suffixes SPICE (`1m`, `250u`, `2.5e-3`).
+  Échappements : `\n`, `\r`, `\t`, `\\`, `\s` (espace), `\xHH`. Les octets
+  partent au débit programmé (UBRR0), un temps de trame chacun. Une erreur
+  est signalée avec son numéro de ligne.
+- **Trames venant du circuit** sur **RXD (PD0)** quand c'est une broche `in`
+  ou `io` (le modèle `ATMEGA328P` l'a) : le plug-in les décode au débit
+  programmé, échantillon au milieu de chaque bit. On peut ainsi relier le
+  TXD d'un ATmega au RXD d'un autre (voir `ngspice/uart_rx_test.cir` et
+  l'option `--name` pour mettre deux modèles dans le même schéma), ou
+  envoyer des trames depuis une source PWL.
+
+Le texte reçu s'affiche comme `[mcu_cosim] t=0.001000 s UART0< LED ON`.
+Tant que le firmware n'a pas activé le récepteur (RXEN = 0, avant
+`Serial.begin`), simavr ignore les octets : ils sont signalés
+(`(lost: receiver off, RXEN = 0)`) plutôt que perdus en silence. Quand RXEN
+est à 1, RXD est une entrée (le pull-up suit PORTD0, comme sur la puce).
+
+⚠ simavr met chaque octet reçu à disposition un temps de trame après sa
+réception : une réponse arrive donc environ 85 µs (115200 bauds) plus tard
+que sur la vraie puce.
+
 ## 7. Référence `sim_args`
 
 Chaque clé et chaque valeur est **une chaîne séparée** :
@@ -285,6 +321,8 @@ Chaque clé et chaque valeur est **une chaîne séparée** :
 | `adcbit` | durée d'un pas SAR en secondes | `1e-6` |
 | `txpin` | broche qui porte les trames UART0 | `PD1` |
 | `uartlog` | fichier recevant le texte de l'UART0 (`.txt` ou `.log`) | — |
+| `uartin` | fichier de texte horodaté envoyé au récepteur (§ 6.6) | — |
+| `rxpin` | broche dont les trames sont décodées par le récepteur | `PD0` |
 | `vcd` | trace VCD des broches (`.vcd`) | — |
 | `i2c` | esclaves virtuels : `"lm75" ["0x48"] "eeprom" ["0x50"]` | — |
 | `lm75temp` | température du LM75 à t = 0 (°C) | `25` |
@@ -338,7 +376,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 
 ## 10. Limites actuelles
 
-- Pas encore de réception UART (RXD) ni de SPI.
+- Pas encore de SPI.
 - I²C : AVR maître uniquement ; esclaves virtuels LM75 et 24C02 seulement
   (pas de composant I²C décrit dans le schéma) ; étirement d'horloge non
   modélisé.
@@ -354,7 +392,8 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 |---|---|
 | `src/mcu_cosim.cpp` | point d'entrée du plug-in (`Cosim_setup`) et référence des clés |
 | `src/mcu_bridge.*` | pont simavr ↔ d_cosim : temps, GPIO, ports |
-| `src/sar_adc.*`, `src/uart0.*` | convertisseur SAR, UART0 (console, log, trames TXD) |
+| `src/sar_adc.*`, `src/uart0.*` | convertisseur SAR, UART0 (console, log, trames TXD, réception) |
+| `src/uart_script.*` | lecture du fichier `uartin` (sans simavr, testée unitairement) |
 | `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
 | `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
 | `include/cosim_abi.h` | copie binaire-compatible de `ngspice/cosim.h` |

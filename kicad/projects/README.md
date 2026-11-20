@@ -195,6 +195,30 @@ montage.
 4. Simuler (pas `0.2u`) et sonder SDA, SCL. Le terminal liste chaque
    transaction : `I2C> 0x48 W 00 | 0x48 R 14 80` (= 20,5 °C).
 
+## Étape 3 ter — Envoyer des commandes série au MCU
+
+Pour un programme qui lit le port série (`Serial.read`, `readStringUntil`) :
+
+1. Écrire un fichier de commandes, par exemple `commandes.txt` dans le
+   dossier du projet (un instant, puis le texte ; `\n` = fin de ligne) :
+   ```
+   1m    LED ON\n
+   4m    LED OFF\n
+   ```
+2. Régénérer le modèle avec ce fichier :
+   ```bash
+   python3 ~/dev/kisimavr/tools/make_atmega328p_lib.py --hex mon.hex \
+       --uartin ~/kicad/mon_projet/commandes.txt -o atmega328p_full.lib
+   ```
+3. Simuler : le terminal affiche ce qui est reçu (`UART0< LED ON`) et ce que
+   le programme répond (`UART0> OK LED ON`).
+
+**Deux ATmega qui dialoguent** : générer deux modèles avec `--name A` et
+`--name B` (sous-circuits `ATMEGA328P_A` et `ATMEGA328P_B`, un `.lib` chacun,
+`--uartlog` différent), mettre `Sim.Name` = `ATMEGA328P_A` sur l'un et
+`ATMEGA328P_B` sur l'autre, puis relier D1 (TXD) de l'un à D0 (RXD) de
+l'autre. Exemple complet : `ngspice/uart_rx_test.cir`.
+
 ## Étape 4 — Passer au circuit imprimé
 
 Les empreintes de `simAVR_atmega328p` sont réelles :

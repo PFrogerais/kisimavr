@@ -102,7 +102,10 @@ bool McuBridge::start()
     {
         return false;
     }
-    m_uart.start(m_avr.get(), m_cfg);
+    if (!m_uart.start(m_avr.get(), m_cfg))
+    {
+        return false;
+    }
     m_i2c.start(m_avr.get(), m_cfg);
 
     // VCD signals: "in", "io" (voltage read back), then "out" pins.
@@ -201,6 +204,7 @@ void McuBridge::input(unsigned int index, const Digital_t *value)
     avr_ioctl(m_avr.get(), AVR_IOCTL_IOPORT_SET_EXTERNAL(pin.port), &ext);
 
     avr_raise_irq(watch.pinIrq[pin.bit], level);
+    m_uart.pinInput(pin, level != 0u);
     m_vcd.write(index, m_avr->cycle, *value);
 
     if (m_cfg.log)
@@ -327,6 +331,12 @@ Digital_t McuBridge::outputValue(size_t i) const
             pu    = level;
             oe    = !(sda ? m_i2c.sdaLine() : m_i2c.sclLine());
             level = false;
+        }
+        if (static_cast<int>(k) == m_uart.rxIoIndex() && m_uart.ownsRxPin())
+        {
+            // RXEN: RXD is an input, the pull-up still follows PORTD0.
+            pu    = level;
+            oe    = false;
         }
         if (static_cast<int>(k) == m_uart.txIoIndex() && m_uart.ownsTxPin())
         {

@@ -3,7 +3,8 @@
 # - unit       : config / I2C devices / paths / vcd modules, without simavr
 # - runner.*   : cosim_runner drives the plug-in without ngspice (fast)
 # - args.*     : configuration errors are reported, not crashes
-# - ngspice.*  : end-to-end runs of ngspice/full_test.cir and i2c_test.cir
+# - ngspice.*  : end-to-end runs of ngspice/full_test.cir, i2c_test.cir and
+#                uart_rx_test.cir (two MCUs)
 # - models.*   : the repository models match their generator
 #
 # The demo firmwares are built first by the "firmware" fixture (avr-gcc).
@@ -81,6 +82,11 @@ endif()
 add_test(NAME firmware COMMAND ${MAKE_PROGRAM} -C ${FW})
 set_tests_properties(firmware PROPERTIES FIXTURES_SETUP firmware)
 
+# The "uartin" file is read after the firmware: needs a built firmware.
+kisimavr_test(args.bad_uartin FIXTURE firmware
+    COMMAND ${RUN} -t 0.001 ${SO} -- hex ${FW}/blink.hex
+            uartin ${CMAKE_CURRENT_SOURCE_DIR}/data/uart_bad.txt
+    EXPECT [[uart_bad\.txt', line 2: invalid time '2x']] [[setup failed]])
 kisimavr_test(args.missing_port FIXTURE firmware
     COMMAND ${RUN} -t 0.001 ${SO} -- hex ${FW}/blink.hex out PL0
     EXPECT [[port L does not exist on atmega328p]] [[setup failed]])
@@ -134,35 +140,49 @@ kisimavr_test(runner.i2c_absent FIXTURE firmware
     EXPECT [[I2C> 0x48 W \(NACK\)]] [[UART0> LM75 absent]]
     REJECT [[setup failed]] [[I2C slave]])
 
+# UART reception from a timed file: commands, answers, LED on PB5 (out1).
+kisimavr_test(runner.uart_rx_file FIXTURE firmware
+    COMMAND ${RUN} -t 0.006 ${SO} -- hex ${FW}/uart_cmd.hex out PD1 PB5
+            uartin ${CMAKE_CURRENT_SOURCE_DIR}/data/uart_commands.txt
+    EXPECT [[UART0 input: 3 event]]
+           [[UART0< LED ON]] [[UART0> OK LED ON]]
+           [[UART0< Bonjour]] [[UART0> Recu : Bonjour]]
+           [[UART0> OK LED OFF]]
+           [[out1: 2 changes, 1 rising edges]]
+    REJECT [[setup failed]] [[lost]] [[framing error]])
+# UART reception from frames on the RXD pin (runner -u: 8N1 at the baud
+# rate of the firmware, 16 MHz / 8 / 17 = 117647 bauds).
+kisimavr_test(runner.uart_rx_pin FIXTURE firmware
+    COMMAND ${RUN} -t 0.004 -u 117647,LED\sON\n ${SO} -- hex ${FW}/uart_cmd.hex
+            in PD0 out PD1 PB5
+    EXPECT [[UART0< LED ON]] [[UART0> OK LED ON]] [[out1: 1 changes, 1 rising edges]]
+    REJECT [[setup failed]] [[framing error]])
+
 # ---- Generated models ---------------------------------------------------------
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
-    # kicad/atmega328p_full.lib must be what the generator writes today.
-    kisimavr_test(models.full_lib_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
-        COMMAND ${Python3_EXECUTABLE} make_atmega328p_lib.py --relative
-                --hex ../firmware/full_demo.hex --so ../build/mcu_cosim.so
-                -o ${CMAKE_CURRENT_BINARY_DIR}/atmega328p_full.lib
-        EXPECT [[written]])
-    add_test(NAME models.full_lib_compare
-        COMMAND ${CMAKE_COMMAND} -E compare_files
-                ${CMAKE_CURRENT_BINARY_DIR}/atmega328p_full.lib
-                ${PROJECT_SOURCE_DIR}/kicad/atmega328p_full.lib)
-    set_tests_properties(models.full_lib_up_to_date PROPERTIES FIXTURES_SETUP full_lib)
-    set_tests_properties(models.full_lib_compare PROPERTIES FIXTURES_REQUIRED full_lib)
+    # Each repository model must be what the generator writes today.
+    # kisimavr_model_test(name repository_file generator_args...)
+    function(kisimavr_model_test name file)
+        get_filename_component(base ${file} NAME)
+        set(out ${CMAKE_CURRENT_BINARY_DIR}/models/${base})
+        kisimavr_test(models.${name}_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
+            COMMAND ${Python3_EXECUTABLE} make_atmega328p_lib.py --relative
+                    --so ../build/mcu_cosim.so ${ARGN} -o ${out}
+            EXPECT [[written]])
+        add_test(NAME models.${name}_compare
+            COMMAND ${CMAKE_COMMAND} -E compare_files ${out} ${PROJECT_SOURCE_DIR}/${file})
+        set_tests_properties(models.${name}_up_to_date PROPERTIES FIXTURES_SETUP model_${name})
+        set_tests_properties(models.${name}_compare PROPERTIES FIXTURES_REQUIRED model_${name})
+    endfunction()
 
-    # Same for ngspice/atmega328p_i2c.lib (model of ngspice/i2c_test.cir).
-    kisimavr_test(models.i2c_lib_up_to_date WORKDIR ${PROJECT_SOURCE_DIR}/tools
-        COMMAND ${Python3_EXECUTABLE} make_atmega328p_lib.py --relative
-                --hex ../firmware/i2c_lm75.hex --so ../build/mcu_cosim.so
-                --lm75temp 20 --lm75rate 1000
-                -o ${CMAKE_CURRENT_BINARY_DIR}/atmega328p_i2c.lib
-        EXPECT [[written]])
-    add_test(NAME models.i2c_lib_compare
-        COMMAND ${CMAKE_COMMAND} -E compare_files
-                ${CMAKE_CURRENT_BINARY_DIR}/atmega328p_i2c.lib
-                ${PROJECT_SOURCE_DIR}/ngspice/atmega328p_i2c.lib)
-    set_tests_properties(models.i2c_lib_up_to_date PROPERTIES FIXTURES_SETUP i2c_lib)
-    set_tests_properties(models.i2c_lib_compare PROPERTIES FIXTURES_REQUIRED i2c_lib)
+    kisimavr_model_test(full_lib kicad/atmega328p_full.lib --hex ../firmware/full_demo.hex)
+    kisimavr_model_test(i2c_lib ngspice/atmega328p_i2c.lib --hex ../firmware/i2c_lm75.hex
+                        --lm75temp 20 --lm75rate 1000)
+    kisimavr_model_test(uart_a_lib ngspice/atmega328p_a.lib --name A
+                        --hex ../firmware/uart_adc.hex --uartlog ../uart_log_a.txt --i2c=)
+    kisimavr_model_test(uart_b_lib ngspice/atmega328p_b.lib --name B
+                        --hex ../firmware/uart_cmd.hex --uartlog ../uart_log_b.txt --i2c=)
 endif()
 
 # ---- End to end through ngspice -------------------------------------------------
@@ -202,6 +222,18 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                [[UART0> T = 2[0-9]\.[05] C]]
         REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]])
     set_tests_properties(ngspice.i2c PROPERTIES LABELS ngspice)
+
+    # Two MCUs: TXD of A (uart_adc) wired to RXD of B (uart_cmd), which
+    # decodes the frames from the circuit and answers.
+    kisimavr_test(ngspice.uart_rx FIXTURE firmware TIMEOUT 300
+        WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+        COMMAND ${NGSPICE} -b uart_rx_test.cir
+        EXPECT [[UART0> Hello STI2D !]]
+               [[UART0< Hello STI2D !]]
+               [[UART0> Recu : Hello STI2D !]]
+               [[UART0< ADC0 = 51[0-9] \(2[45][0-9][0-9] mV\)]]
+        REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]])
+    set_tests_properties(ngspice.uart_rx PROPERTIES LABELS ngspice)
 elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
 endif()
