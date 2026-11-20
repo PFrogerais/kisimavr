@@ -22,6 +22,7 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | ADC A0–A5 | convertisseur SAR reconstruit dans ngspice : la dichotomie est visible |
 | UART0 | émission : texte dans le terminal et un fichier, trames réelles sur TXD (PD1) ; réception : fichier de commandes horodaté ou trames venant du circuit sur RXD (PD0) |
 | I²C (TWI) | esclaves virtuels LM75 et EEPROM 24C02, journal des transactions, signaux SDA/SCL réels en drain ouvert |
+| SPI | maître sur les vraies broches (SCK, MOSI, MISO), 4 modes, ordre des bits, débit de SPCR ; esclaves = composants du schéma (modèle 74HC595 fourni) ; journal des octets |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
 
 ---
@@ -179,6 +180,7 @@ les essais en simulation.
 | `uart_adc.c` | `atmega328p_cosim.lib` → `ATMEGA328P_UART` | `uart_test.cir` | `simAVR_uart` | console série, trames TXD, VCD |
 | `i2c_lm75.c` / `i2c_lm75/i2c_lm75.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `i2c_test.cir` | `simAVR_i2c` | bus I²C : capteur LM75, EEPROM, pull-ups |
 | `uart_cmd.c` / `uart_cmd/uart_cmd.ino` | `--uartin` ou RXD câblé | `uart_rx_test.cir` (2 MCU) | — | réception série : commandes `LED ON` / `LED OFF` |
+| `spi_595.c` / `spi_595/spi_595.ino` | `atmega328p_full.lib` → `ATMEGA328P` | `spi_test.cir` | `simAVR_spi` (symboles officiels) | SPI maître : 74HC595, chenillard 8 LED, relecture par MISO |
 | `uno_demo.c` / `uno_demo/uno_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | netlist exportée par `kicad-cli` | `Arduino_UNO` (schéma officiel UNO R3) | blink + UART RX/TX avec un terminal simulé (`terminal.txt`) |
 
 Les tests ngspice se lancent depuis `ngspice/` (chemins relatifs).
@@ -250,6 +252,33 @@ ACK, STOP), sans piloter les broches. Le plug-in :
 Le modèle `ATMEGA328P` déclare par défaut un LM75 et une EEPROM (options
 `--i2c`, `--lm75temp`, `--lm75rate` du script) ; ils n'ont aucun effet sur
 un firmware qui n'utilise pas l'I²C.
+
+### 6.4 bis SPI
+
+simavr ne donne l'octet envoyé qu'à la fin du transfert. Le plug-in suit
+l'écriture dans SPDR et **reconstruit la trame sur les broches** :
+
+- **SCK = PB5 (D13), MOSI = PB3 (D11)** suivent le SPI dès que SPE et MSTR
+  sont à 1 et que la broche est en sortie (DDRB), comme sur la puce. Les
+  4 modes (CPOL, CPHA), l'ordre des bits (DORD) et le débit de SPCR/SPSR
+  (fosc/2 à fosc/128) sont respectés ;
+- **MISO = PB4 (D12)** est forcée en entrée ; sa tension est lue dans le
+  circuit à chaque front d'échantillonnage, et l'octet reçu est rendu à
+  simavr à la fin du transfert (`SPI.transfer()` le renvoie) ;
+- la sélection d'esclave (SS) est une GPIO ordinaire du firmware (D10) ;
+- chaque rafale d'octets s'affiche :
+  `[mcu_cosim] t=0.002 s SPI> MOSI 04 | MISO 02`
+  (`"spilog" "0"` pour le masquer).
+
+Les esclaves sont de vrais composants du schéma. `kicad/74hc595.lib` décrit
+un **74HC595** en XSPICE numérique (registre à décalage, verrou, ~OE,
+~SRCLR, QH'), utilisable avec le symbole officiel `74xx:74HC595`. Exemple :
+`ngspice/spi_test.cir` et le projet `simAVR_spi`.
+
+⚠ Débit : l'esclave doit répondre en moins d'une demi-période de SCK
+(125 ns à fosc/4, la valeur par défaut de `SPI.begin()`). Pour les esclaves
+lents, choisir fosc/16 (1 MHz) ou moins. Le mode esclave de l'AVR (MSTR = 0)
+n'est pas émulé.
 
 ### 6.5 UART0 et chronogrammes
 
@@ -343,6 +372,7 @@ Chaque clé et chaque valeur est **une chaîne séparée** :
 | `lm75rate` | pente de la température (°C/s) | `0` |
 | `i2clog` | `0` : ne pas afficher les transactions I²C | `1` |
 | `sda` / `scl` | broches du bus | `PC4` / `PC5` |
+| `spilog` | `0` : ne pas afficher les octets SPI | `1` |
 | `log` | `1` : activité des broches et conversions sur stderr | `0` |
 
 Les fichiers `uartlog` et `vcd` ne sont jamais écrits à travers un lien
@@ -390,7 +420,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 
 ## 10. Limites actuelles
 
-- Pas encore de SPI.
+- SPI : AVR maître uniquement, sur PB5/PB3/PB4 (famille ATmega48/88/168/328).
 - I²C : AVR maître uniquement ; esclaves virtuels LM75 et 24C02 seulement
   (pas de composant I²C décrit dans le schéma) ; étirement d'horloge non
   modélisé.
@@ -408,6 +438,8 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `src/mcu_bridge.*` | pont simavr ↔ d_cosim : temps, GPIO, ports |
 | `src/sar_adc.*`, `src/uart0.*` | convertisseur SAR, UART0 (console, log, trames TXD, réception) |
 | `src/uart_script.*` | lecture du fichier `uartin` (sans simavr, testée unitairement) |
+| `src/spi_bus.*`, `src/spi_frame.*` | SPI maître : trames sur SCK/MOSI, lecture de MISO, journal ; chronologie des fronts (testée unitairement) |
+| `kicad/74hc595.lib` | modèle XSPICE du 74HC595 (symbole officiel `74xx:74HC595`) |
 | `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
 | `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
 | `include/cosim_abi.h` | copie binaire-compatible de `ngspice/cosim.h` |
@@ -416,7 +448,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `tools/make_atmega328p_lib.py` | génère le modèle `ATMEGA328P` pour un projet |
 | `kicad/atmega328p_full.lib` | modèle complet (chemins relatifs, pour `ngspice/`) |
 | `kicad/atmega328p_cosim.lib` | sous-circuits des démos GPIO, ADC, UART |
-| `kicad/projects/` | 6 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
+| `kicad/projects/` | 7 projets KiCad de démo, dont `Arduino_UNO`, + guide pas à pas (`README.md`) |
 | `tools/make_terminal_lib.py` | modèle SPICE d'un terminal série (trames sur TXD) depuis un fichier texte |
 | `tools/setup_demos.py` | écrit les `.lib` des projets de démo (chemins de la machine) |
 | `tools/gen_kicad_demo.py` | a généré les schémas de ces projets |

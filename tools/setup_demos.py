@@ -52,6 +52,12 @@ def main():
                     "--lm75temp", "20", "--lm75rate", "1000",
                     "--so", so, "-o", i2c], check=True)
 
+    # SPI demo (official symbols): ATmega328P master + 74HC595, no I2C slave.
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_atmega328p_lib.py"),
+                    "--hex", os.path.join(ROOT, "firmware", "spi_595.hex"), "--i2c=",
+                    "--so", so, "-o", os.path.join(PROJECTS, "simAVR_spi", "atmega328p_full.lib")],
+                   check=True)
+
     # Arduino UNO board (official schematic): uno_demo firmware, and the
     # terminal model rebuilt from terminal.txt (the text sent to RX).
     uno = os.path.join(PROJECTS, "Arduino_UNO")

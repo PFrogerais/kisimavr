@@ -107,6 +107,7 @@ bool McuBridge::start()
         return false;
     }
     m_i2c.start(m_avr.get(), m_cfg);
+    m_spi.start(m_avr.get(), m_cfg);
 
     // VCD signals: "in", "io" (voltage read back), then "out" pins.
     std::vector<PinRef> traced = m_cfg.inputs;
@@ -205,6 +206,7 @@ void McuBridge::input(unsigned int index, const Digital_t *value)
 
     avr_raise_irq(watch.pinIrq[pin.bit], level);
     m_uart.pinInput(pin, level != 0u);
+    m_spi.pinInput(pin, level != 0u);
     m_vcd.write(index, m_avr->cycle, *value);
 
     if (m_cfg.log)
@@ -282,12 +284,38 @@ bool McuBridge::watchPort(char name)
     return true;
 }
 
+/**
+ * SPI master: SCK and MOSI follow the SPI when their DDR bit is set (as on
+ * the chip), MISO is forced to an input. level / oe are changed in place;
+ * returns true when the pin is an SPI pin.
+ */
+bool McuBridge::spiOverride(const PinRef &pin, bool &level, bool &oe) const
+{
+    if (!m_spi.master())
+    {
+        return false;
+    }
+    if (pin == m_spi.misoPin())
+    {
+        oe = false;
+        return true;
+    }
+    const bool sck = pin == m_spi.sckPin();
+    if ((sck || pin == m_spi.mosiPin()) && oe)
+    {
+        level = sck ? m_spi.sckLine() : m_spi.mosiLine();
+        return true;
+    }
+    return false;
+}
+
 /** Electrical state of an "out" pin from its PORT/DDR bits. */
 Digital_t McuBridge::pinValue(const PinRef &pin) const
 {
     const PortWatch &watch = m_ports.at(pin.port);
-    const bool isOutput = ((watch.ddr  >> pin.bit) & 1u) != 0u;
-    const bool portBit  = ((watch.port >> pin.bit) & 1u) != 0u;
+    bool isOutput = ((watch.ddr  >> pin.bit) & 1u) != 0u;
+    bool portBit  = ((watch.port >> pin.bit) & 1u) != 0u;
+    spiOverride(pin, portBit, isOutput);
 
     if (isOutput)
     {
@@ -323,6 +351,13 @@ Digital_t McuBridge::outputValue(size_t i) const
         bool level = ((watch.port >> pin.bit) & 1u) != 0u;
         bool oe    = ((watch.ddr  >> pin.bit) & 1u) != 0u;
         bool pu    = !oe && level;                // PORT = 1 on an input.
+        {
+            const bool port = level;
+            if (spiOverride(pin, level, oe) && !oe)
+            {
+                pu = port;                        // MISO: pull-up follows PORT.
+            }
+        }
         const bool sda = static_cast<int>(k) == m_i2c.sdaIoIndex();
         if ((sda || static_cast<int>(k) == m_i2c.sclIoIndex()) && m_i2c.ownsPins())
         {

@@ -75,6 +75,7 @@ struct Config
     bool                i2cLog   = true;
     std::string         sdaPin   = "PC4";
     std::string         sclPin   = "PC5";
+    bool                spiLog   = true;      // "SPI> MOSI .. | MISO .." lines.
     bool                log = false;
 };
 

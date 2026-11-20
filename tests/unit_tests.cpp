@@ -22,6 +22,7 @@
 #include "config.h"
 #include "i2c_devices.h"
 #include "paths.h"
+#include "spi_frame.h"
 #include "uart_script.h"
 #include "vcd.h"
 
@@ -293,6 +294,83 @@ void testVcd(const fs::path &dir)
 
 } // namespace
 
+/** Replays a frame: SCK / MOSI levels, MISO sampled from a byte "sent back". */
+struct SpiReplay
+{
+    int     sckEdges  = 0;
+    uint8_t mosiByte  = 0;
+    uint8_t received  = 0;
+    bool    endsIdle  = false;
+    uint32_t lastOffset = 0;
+};
+
+SpiReplay replaySpi(uint8_t value, uint8_t spcr, uint32_t period, uint8_t slaveByte)
+{
+    SpiReplay r;
+    const bool cpol = (spcr & spi_reg::kCpol) != 0u;
+    bool sck  = cpol;
+    bool mosi = false;
+    int  bit  = 0;
+    for (const SpiEvent &e : spiFrame(value, spcr, period))
+    {
+        if (e.mosi >= 0)
+        {
+            mosi = e.mosi != 0;
+        }
+        if (e.sample)
+        {
+            // The master samples MOSI's own bit too, to check the order.
+            r.mosiByte = spiSetBit(r.mosiByte, bit, mosi, spcr);
+            r.received = spiSetBit(r.received, bit, spiBit(slaveByte, bit, spcr), spcr);
+            ++bit;
+        }
+        if (e.sck >= 0 && (e.sck != 0) != sck)
+        {
+            sck = e.sck != 0;
+            ++r.sckEdges;
+        }
+        r.lastOffset = e.offset;
+    }
+    r.endsIdle = (sck == cpol);
+    return r;
+}
+
+void testSpiFrame()
+{
+    // Divider: SPR1:0 = 00 -> /4, 01 -> /16, 10 -> /64, 11 -> /128; SPI2X halves.
+    CHECK(spiPeriod(0x00, 0x00) == 4u);
+    CHECK(spiPeriod(0x01, 0x00) == 16u);
+    CHECK(spiPeriod(0x03, 0x00) == 128u);
+    CHECK(spiPeriod(0x00, spi_reg::kSpi2x) == 2u);
+    CHECK(spiPeriod(0x01, spi_reg::kSpi2x) == 8u);
+
+    // MSB first by default, LSB first with DORD.
+    CHECK(spiBit(0x80, 0, 0) && !spiBit(0x80, 7, 0));
+    CHECK(spiBit(0x01, 0, spi_reg::kDord) && !spiBit(0x01, 0, 0));
+
+    for (uint8_t mode = 0; mode < 4; ++mode)
+    {
+        for (uint8_t dord : { uint8_t{ 0 }, spi_reg::kDord })
+        {
+            const uint8_t spcr = static_cast<uint8_t>(spi_reg::kSpe | spi_reg::kMstr | dord |
+                                                      (mode << 2));    // CPHA, CPOL
+            const SpiReplay r = replaySpi(0xA5, spcr, 16, 0x3C);
+            CHECK(r.sckEdges == 16);           // 8 leading + 8 trailing edges.
+            CHECK(r.mosiByte == 0xA5);         // MOSI is valid at each sample.
+            CHECK(r.received == 0x3C);
+            CHECK(r.endsIdle);                 // SCK back to CPOL.
+            CHECK(r.lastOffset <= 8u * 16u);   // Within simavr's 8 periods.
+        }
+    }
+
+    // Mode 0: MOSI is set half a period before the first rising edge.
+    const std::vector<SpiEvent> f = spiFrame(0x80, spi_reg::kSpe | spi_reg::kMstr, 4);
+    CHECK(f[0].offset == 0u && f[0].mosi == 1 && f[0].sck == -1);
+    CHECK(f[1].offset == 2u && f[1].sck == 1 && f[1].sample);
+
+    CHECK(spiLogText({ 0xA5, 0x3C }, { 0x00, 0xA5 }) == "MOSI A5 3C | MISO 00 A5");
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 2)
@@ -310,6 +388,7 @@ int main(int argc, char *argv[])
     testLm75();
     testEeprom();
     testUartScript();
+    testSpiFrame();
     testResolvePath(dir);
     testContentChecks();
     testVcd(dir);

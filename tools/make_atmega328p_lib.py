@@ -128,6 +128,8 @@ def main():
     w("*   I2C  : SDA = PC4 (A4), SCL = PC5 (A5), open drain: add pull-ups")
     w("*          (4.7k to 5 V) or enable the internal ones (Wire.begin does).")
     w(f"*          Virtual slaves: {a.i2c or 'none'}")
+    w("*   SPI  : master, SCK = PB5 (D13), MOSI = PB3 (D11), MISO = PB4 (D12);")
+    w("*          slaves are circuit parts, slave select = any GPIO (e.g. D10)")
     w("*")
     w("* KiCad: works with the official symbol MCU_Microchip_ATmega:ATmega328P-P;")
     w("*   Sim.Device = SUBCKT, Sim.Name = ATMEGA328P, Sim.Pins =")

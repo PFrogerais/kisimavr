@@ -39,6 +39,8 @@
  *   i2c     virtual I2C slaves: "lm75" ["0x48"] "eeprom" ["0x50"]
  *   lm75temp / lm75rate  LM75 temperature at t = 0 (degC) and slope (degC/s)
  *   i2clog  0 to hide the I2C transactions (default 1)
+ *   spilog  0 to hide the SPI transfers (default 1); SPI master on
+ *           SCK = PB5, MOSI = PB3, MISO = PB4 ("io" pins), slaves in the circuit
  *   sda / scl  TWI pins rebuilt as open-drain outputs (default PC4 / PC5)
  *   log   1 to print pin activity on stderr (default 0)
  *

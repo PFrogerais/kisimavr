@@ -1,0 +1,33 @@
+simAVR_spi - bus SPI de l'ATmega328P : registre a decalage 74HC595 + 8 LED
+==========================================================================
+
+Modele : genere par "cmake --build build --target demos" (tools/setup_demos.py).
+
+Composants : U1 = ATmega328P-P et U2 = 74HC595 (symboles et empreintes
+officiels KiCad). U2 utilise 74hc595.lib (modele numerique XSPICE : registre
+a decalage + verrou de sortie, seuils CMOS, sorties 0/5 V).
+
+Cablage (SPI maitre, mode 0, MSB en premier, 1 MHz) :
+  D13 (PB5) SCK  -> SRCLK (11)      D11 (PB3) MOSI -> SER (14)
+  D10 (PB2)      -> RCLK  (12)      D12 (PB4) MISO <- QH' (9)
+  ~SRCLR (10) a +5V, ~OE (13) a la masse.
+  QA..QH -> 330 Ohm -> LED rouges D1..D8.
+Le plug-in reconstruit les trames sur les vraies broches (SCK, MOSI) et lit
+MISO dans le circuit : l'esclave est un vrai composant du schema.
+
+Firmware : firmware/spi_595.c ou firmware/spi_595/spi_595.ino
+  - chenillard : 01, 02, 04 ... 80 (un pas toutes les ~2 ms)
+  - pendant l'envoi d'un octet, l'octet precedent ressort sur QH' : MISO le
+    relit, ce qui verifie toute la boucle -> "Q = 04  relu = 02" (115200 bauds)
+
+Ou voir quoi ?
+  - Simulateur : sonder QA..QH (chenillard), et SCK, MOSI, RCLK, MISO en
+    zoomant sur ~20 us autour d'un octet
+  - Terminal (KiCad lance depuis un terminal) : chaque octet
+      [mcu_cosim] t=... s SPI> MOSI 04 | MISO 02
+  - uart_log.txt (ce dossier) : le texte du firmware
+  - trace.vcd (ce dossier) : chronogramme, decodeur SPI de PulseView
+
+Simulation : transitoire, pas 0.5u, duree 18m,
+             "Sauvegarder tous les courants" decoche.
+Guide detaille : README.md du dossier parent.

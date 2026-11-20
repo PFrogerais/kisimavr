@@ -3,7 +3,7 @@
 # - unit       : config / I2C devices / paths / vcd modules, without simavr
 # - runner.*   : cosim_runner drives the plug-in without ngspice (fast)
 # - args.*     : configuration errors are reported, not crashes
-# - ngspice.*  : end-to-end runs of ngspice/full_test.cir, i2c_test.cir and
+# - ngspice.*  : end-to-end runs of ngspice/full_test.cir, i2c_test.cir, spi_test.cir and
 #                uart_rx_test.cir (two MCUs)
 # - models.*   : the repository models match their generator
 #
@@ -167,6 +167,13 @@ kisimavr_test(runner.uno_demo FIXTURE firmware
            [[out1: [1-3] changes]]
     REJECT [[setup failed]] [[framing error]])
 
+# SPI master: 2 x 8 SCK periods per step, MOSI frames, read back logged.
+kisimavr_test(runner.spi FIXTURE firmware
+    COMMAND ${RUN} -t 0.003 ${SO} -- hex ${FW}/spi_595.hex out PB5 PB3 PB2 PD1 io PB4
+    EXPECT [[UART0> SPI 74HC595 : chenillard]] [[SPI> MOSI 01 \| MISO]]
+           [[out0: 16 changes, 8 rising edges]] [[out2: 3 changes]]
+    REJECT [[setup failed]] [[during a transfer]])
+
 # ---- Generated models ---------------------------------------------------------
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
@@ -201,6 +208,7 @@ if(Python3_FOUND)
     kisimavr_model_test(full_lib kicad/atmega328p_full.lib --hex ../firmware/full_demo.hex)
     kisimavr_model_test(i2c_lib ngspice/atmega328p_i2c.lib --hex ../firmware/i2c_lm75.hex
                         --lm75temp 20 --lm75rate 1000)
+    kisimavr_model_test(spi_lib ngspice/atmega328p_spi.lib --hex ../firmware/spi_595.hex --i2c=)
     kisimavr_model_test(uart_a_lib ngspice/atmega328p_a.lib --name A
                         --hex ../firmware/uart_adc.hex --uartlog ../uart_log_a.txt --i2c=)
     kisimavr_model_test(uart_b_lib ngspice/atmega328p_b.lib --name B
@@ -259,6 +267,18 @@ if(NGSPICE_OK AND PROJECT_BINARY_DIR STREQUAL "${PROJECT_SOURCE_DIR}/build")
                [[UART0> Recu : ADC0 = 51[0-9] \(2[45][0-9][0-9] mV\)]]
         REJECT [[setup failed]] [[mismatched]] [[Segmentation]])
     set_tests_properties(ngspice.uart_rx PROPERTIES LABELS ngspice)
+    # SPI master on the pins, 74HC595 model in SPICE: QH' comes back on MISO,
+    # so each byte read is the previous one sent (the first is 00).
+    kisimavr_test(ngspice.spi FIXTURE firmware TIMEOUT 300
+        WORKDIR ${PROJECT_SOURCE_DIR}/ngspice
+        COMMAND ${NGSPICE} -b spi_test.cir
+        EXPECT [[UART0> SPI 74HC595 : chenillard]]
+               [[SPI> MOSI 01 \| MISO 00]]
+               [[SPI> MOSI 04 \| MISO 02]]
+               [[UART0> Q = 08  relu = 04]]
+               [[UART0> Q = 80  relu = 40]]
+        REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[during a transfer]])
+    set_tests_properties(ngspice.spi PROPERTIES LABELS ngspice)
 elseif(NGSPICE_OK)
     message(STATUS "ngspice test disabled: build directory is not <source>/build")
 endif()
@@ -305,6 +325,22 @@ if(KICAD_CLI AND Python3_FOUND)
             REJECT [[setup failed]] [[mismatched]] [[framing error]] [[[Ee]rror]])
         set_tests_properties(ngspice.kicad_uno PROPERTIES LABELS "ngspice;kicad"
                              FIXTURES_REQUIRED "firmware;demos;uno_netlist")
+
+        # SPI project: 74HC595 model with the official symbol.
+        set(spi_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/simAVR_spi.cir)
+        add_test(NAME kicad.spi_netlist
+            COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${spi_net}
+                    -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/simAVR_spi/simAVR_spi.kicad_sch
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
+        set_tests_properties(kicad.spi_netlist PROPERTIES FIXTURES_SETUP spi_netlist
+                             LABELS kicad TIMEOUT 120)
+        kisimavr_test(ngspice.kicad_spi TIMEOUT 300
+            WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/simAVR_spi
+            COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/simAVR_spi.raw ${spi_net}
+            EXPECT [[SPI> MOSI 02 \| MISO 01]] [[UART0> Q = 10  relu = 08]]
+            REJECT [[setup failed]] [[mismatched]] [[[Ee]rror]] [[during a transfer]])
+        set_tests_properties(ngspice.kicad_spi PROPERTIES LABELS "ngspice;kicad"
+                             FIXTURES_REQUIRED "firmware;demos;spi_netlist")
     endif()
 else()
     message(STATUS "KiCad tests disabled: kicad-cli not found")

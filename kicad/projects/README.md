@@ -17,13 +17,14 @@ la démo portent un drapeau « non connecté » (ERC propre).
 | `simAVR_adc` | `firmware/adc_pwm.c` | convertisseur SAR visible, PWM filtrée |
 | `simAVR_uart` | `firmware/uart_adc.c` | console série, trames sur TXD |
 | `simAVR_i2c` | `firmware/i2c_lm75.c` ou `i2c_lm75/i2c_lm75.ino` | bus I²C : capteur LM75, EEPROM 24C02, pull-ups 4,7 kΩ (symbole officiel) |
+| `simAVR_spi` | `firmware/spi_595.c` ou `spi_595/spi_595.ino` | SPI maître : 74HC595 (symbole officiel, modèle XSPICE) et 8 LED en chenillard, relecture par MISO |
 | `Arduino_UNO` | `firmware/uno_demo.c` ou `uno_demo/uno_demo.ino` | carte UNO R3 d'après le schéma officiel : LED L (tampon LMV358), reset, liaison série 1 kΩ vers le 16U2, connecteurs ; blink + UART RX/TX |
 
 *Outils → Mettre à jour les symboles depuis la bibliothèque* remplace la
 copie du symbole intégrée au schéma par celle de votre bibliothèque KiCad,
 sans changer le câblage ni le modèle de simulation.
 
-`simAVR_atmega328p`, `simAVR_i2c` et `Arduino_UNO` utilisent le symbole et
+`simAVR_atmega328p`, `simAVR_i2c`, `simAVR_spi` et `Arduino_UNO` utilisent le symbole et
 l'empreinte officiels de l'ATmega328P-P ; les trois autres utilisent des symboles
 simplifiés à 2–3 broches, faits uniquement pour la simulation.
 
@@ -195,6 +196,17 @@ montage.
    pendant une courte simulation.)
 4. Simuler (pas `0.2u`) et sonder SDA, SCL. Le terminal liste chaque
    transaction : `I2C> 0x48 W 00 | 0x48 R 14 80` (= 20,5 °C).
+
+## Étape 3 bis ½ — Utiliser le SPI
+
+1. Câbler l'esclave sur les broches du SPI : **D13 = SCK, D11 = MOSI,
+   D12 = MISO**, et une GPIO pour la sélection (D10 en général).
+2. L'esclave doit avoir un modèle de simulation. Pour un **74HC595** :
+   symbole officiel `74xx:74HC595`, *Modèle SPICE depuis un fichier* →
+   `kicad/74hc595.lib` (copie dans `simAVR_spi`), sous-circuit `74HC595`,
+   correspondance des broches comme dans `simAVR_spi` (bouton *Affecter*).
+3. Simuler : le terminal affiche chaque octet (`SPI> MOSI 04 | MISO 02`) ;
+   sonder SCK, MOSI et MISO en zoomant sur quelques microsecondes.
 
 ## Étape 3 ter — Envoyer des commandes série au MCU
 

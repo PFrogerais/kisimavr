@@ -4,7 +4,8 @@
 
 Usage: python3 tools/gen_kicad_demo.py OUT_DIR SOURCE_LIB VARIANT [--kisimavr DIR]
   VARIANT: full or i2c (official ATmega328P-P, DIP-28), gpio, adc, uart,
-           uno (Arduino UNO R3 board around the ATmega328P, official schematic)
+           uno (Arduino UNO R3 board around the ATmega328P, official schematic),
+           spi (SPI master driving a 74HC595 and 8 LEDs, official symbols)
   --kisimavr: absolute path of the kisimavr folder written into the .lib
               (default: the folder containing this script's parent)
 
@@ -20,7 +21,7 @@ import uuid
 VARIANT = sys.argv[3] if len(sys.argv) > 3 else "gpio"
 PROJECT = {"gpio": "simAVR_demo", "adc": "simAVR_adc", "uart": "simAVR_uart",
            "full": "simAVR_atmega328p", "i2c": "simAVR_i2c",
-           "uno": "Arduino_UNO"}[VARIANT]
+           "uno": "Arduino_UNO", "spi": "simAVR_spi"}[VARIANT]
 OUT = sys.argv[1]
 KISIMAVR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 if "--kisimavr" in sys.argv:
@@ -36,6 +37,7 @@ FOOTPRINTS = {
     "Device:Resonator": "Crystal:Resonator_SMD_Murata_CSTxExxV-3Pin_3.0x1.1mm",
     "Switch:SW_Push": "Button_Switch_THT:SW_PUSH_6mm",
     "simAVR:LMV358": "Package_SO:VSSOP-8_3x3mm_P0.65mm",
+    "74xx:74HC595": "Package_DIP:DIP-16_W7.62mm",
     "Connector_Generic:Conn_01x06": "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x08": "Connector_PinSocket_2.54mm:PinSocket_1x08_P2.54mm_Vertical",
     "Connector_Generic:Conn_01x10": "Connector_PinSocket_2.54mm:PinSocket_1x10_P2.54mm_Vertical",
@@ -230,6 +232,32 @@ for _n in (6, 8, 10):
     LIB[f"Connector_Generic:Conn_01x{_n:02d}"] = _conn_1xn(_n)
 
 LIB.update({
+    # Official KiCad symbol 74xx:74HC595 (pins and outline converted from
+    # the KiCad library).
+    "74xx:74HC595": dict(
+        ref="U", value="74HC595",
+        body='(rectangle (start -7.62 12.7) (end 7.62 -15.24) '
+             '(stroke (width 0.254) (type default)) (fill (type background)))',
+        pins=[("1", "QB", 10.16, 7.62, 180, "tri_state"),
+              ("2", "QC", 10.16, 5.08, 180, "tri_state"),
+              ("3", "QD", 10.16, 2.54, 180, "tri_state"),
+              ("4", "QE", 10.16, 0.0, 180, "tri_state"),
+              ("5", "QF", 10.16, -2.54, 180, "tri_state"),
+              ("6", "QG", 10.16, -5.08, 180, "tri_state"),
+              ("7", "QH", 10.16, -7.62, 180, "tri_state"),
+              ("8", "GND", 0.0, -17.78, 90, "power_in"),
+              ("9", "QH'", 10.16, -12.7, 180, "output"),
+              ("10", "~{SRCLR}", -10.16, 2.54, 0, "input"),
+              ("11", "SRCLK", -10.16, 5.08, 0, "input"),
+              ("12", "RCLK", -10.16, -2.54, 0, "input"),
+              ("13", "~{OE}", -10.16, -5.08, 0, "input"),
+              ("14", "SER", -10.16, 10.16, 0, "input"),
+              ("15", "QA", 10.16, 10.16, 180, "tri_state"),
+              ("16", "VCC", 0.0, 15.24, 270, "power_in")],
+        pin_names=True,
+        description="8-bit serial in, parallel out Shift Register 3-State Outputs",
+        keywords="HCMOS SR 3State",
+        fp_filters="DIP*W7.62mm* SOIC*3.9x9.9mm*P1.27mm* TSSOP*4.4x5mm*P0.65mm*"),
     "Connector_Generic:Conn_02x03_Odd_Even": dict(
         ref="J", value="Conn_02x03_Odd_Even",
         body='(rectangle (start -2.54 3.81) (end 5.08 -3.81) '
@@ -335,7 +363,7 @@ def pin_xy(X, Y, pin, rot=0):
 # Placed parts: (lib_id, ref, value, X, Y, extra properties)
 # --------------------------------------------------------------------------
 
-LIBFILE = ("atmega328p_full.lib" if VARIANT in ("full", "i2c", "uno")
+LIBFILE = ("atmega328p_full.lib" if VARIANT in ("full", "i2c", "uno", "spi")
            else "atmega328p_cosim.lib")
 LEDFILE = "led_models.lib"
 
@@ -584,6 +612,56 @@ if VARIANT == "i2c":
     DIRECTIVES = [(".tran 0.2u 5m", 101.6, 144.78)]
 
 
+def build_stubbed(spec):
+    """Parts from (lib_id, ref, value, X, Y, extra, {pin: net}).
+
+    Every pin gets a 2.54 mm stub ending on a net label, or on a +5V / GND
+    power symbol ("+5V!" / "GND!" also adds a PWR_FLAG); "NC" = no-connect
+    flag; the key "*" gives the net of the pins not listed.
+    Returns PARTS, WIRES, LABELS, NO_CONNECTS.
+    """
+    parts, wires, labels, ncs = [], [], [], []
+    stub = 2.54
+    count = {"pwr": 0, "flg": 0}
+
+    for lib_id, ref, value, X, Y, extra, conn in spec:
+        parts.append((lib_id, ref, value, X, Y, extra))
+        seen = set()
+        for pin in LIB[lib_id]["pins"]:
+            num = pin[0]
+            px, py, pang = pin_xy(X, Y, pin, extra.get("_rot", 0))
+            if (px, py) in seen:
+                continue                 # Stacked pins (GND 8 and 22).
+            seen.add((px, py))
+            net = conn.get(num, conn.get("*"))
+            if net is None:
+                raise SystemExit(f"{ref} pin {num} not connected")
+            if net == "NC":
+                ncs.append((px, py))
+                continue
+            # Wire away from the body: pin angle 0 -> left, 180 -> right,
+            # 90 -> down (screen), 270 -> up.
+            dx, dy = {0: (-1, 0), 180: (1, 0), 90: (0, 1), 270: (0, -1)}[pang]
+            ex, ey = round(px + dx * stub, 2), round(py + dy * stub, 2)
+            wires.append(((px, py), (ex, ey)))
+            flag = net.endswith("!")
+            net = net.rstrip("!")
+            if net in ("+5V", "GND"):
+                # Symbol pointing away from the stub (rotation counter-clockwise).
+                up = {(0, -1): 0, (-1, 0): 90, (0, 1): 180, (1, 0): 270}[(dx, dy)]
+                count["pwr"] += 1
+                parts.append(("power:+5V" if net == "+5V" else "power:GND",
+                              f"#PWR{count['pwr']:02d}", net, ex, ey,
+                              {"_rot": up if net == "+5V" else (up + 180) % 360}))
+                if flag:
+                    count["flg"] += 1
+                    parts.append(("power:PWR_FLAG", f"#FLG{count['flg']:02d}", "PWR_FLAG", ex, ey,
+                                  {"_rot": (up + 90) % 360 if net == "+5V" else (up + 270) % 360}))
+            else:
+                labels.append((net, ex, ey, 180 if dx < 0 else 0))
+    return parts, wires, labels, ncs
+
+
 PAPER = "A4"
 TITLE = None
 NO_CONNECTS = []
@@ -687,50 +765,53 @@ if VARIANT == "uno":
     ]
     DIRECTIVES = [(".tran 0.5u 10m", 43.18, 233.68)]
 
-    # Build stubs, labels, power symbols and no-connects.
-    PARTS, WIRES, LABELS, JUNCTIONS = [], [], [], []
-    STUB = 2.54
-    _pwr = [0]
-    _flg = [0]
-
-    def _power(value, x, y, angle):
-        lib = "power:+5V" if value == "+5V" else "power:GND"
-        _pwr[0] += 1
-        PARTS.append((lib, f"#PWR{_pwr[0]:02d}", value, x, y, {"_rot": angle}))
-
-    for lib_id, ref, value, X, Y, extra, conn in UNO_PARTS:
-        PARTS.append((lib_id, ref, value, X, Y, extra))
-        seen = set()
-        for pin in LIB[lib_id]["pins"]:
-            num = pin[0]
-            px, py, pang = pin_xy(X, Y, pin, extra.get("_rot", 0))
-            if (px, py) in seen:
-                continue                 # Stacked pins (GND 8 and 22).
-            seen.add((px, py))
-            net = conn.get(num)
-            if net is None:
-                raise SystemExit(f"{ref} pin {num} not connected")
-            if net == "NC":
-                NO_CONNECTS.append((px, py))
-                continue
-            # Wire away from the body: pin angle 0 -> left, 180 -> right,
-            # 90 -> down (screen), 270 -> up.
-            dx, dy = {0: (-1, 0), 180: (1, 0), 90: (0, 1), 270: (0, -1)}[pang]
-            ex, ey = round(px + dx * STUB, 2), round(py + dy * STUB, 2)
-            WIRES.append(((px, py), (ex, ey)))
-            flag = net.endswith("!")
-            net = net.rstrip("!")
-            if net in ("+5V", "GND"):
-                # Symbol pointing away from the stub (rotation counter-clockwise).
-                up = {(0, -1): 0, (-1, 0): 90, (0, 1): 180, (1, 0): 270}[(dx, dy)]
-                _power(net, ex, ey, up if net == "+5V" else (up + 180) % 360)
-                if flag:
-                    _flg[0] += 1
-                    PARTS.append(("power:PWR_FLAG", f"#FLG{_flg[0]:02d}", "PWR_FLAG", ex, ey,
-                                  {"_rot": (up + 90) % 360 if net == "+5V" else (up + 270) % 360}))
-            else:
-                LABELS.append((net, ex, ey, 180 if dx < 0 else 0))
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(UNO_PARTS)
+    JUNCTIONS = []
     NO_CONNECT_REF = None
+
+
+if VARIANT == "spi":
+    SIM_PINS = ("2=PD0 3=PD1 4=PD2 5=PD3 6=PD4 11=PD5 12=PD6 13=PD7 14=PB0 15=PB1 "
+                "16=PB2 17=PB3 18=PB4 19=PB5 23=PC0 24=PC1 25=PC2 26=PC3 27=PC4 28=PC5")
+    HC595FILE = "74hc595.lib"
+    SPI_PARTS = [
+        ("MCU_Microchip_ATmega:ATmega328P-P", "U1", "ATmega328P-P", 76.2, 99.06,
+         {"Sim.Device": "SUBCKT", "Sim.Library": LIBFILE,
+          "Sim.Name": "ATMEGA328P", "Sim.Pins": SIM_PINS},
+         {"7": "+5V", "20": "+5V", "8": "GND", "*": "NC",
+          "19": "SCK", "17": "MOSI", "18": "MISO", "16": "RCLK", "3": "TXD"}),
+        ("74xx:74HC595", "U2", "74HC595", 139.7, 91.44,
+         {"Sim.Device": "SUBCKT", "Sim.Library": HC595FILE, "Sim.Name": "74HC595",
+          "Sim.Pins": "1=QB 2=QC 3=QD 4=QE 5=QF 6=QG 7=QH 8=VSS 9=QHS 10=SRCLR_N "
+                      "11=SRCLK 12=RCLK 13=OE_N 14=SER 15=QA 16=VCC"},
+         {"14": "MOSI", "11": "SCK", "10": "+5V", "12": "RCLK", "13": "GND",
+          "9": "MISO", "16": "+5V", "8": "GND",
+          "15": "QA", "1": "QB", "2": "QC", "3": "QD", "4": "QE", "5": "QF", "6": "QG",
+          "7": "QH"}),
+        ("Device:R", "R9", "100k", 106.68, 129.54, {}, {"1": "TXD", "2": "GND"}),
+        ("Simulation_SPICE:VDC", "V1", "5V", 30.48, 160.02,
+         {"Sim.Device": "V", "Sim.Type": "DC", "Sim.Pins": "1=+ 2=-", "Sim.Params": "dc=5"},
+         {"1": "+5V!", "2": "GND!"}),
+    ]
+    for k, q in enumerate("ABCDEFGH"):
+        x = 180.34 + 12.7 * k
+        SPI_PARTS.append(("Device:R", f"R{k + 1}", "330", x, 81.28, {},
+                          {"1": f"Q{q}", "2": f"L{q}"}))
+        SPI_PARTS.append(("Device:LED", f"D{k + 1}", "LEDRED", x, 99.06,
+                          {"Sim.Device": "SUBCKT", "Sim.Library": LEDFILE,
+                           "Sim.Name": "LEDRED", "Sim.Pins": "1=K 2=A"},
+                          {"2": f"L{q}", "1": "GND"}))
+    PARTS, WIRES, LABELS, NO_CONNECTS = build_stubbed(SPI_PARTS)
+    JUNCTIONS = []
+    NO_CONNECT_REF = None
+    TEXTS = [
+        ("SPI maitre : D13 SCK -> SRCLK, D11 MOSI -> SER, D10 -> RCLK (verrou)", 25.4, 30.48),
+        ("D12 MISO <- QH' : relit l'octet precedent (firmware spi_595.hex)", 25.4, 34.29),
+        ("Chenillard sur 8 LED ; terminal : uart_log.txt, journal SPI> dans la console", 25.4, 38.1),
+        ("Sonder : SCK, MOSI, RCLK, MISO (zoom sur 20 us), QA..QH", 25.4, 41.91),
+        ("Alimentation 5 V de la simulation", 22.86, 147.32),
+    ]
+    DIRECTIVES = [(".tran 0.5u 18m", 25.4, 185.42)]
 
 
 def placed_symbol(lib_id, ref, value, x, y, extra):
@@ -963,6 +1044,12 @@ def main():
 
     if VARIANT == "uno":
         write_uno_models()
+    if VARIANT == "spi":
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "..", "kicad", HC595FILE)) as f:
+            model = f.read()
+        with open(os.path.join(OUT, HC595FILE), "w") as f:
+            f.write(model)
 
     with open(sys.argv[2]) as f:
         lib = f.read()

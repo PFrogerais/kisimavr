@@ -32,6 +32,7 @@
 #include "cosim_abi.h"
 #include "i2c_bus.h"
 #include "sar_adc.h"
+#include "spi_bus.h"
 #include "uart0.h"
 #include "vcd.h"
 
@@ -88,6 +89,7 @@ private:
     bool loadHex();
     bool watchPort(char name);
     Digital_t pinValue(const PinRef &pin) const;
+    bool spiOverride(const PinRef &pin, bool &level, bool &oe) const;
     Digital_t outputValue(size_t i) const;
     bool publishOutputs(co_info *info);
 
@@ -101,6 +103,7 @@ private:
     SarAdc                     m_sar{ m_dirty };
     Uart0                      m_uart{ m_dirty };
     I2cBus                     m_i2c{ m_dirty };
+    SpiBus                     m_spi{ m_dirty };
     VcdWriter                  m_vcd;
 };
 

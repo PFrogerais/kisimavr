@@ -50,7 +50,7 @@ bool isKey(const std::string &word)
            k == "adc" || k == "vref" || k == "adcbit" || k == "txpin" ||
            k == "uartlog" || k == "uartin" || k == "rxpin" || k == "vcd" || k == "log" ||
            k == "i2c" || k == "lm75temp" ||
-           k == "lm75rate" || k == "i2clog" || k == "sda" || k == "scl";
+           k == "lm75rate" || k == "i2clog" || k == "sda" || k == "scl" || k == "spilog";
 }
 
 bool isMultiValued(const std::string &key)
@@ -185,6 +185,10 @@ bool applyValue(const std::string &key, const std::string &value, Config &cfg)
     else if (key == "i2clog")
     {
         cfg.i2cLog = (value != "0");
+    }
+    else if (key == "spilog")
+    {
+        cfg.spiLog = (value != "0");
     }
     else if (key == "sda")
     {

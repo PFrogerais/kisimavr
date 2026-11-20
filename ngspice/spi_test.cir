@@ -1,0 +1,48 @@
+* Complete ATmega328P model: SPI master driving a 74HC595 (8 LEDs chaser)
+* Run from this folder:  ngspice spi_test.cir
+* Firmware: ../firmware/spi_595.hex (make -C ../firmware)
+* The SPI frames are electrical: SCK (D13) -> SRCLK, MOSI (D11) -> SER,
+* D10 -> RCLK (latch), and QH' -> MISO (D12) reads the previous byte back.
+
+* Model generated for this firmware:
+*   python3 ../tools/make_atmega328p_lib.py --relative --hex ../firmware/spi_595.hex \
+*       --so ../build/mcu_cosim.so --i2c= -o atmega328p_spi.lib
+.include atmega328p_spi.lib
+.include ../kicad/74hc595.lib
+
+*      D0  D1  D2  D3  D4  D5  D6  D7  D8  D9  D10  D11  D12  D13  A0  A1  A2  A3  A4  A5
+X1     nd0 txd nd2 nd3 nd4 nd5 nd6 nd7 nb0 nb1 rclk mosi miso sck  na0 na1 na2 na3 na4 na5 ATMEGA328P
+
+*      QB QC QD QE QF QG QH GND QH'  ~SRCLR SRCLK RCLK ~OE SER  QA VCC
+XU2    qb qc qd qe qf qg qh 0   miso vdd    sck   rclk 0   mosi qa vdd 74HC595
+
+Vdd vdd 0 5
+
+* LEDs through 330 ohm on QA..QH (red LED, about 1.8 V)
+.model dled D(IS=1e-18 RS=10 N=2)
+RA qa la 330
+DA la 0 dled
+RB qb lb 330
+DB lb 0 dled
+RC qc lc 330
+DC lc 0 dled
+RD qd ld 330
+DD ld 0 dled
+RE qe le 330
+DE le 0 dled
+RF qf lf 330
+DF lf 0 dled
+RG qg lg 330
+DG lg 0 dled
+RH qh lh 330
+DH lh 0 dled
+
+* UART receiver load
+Rtx txd 0 100k
+
+.control
+tran 0.5u 18m
+plot v(qa) v(qb)+6 v(qc)+12 v(qd)+18 v(qe)+24 v(qf)+30 v(qg)+36 v(qh)+42
+plot v(sck) v(mosi)+6 v(rclk)+12 v(miso)+18 xlimit 0 30u
+.endc
+.end
