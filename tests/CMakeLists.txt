@@ -296,7 +296,8 @@ if(KICAD_CLI AND Python3_FOUND)
 
         kisimavr_test(ngspice.kicad_uno TIMEOUT 300
             WORKDIR ${PROJECT_SOURCE_DIR}/kicad/projects/Arduino_UNO
-            COMMAND ${NGSPICE} -b ${uno_net}
+            # Batch mode without .print: -r (raw file) makes ngspice run the .tran.
+            COMMAND ${NGSPICE} -b -r ${CMAKE_CURRENT_BINARY_DIR}/kicad/Arduino_UNO.raw ${uno_net}
             EXPECT [[UART0> Arduino UNO pret]]
                    [[UART0< Bonjour]] [[UART0> Recu : Bonjour]]
                    [[UART0< BLINK OFF]] [[UART0> OK BLINK OFF]]
