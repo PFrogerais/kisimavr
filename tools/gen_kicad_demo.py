@@ -357,6 +357,7 @@ PARTS = [
     ("power:GND", "#PWR02", "GND", 101.6, 86.36, {}),
     ("power:GND", "#PWR03", "GND", 109.22, 105.41, {}),
     ("power:GND", "#PWR04", "GND", 144.78, 86.36, {}),
+    ("power:PWR_FLAG", "#FLG01", "PWR_FLAG", 88.9, 106.68, {"_rot": 90}),
 ]
 
 WIRES = [
@@ -403,6 +404,7 @@ if VARIANT == "adc":
         ("power:GND", "#PWR02", "GND", 101.6, 86.36, {}),
         ("power:GND", "#PWR03", "GND", 149.86, 97.79, {}),
         ("power:GND", "#PWR04", "GND", 139.7, 105.41, {}),
+        ("power:PWR_FLAG", "#FLG01", "PWR_FLAG", 88.9, 106.68, {"_rot": 90}),
     ]
     WIRES = [
         ((88.9, 93.98), (88.9, 88.9)),
@@ -442,6 +444,7 @@ if VARIANT == "uart":
         ("power:GND", "#PWR01", "GND", 88.9, 106.68, {}),
         ("power:GND", "#PWR02", "GND", 101.6, 86.36, {}),
         ("power:GND", "#PWR03", "GND", 149.86, 86.36, {}),
+        ("power:PWR_FLAG", "#FLG01", "PWR_FLAG", 88.9, 106.68, {"_rot": 90}),
     ]
     WIRES = [
         ((88.9, 93.98), (88.9, 88.9)),

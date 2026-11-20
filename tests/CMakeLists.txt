@@ -288,8 +288,9 @@ if(KICAD_CLI AND Python3_FOUND)
 
         set(uno_net ${CMAKE_CURRENT_BINARY_DIR}/kicad/Arduino_UNO.cir)
         add_test(NAME kicad.uno_netlist
-            COMMAND ${KICAD_CLI} sch export netlist --format spice -o ${uno_net}
-                    ${PROJECT_SOURCE_DIR}/kicad/projects/Arduino_UNO/Arduino_UNO.kicad_sch)
+            COMMAND ${CMAKE_COMMAND} -DKICAD_CLI=${KICAD_CLI} -DOUT=${uno_net}
+                    -DSCH=${PROJECT_SOURCE_DIR}/kicad/projects/Arduino_UNO/Arduino_UNO.kicad_sch
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/kicad_netlist.cmake)
         set_tests_properties(kicad.uno_netlist PROPERTIES FIXTURES_SETUP uno_netlist
                              LABELS kicad TIMEOUT 120)
 
