@@ -1,0 +1,31 @@
+# Temporary: packs Fedora's ngspice with its code models and libraries,
+# so that it can be run elsewhere through the bundled dynamic loader.
+name: ngspice bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    container: fedora:45
+    steps:
+      - name: Pack
+        run: |
+          dnf install -y --setopt=install_weak_deps=False ngspice ngspice-codemodel tar gzip
+          mkdir -p b/lib b/cm b/share
+          cp "$(command -v ngspice)" b/
+          cp /usr/lib64/ngspice/*.cm b/cm/
+          cp -r /usr/share/ngspice/* b/share/ || true
+          for f in b/ngspice b/cm/*.cm; do
+              ldd "$f" | awk '/=> \//{print $3} /ld-linux/{print $1}' ; done \
+              | sort -u | xargs -I{} cp -L {} b/lib/
+          ls -la b b/lib b/cm
+          tar czf ngspice_bundle.tgz b
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ngspice_bundle
+          path: ngspice_bundle.tgz
