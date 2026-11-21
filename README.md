@@ -657,7 +657,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
   contourne : sa copie des sorties n'est pas initialisée (le plug-in
   annonce toutes les sorties à 0 au premier pas) et deux envois dans le
   même appel perdent le premier lot (un changement qui y exposerait est
-  différé à l'appel suivant, soit quelques centaines de ns au plus).
+  différé au pas ngspice suivant).
 
 ## Arborescence
 
