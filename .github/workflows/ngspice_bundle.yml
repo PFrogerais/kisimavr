@@ -15,16 +15,12 @@ jobs:
     steps:
       - name: Pack
         run: |
-          dnf install -y --setopt=install_weak_deps=False ngspice ngspice-codemodel tar gzip git
-          mkdir -p b/lib b/cm b/share
-          cp "$(command -v ngspice)" b/
-          cp /usr/lib64/ngspice/*.cm b/cm/
-          cp -r /usr/share/ngspice/* b/share/ || true
-          for f in b/ngspice b/cm/*.cm; do
-              ldd "$f" | awk '/=> \//{print $3} /ld-linux/{print $1}' ; done \
-              | sort -u | xargs -I{} cp -L {} b/lib/
-          ls -la b b/lib b/cm
-          tar czf ngspice_bundle.tgz b
+          dnf install -y --setopt=install_weak_deps=False flex tar gzip git
+          git clone -q --depth 1 https://github.com/imr/ngspice.git src
+          cd src/src/xspice/cmpp
+          flex -o mod_lex.c mod_lex.l
+          flex -o ifs_lex.c ifs_lex.l
+          tar czf ../../../../ngspice_bundle.tgz mod_lex.c ifs_lex.c
       - name: Push to a temporary branch
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
