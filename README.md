@@ -1,16 +1,24 @@
-# kisimavr — émuler un ATmega (.hex) dans KiCad / ngspice
+# kisimavr — émuler un ATmega ou une Raspberry Pi Pico dans KiCad / ngspice
 
 Équivalent libre du « charger un .hex » de Proteus : un plug-in `d_cosim`
-pour ngspice où **simavr** exécute le firmware cycle par cycle, synchronisé
-avec la simulation analogique transitoire. KiCad utilisant ngspice, le
-microcontrôleur devient un composant simulable du schéma.
+pour ngspice où le firmware s'exécute, synchronisé avec la simulation
+analogique transitoire. KiCad utilisant ngspice, le microcontrôleur devient
+un composant simulable du schéma :
+
+- **ATmega** (Arduino UNO) : **simavr** exécute le `.hex` cycle par cycle ;
+- **Raspberry Pi Pico** (RP2040) et **Pico 2** (RP2350, cœurs RISC-V ou
+  Arm) : **rp2040js** / **rp2350js** exécutés par QuickJS dans le plug-in,
+  firmwares `.uf2` du Pico SDK ou d'Arduino-pico ;
+- **modules** du schéma co-simulés eux aussi : afficheur LCD, modules I²C
+  (LM75, EEPROM, LCD I²C), capteur à ultrasons HC-SR04, servomoteur.
 
 ```
-.hex ─▶ simavr ─▶ mcu_cosim.so ─▶ d_cosim (XSPICE) ─▶ ngspice ─▶ KiCad
+.hex / .uf2 ─▶ simavr / rp2040js / rp2350js ─▶ mcu_cosim.so ─▶ d_cosim (XSPICE) ─▶ ngspice ─▶ KiCad
 ```
 
 Validé avec **KiCad 10.0.8 (Flatpak)**, **ngspice 47**, simavr (master),
-Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
+Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno), clang
+pour les démos Pico bare-metal.
 
 ## Fonctionnalités
 
@@ -25,7 +33,7 @@ Fedora 45, firmwares avr-gcc et **Arduino IDE** (carte Arduino Uno).
 | SPI | maître sur les vraies broches (SCK, MOSI, MISO), 4 modes, ordre des bits, débit de SPCR ; esclaves = composants du schéma (modèle 74HC595 fourni) ; journal des octets |
 | Afficheur LCD | module 16x2 / 20x4 (HD44780) comme composant du schéma : écran affiché dans le terminal et un fichier, vérification des temps du datasheet |
 | Raspberry Pi Pico (RP2040) | composant `PICO` 3,3 V : rp2040js (Wokwi) exécuté par QuickJS dans le plug-in ; GPIO, PWM, UART (texte + trames), I²C et SPI maîtres (signaux réels), USB série (texte), ADC GP26–GP28 ; firmwares `.uf2` (Pico SDK, Arduino-pico), `.bin`, `.hex` |
-| Modules I²C | composant `I2C_…` câblé sur SDA / SCL : capteur LM75, EEPROM 24C02, afficheur LCD 16x2 I²C (PCF8574), décodés bit à bit depuis les tensions, ACK et données en drain ouvert ; pour tout maître (Pico, ATmega, sources) |
+| Modules I²C | composant `I2C_…` câblé sur SDA / SCL : capteur LM75, EEPROM 24C02, afficheur LCD 16x2 I²C (PCF8574), décodés bit à bit depuis les tensions, ACK et données en drain ouvert ; indépendants du maître (validés avec la Pico) |
 | Raspberry Pi Pico 2 (RP2350) | composant `PICO2`, même brochage : rp2350js dans QuickJS, cœurs RISC-V (Hazard3) ou Arm (Cortex-M33) selon le firmware, démarrage par la bootrom A2 ; mêmes GPIO, UART, ADC |
 | Capteurs et actionneurs | HC-SR04 et servomoteur co-simulés (temps exacts, messages dans le terminal), CTN 10 kΩ, moteur à courant continu et pont en H L298N en SPICE ; démos ATmega328P et Pico |
 | Chronogrammes | export VCD → GTKWave, PulseView (décodeurs UART, I²C, SPI…) |
@@ -38,7 +46,8 @@ simavr n'est pas packagé dans Fedora : on le compile depuis ses sources.
 
 ```bash
 # Outils
-sudo dnf install git cmake gcc-c++ make elfutils-libelf-devel avr-gcc avr-libc ngspice
+sudo dnf install git cmake gcc-c++ make elfutils-libelf-devel avr-gcc avr-libc ngspice \
+                 clang lld llvm
 
 # simavr, installé dans ~/.local (sans sudo)
 git clone --depth 1 https://github.com/buserror/simavr.git
@@ -197,7 +206,11 @@ les essais en simulation.
 | `pico/pico_demo.c` (RP2040, clang) | `pico.lib` → `PICO` | `pico_test.cir` | `simPICO` (symbole officiel `RaspberryPi_Pico`) | LED, bouton, ADC, UART avec terminal simulé |
 | `pico2/pico2_demo.c` (RP2350, clang, RISC-V et Arm) | `pico2.lib` → `PICO2` | `pico2_test.cir` | `simPICO2` | le montage de `simPICO` avec une Pico 2 |
 | `pico2/pico2_demo.c` | `rp2350.lib` → `RP2350` (`--mcu rp2350 --chip`) | — | `RaspberryPi_Pico2` (carte reconstruite, feuille hiérarchique) | VSYS / 3, détection VBUS, LED de la carte |
-| `uno_demo.c` / `uno_demo/uno_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | netlist exportée par `kicad-cli` | `Arduino_UNO` (schéma officiel UNO R3) | blink + UART RX/TX avec un terminal simulé (`terminal.txt`) |
+| `uno_demo.c` / `uno_demo/uno_demo.ino` | `atmega328p_full.lib` → `ATMEGA328P` | netlist exportée par `kicad-cli` | `Arduino_UNO` (schéma officiel UNO R3, feuille hiérarchique) | blink + UART RX/TX avec un terminal simulé (`terminal.txt`) |
+| `pico/pico_i2c.c` (RP2040) | `pico_i2c.lib` → `PICO_I2C` + `i2c_slaves.lib` → `I2C_SLAVES` | `pico_i2c_test.cir` | `simPICO_i2c` | bus I²C électrique : capteur LM75 et afficheur LCD 16x2 I²C (PCF8574) |
+| `pico/pico_spi.c` (RP2040) | `pico_spi.lib` → `PICO_SPI` + `74hc595.lib` | `pico_spi_test.cir` | `simPICO_spi` | bus SPI électrique : 74HC595 en 3,3 V, chenillard, relecture par MISO |
+| `radar.c` / `pico/pico_radar.c` | `atmega328p_radar.lib` / `pico_radar.lib` + `hcsr04.lib`, `servo.lib` | `radar_test.cir`, `pico_radar_test.cir` | `simAVR_radar`, `simPICO_radar` | HC-SR04 et servomoteur qui suit la distance |
+| `ventilo.c` / `pico/pico_ventilo.c` | `atmega328p_ventilo.lib` / `pico_ventilo.lib` + `ntc.lib`, `motor.lib` | `ventilo_test.cir`, `pico_ventilo_test.cir` | `simAVR_ventilo`, `simPICO_ventilo` | ventilateur régulé : CTN, pont en H L298N, moteur à courant continu |
 
 Les tests ngspice se lancent depuis `ngspice/` (chemins relatifs).
 
@@ -525,6 +538,21 @@ symbolique, et un fichier existant n'est remplacé que s'il a été écrit par
 le plug-in (texte ASCII de l'UART, ou VCD commençant par `$timescale`) :
 une faute de frappe dans la netlist ne peut pas écraser un autre fichier.
 
+Autres composants co-simulés (`"device"` à la place de `"hex"`), décrits
+dans l'en-tête de leur source et générés par les scripts de `tools/` :
+
+| `sim_args` | Composant | Ports (entrées / sorties) | Script |
+|---|---|---|---|
+| `"mcu" "rp2040"` / `"mcu" "rp2350"` + `"fw"` | Pico / Pico 2 (`src/rp2040_config.h`) | lectures `io` + comparateurs ADC / 4 sorties par `io` + 12 bits CNA | `make_pico_lib.py` |
+| `"device" "hd44780"` | afficheur LCD (`src/lcd_device.h`) | RS RW E D0..D7 / — | `make_lcd_lib.py` |
+| `"device" "i2c"` | modules I²C (`src/i2c_slave_device.h`) | SDA SCL / SDA tiré à 0 | `make_i2c_lib.py` |
+| `"device" "hcsr04"` | HC-SR04 (`src/sensor_devices.h`) | TRIG / ECHO | `make_module_lib.py hcsr04` |
+| `"device" "servo"` | servomoteur (`src/sensor_devices.h`) | SIG / angle sur 8 bits | `make_module_lib.py servo` |
+
+Chaque composant co-simulé d'un même circuit a son propre rang
+`irreversible` (les scripts en proposent un par défaut, option
+`--irreversible`).
+
 Ordre des ports de la ligne `aMcu [entrées] [sorties] null modèle` :
 - entrées = `in`, puis lecture de chaque `io`, puis un comparateur par `adc` ;
 - sorties = `out`, puis (level, oe, pu) par `io`, puis b0..b9 si `adc`.
@@ -573,9 +601,12 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
   partielle dans rp2350js (le RISC-V est plus complet) ; horloges fixes
   (clk_sys = clk_peri = 150 MHz), sans PLL ni sécurité (TrustZone, OTP).
 - SPI : AVR maître uniquement, sur PB5/PB3/PB4 (famille ATmega48/88/168/328).
-- I²C : AVR maître uniquement ; esclaves virtuels LM75 et 24C02 seulement
-  (pas de composant I²C décrit dans le schéma) ; étirement d'horloge non
-  modélisé.
+- I²C de l'ATmega : maître uniquement, avec les esclaves virtuels LM75 et
+  24C02 (clé `i2c`) ; les modules I²C du schéma (`"device" "i2c"`) sont
+  validés avec la Pico ; étirement d'horloge non modélisé côté ATmega.
+- Modules : HC-SR04 sans écho multiple ni bruit ; servomoteur sans couple
+  ni surconsommation au démarrage ; CTN sans auto-échauffement ; moteur et
+  L298N comportementaux (pas de modèle thermique).
 - ADC : pas d'échantillonneur-bloqueur (Vin comparée pendant les 10 pas),
   pas d'entrée différentielle ni de capteur de température.
 - Seule la flash du `.hex` est chargée (pas l'EEPROM) ; un seul bloc
@@ -635,6 +666,13 @@ GPL-3.0-or-later (voir `LICENSE`), comme simavr auquel le plug-in est lié.
 ## Crédits
 
 - [simavr](https://github.com/buserror/simavr) (GPL-3.0) — émulateur AVR.
+- [rp2040js](https://github.com/wokwi/rp2040js) (MIT, Uri Shaked / Wokwi)
+  et [rp2350js](https://github.com/c1570/rp2350js) (MIT, c1570) —
+  émulateurs RP2040 et RP2350, avec les bootroms de Raspberry Pi
+  (BSD-3-Clause).
+- [QuickJS-ng](https://github.com/quickjs-ng/quickjs) (MIT) — moteur
+  JavaScript intégré au plug-in.
+- Symboles KiCad 10 (CC-BY-SA 4.0 avec l'exception des bibliothèques KiCad).
 - [ngspice](https://ngspice.sourceforge.io/) — modèle XSPICE `d_cosim`
   de Giles Atkinson ; `include/cosim_abi.h` reprend son interface
   (licence BSD modifiée).
