@@ -101,3 +101,7 @@ jobs:
       - name: Show the KiCad netlist (debug)
         if: failure() && matrix.name == 'release'
         run: cat build/tests/kicad/Arduino_UNO.cir || true
+
+      - name: Print ventilo.hex (temporary)
+        if: always() && matrix.name == 'sanitizers'
+        run: sed 's/^/HEX|/' firmware/ventilo.hex || true
