@@ -406,12 +406,24 @@ bool McuBridge::publishOutputs(co_info *info)
             info->out_fn(info, static_cast<unsigned int>(i), &value);
             changed = true;
 
-            if (m_cfg.log && i < m_cfg.outputs.size())
+            if (m_cfg.log)
             {
                 static const char *const kStates[] = { "0", "1", "X" };
-                std::fprintf(stderr, "%s t=%.9f out P%c%u = %s\n", kTag, now(),
-                             m_cfg.outputs[i].port, m_cfg.outputs[i].bit,
-                             kStates[value.state]);
+                const size_t ioBase = m_cfg.outputs.size();
+                if (i < ioBase)
+                {
+                    std::fprintf(stderr, "%s t=%.9f out P%c%u = %s\n", kTag, now(),
+                                 m_cfg.outputs[i].port, m_cfg.outputs[i].bit,
+                                 kStates[value.state]);
+                }
+                else if (i < ioBase + 3u * m_cfg.ios.size())
+                {
+                    static const char *const kKinds[] = { "level", "oe", "pu" };
+                    const PinRef &pin = m_cfg.ios[(i - ioBase) / 3u];
+                    std::fprintf(stderr, "%s t=%.9f vtime=%.9f out P%c%u.%s = %s\n", kTag,
+                                 now(), info->vtime, pin.port, pin.bit,
+                                 kKinds[(i - ioBase) % 3u], kStates[value.state]);
+                }
             }
         }
     }
