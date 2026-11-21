@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   bundle:
@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Pack
         run: |
-          dnf install -y --setopt=install_weak_deps=False ngspice ngspice-codemodel tar gzip
+          dnf install -y --setopt=install_weak_deps=False ngspice ngspice-codemodel tar gzip git
           mkdir -p b/lib b/cm b/share
           cp "$(command -v ngspice)" b/
           cp /usr/lib64/ngspice/*.cm b/cm/
@@ -25,7 +25,12 @@ jobs:
               | sort -u | xargs -I{} cp -L {} b/lib/
           ls -la b b/lib b/cm
           tar czf ngspice_bundle.tgz b
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ngspice_bundle
-          path: ngspice_bundle.tgz
+      - name: Push to a temporary branch
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir pub && cd pub && git init -q -b ngspice-bundle
+          cp ../ngspice_bundle.tgz .
+          git -c user.name=ci -c user.email=ci@localhost add . 
+          git -c user.name=ci -c user.email=ci@localhost commit -qm bundle
+          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ngspice-bundle
