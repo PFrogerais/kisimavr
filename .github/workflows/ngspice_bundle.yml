@@ -1,5 +1,4 @@
-# Temporary: packs Fedora's ngspice with its code models and libraries,
-# so that it can be run elsewhere through the bundled dynamic loader.
+# Temporary: removes the scratch branch of the debugging session.
 name: ngspice bundle
 
 on:
@@ -9,24 +8,12 @@ permissions:
   contents: write
 
 jobs:
-  bundle:
+  cleanup:
     runs-on: ubuntu-24.04
-    container: fedora:45
     steps:
-      - name: Pack
-        run: |
-          dnf install -y --setopt=install_weak_deps=False flex tar gzip git
-          git clone -q --depth 1 https://github.com/imr/ngspice.git src
-          cd src/src/xspice/cmpp
-          flex -o mod_lex.c mod_lex.l
-          flex -o ifs_lex.c ifs_lex.l
-          tar czf ../../../../ngspice_bundle.tgz mod_lex.c ifs_lex.c
-      - name: Push to a temporary branch
+      - name: Delete the scratch branch
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir pub && cd pub && git init -q -b ngspice-bundle
-          cp ../ngspice_bundle.tgz .
-          git -c user.name=ci -c user.email=ci@localhost add . 
-          git -c user.name=ci -c user.email=ci@localhost commit -qm bundle
-          git push -f "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" ngspice-bundle
+          git init -q x && cd x
+          git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --delete ngspice-bundle
