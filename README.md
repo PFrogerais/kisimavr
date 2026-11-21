@@ -653,6 +653,11 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 - Seule la flash du `.hex` est chargée (pas l'EEPROM) ; un seul bloc
   contigu (sortie `avr-objcopy -O ihex -R .eeprom`, ou `.ino.hex` Arduino).
 - RESET, XTAL, alimentation et AREF ne sont pas modélisés.
+- d_cosim (ngspice 44 à 47 au moins) a deux défauts que le plug-in
+  contourne : sa copie des sorties n'est pas initialisée (le plug-in
+  annonce toutes les sorties à 0 au premier pas) et deux envois dans le
+  même appel perdent le premier lot (un changement qui y exposerait est
+  différé à l'appel suivant, soit quelques centaines de ns au plus).
 
 ## Arborescence
 

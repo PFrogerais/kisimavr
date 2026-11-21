@@ -96,24 +96,116 @@ namespace
 
 using kisimavr::CosimDevice;
 
-CosimDevice *bridgeOf(co_info *info)
+/*
+ * Output guard, a workaround for d_cosim (ngspice 44 to 47 at least).
+ *
+ * When a change is reported at a vtime well before the SPICE time, d_cosim
+ * truncates the time step and sends the change at the start of its next
+ * call. If, in that very call, the device reports another change close
+ * enough to the SPICE time to be sent directly, d_cosim writes its outputs
+ * a second time and clears the "changed" flags of the first batch: those
+ * changes are lost for good (seen on a PWM pin whose output enable never
+ * reached the circuit).
+ *
+ * The guard sits between the device and d_cosim: in a call that may follow
+ * a truncation, a change that d_cosim could send directly is held back and
+ * delivered at the start of the next call instead.
+ *
+ * Second issue: d_cosim compares each change with a copy of the outputs
+ * that it never initialises. A first change to the value that happens to
+ * sit there is taken for "no change" and dropped. All devices start with
+ * their outputs at 0, so the guard reports 0 on every output at the first
+ * step: the copy then matches the circuit.
+ */
+struct Instance
 {
-    return static_cast<CosimDevice *>(info->handle);
+    std::unique_ptr<CosimDevice> device;
+    void (*ngspiceOut)(co_info *, unsigned int, Digital_t *) = nullptr;
+    std::vector<std::pair<unsigned int, Digital_t>> batch;   // Changes of this call.
+    std::vector<std::pair<unsigned int, Digital_t>> held;    // Sent next call.
+    bool mayFlush = false;   // d_cosim may have sent a batch on entry.
+    bool synced   = false;   // Initial outputs reported.
+};
+
+/** Smallest margin to the SPICE time that surely truncates the step. */
+constexpr double kDirectWindow = 1e-6;    // Larger than the d_cosim "delay".
+
+Instance *instanceOf(co_info *info)
+{
+    return static_cast<Instance *>(info->handle);
+}
+
+void collectOutput(co_info *info, unsigned int index, Digital_t *value)
+{
+    instanceOf(info)->batch.emplace_back(index, *value);
+}
+
+void forward(co_info *info, std::vector<std::pair<unsigned int, Digital_t>> &changes)
+{
+    Instance *inst = instanceOf(info);
+    for (auto &change : changes)
+    {
+        inst->ngspiceOut(info, change.first, &change.second);
+    }
+    changes.clear();
 }
 
 void cosimStep(co_info *info)
 {
-    bridgeOf(info)->step(info);
+    Instance *inst  = instanceOf(info);
+    const double target = info->vtime;
+
+    if (!inst->synced)
+    {
+        // First step: report the initial outputs (all 0), see above.
+        inst->synced = true;
+        const unsigned int count = info->out_count + info->inout_count;
+        for (unsigned int i = 0; i < count; ++i)
+        {
+            Digital_t zero{ ZERO, STRONG };
+            inst->ngspiceOut(info, i, &zero);
+        }
+        inst->mayFlush = true;
+        return;
+    }
+    if (!inst->held.empty())
+    {
+        // Held changes: sent now, at this call's time, before running on.
+        forward(info, inst->held);
+        inst->mayFlush = true;
+        return;
+    }
+
+    info->out_fn = collectOutput;
+    inst->device->step(info);
+    info->out_fn = inst->ngspiceOut;
+
+    if (inst->batch.empty())
+    {
+        inst->mayFlush = false;
+        return;
+    }
+    if (inst->mayFlush && target - info->vtime <= kDirectWindow)
+    {
+        // Could be sent directly right after a flushed batch: hold it.
+        inst->held.swap(inst->batch);
+        info->vtime = target;
+        inst->mayFlush = false;
+        return;
+    }
+    forward(info, inst->batch);
+    inst->mayFlush = true;
 }
 
 void cosimInput(co_info *info, unsigned int index, Digital_t *value)
 {
-    bridgeOf(info)->input(info, index, value);
+    Instance *inst = instanceOf(info);
+    inst->device->input(info, index, value);
 }
 
 void cosimCleanup(co_info *info)
 {
-    delete bridgeOf(info);
+    delete instanceOf(info);
     info->handle = nullptr;
 }
 
@@ -230,7 +322,10 @@ COSIM_EXPORT void Cosim_setup(co_info *info)
         return;
     }
 
-    info->handle  = bridge.release();
+    auto inst = std::make_unique<Instance>();
+    inst->device     = std::move(bridge);
+    inst->ngspiceOut = info->out_fn;
+    info->handle  = inst.release();
     info->step    = cosimStep;
     info->in_fn   = cosimInput;
     info->cleanup = cosimCleanup;

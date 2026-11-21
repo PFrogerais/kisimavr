@@ -119,6 +119,10 @@ void onOutput(co_info * /*info*/, unsigned int index, Digital_t *value)
 void recordOutput(double now, unsigned int index, const Digital_t *value)
 {
     Channel &ch = g_runner.outputs[index];
+    if (value->state == ch.value.state && value->strength == ch.value.strength)
+    {
+        return;    // Same value (initial outputs reported at the first step).
+    }
     if (ch.value.state != ONE && value->state == ONE && value->strength == STRONG)
     {
         ch.risingEdges.push_back(now);

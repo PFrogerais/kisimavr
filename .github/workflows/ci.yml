@@ -102,8 +102,3 @@ jobs:
         if: failure() && matrix.name == 'release'
         run: cat build/tests/kicad/Arduino_UNO.cir || true
 
-      - name: Debug ventilo (temporary)
-        if: always() && matrix.name == 'release'
-        run: |
-          cd ngspice && ngspice -b dbg_ventilo.cir 2>&1 | grep -E "PD6|UART0|delay|WARN|Warn|behind|vitesse|rapport|v_in" | grep -v "t=0.000000000" | head -80 || true
-
