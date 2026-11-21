@@ -99,6 +99,16 @@ bool Uart0::start(avr_t *avr, const Config &cfg)
         }
     }
 
+    // Pseudo-terminal: what is typed there is read every 200 us (simulated).
+    if (!cfg.pty.empty())
+    {
+        if (!m_pty.open(cfg.pty == "1" ? "" : cfg.pty, "UART0"))
+        {
+            return false;
+        }
+        avr_cycle_timer_register(m_avr, 1, onPtyTimer, this);
+    }
+
     // Reception: timed text file.
     if (!cfg.uartIn.empty())
     {
@@ -124,6 +134,8 @@ avr_cycle_count_t Uart0::onBitTimer(avr_t * /*avr*/, avr_cycle_count_t when, voi
 /** A byte written to UDR0 by the firmware. */
 void Uart0::byte(uint8_t value)
 {
+    m_pty.write(value);
+
     // Console text, one line at a time.
     if (value == '\n')
     {
@@ -297,21 +309,42 @@ avr_cycle_count_t Uart0::onSampleTimer(avr_t * /*avr*/, avr_cycle_count_t when, 
     return static_cast<Uart0 *>(param)->sampleBit(when);
 }
 
-/** A line of the script is due: queue its bytes, schedule the next line. */
-avr_cycle_count_t Uart0::scriptEvent(avr_cycle_count_t /*when*/)
+/** A byte to send to the receiver, one frame time after the previous one. */
+void Uart0::queueReceived(uint8_t value)
 {
-    for (char c : m_events[m_nextEvent].bytes)
-    {
-        m_rxQueue.push_back(static_cast<uint8_t>(c));
-    }
-    ++m_nextEvent;
+    m_rxQueue.push_back(value);
     if (!m_pacing)
     {
         m_pacing = true;
         avr_cycle_timer_register(m_avr, 1, onPaceTimer, this);
     }
+}
+
+/** A line of the script is due: queue its bytes, schedule the next line. */
+avr_cycle_count_t Uart0::scriptEvent(avr_cycle_count_t /*when*/)
+{
+    for (char c : m_events[m_nextEvent].bytes)
+    {
+        queueReceived(static_cast<uint8_t>(c));
+    }
+    ++m_nextEvent;
     scheduleScript();
     return 0;
+}
+
+avr_cycle_count_t Uart0::onPtyTimer(avr_t * /*avr*/, avr_cycle_count_t when, void *param)
+{
+    return static_cast<Uart0 *>(param)->pollPty(when);
+}
+
+/** Bytes typed in the terminal program: queued for the receiver. */
+avr_cycle_count_t Uart0::pollPty(avr_cycle_count_t when)
+{
+    for (uint8_t b : m_pty.read())
+    {
+        queueReceived(b);
+    }
+    return when + static_cast<avr_cycle_count_t>(m_avr->frequency / 5000u);    // 200 us
 }
 
 /** Hand the queued bytes to simavr, one frame time apart. */

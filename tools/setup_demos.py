@@ -71,7 +71,7 @@ def main():
     pico = os.path.join(PROJECTS, "simPICO")
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_pico_lib.py"),
                     "--fw", os.path.join(ROOT, "firmware", "pico", "pico_demo.bin"),
-                    "--so", so, "-o", os.path.join(pico, "pico.lib")], check=True)
+                    "--pty", "--so", so, "-o", os.path.join(pico, "pico.lib")], check=True)
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_terminal_lib.py"),
                     "--vhigh", "3.3", os.path.join(pico, "terminal.txt"),
                     "-o", os.path.join(pico, "terminal.lib")], check=True)
@@ -125,7 +125,7 @@ def main():
     pico2 = os.path.join(PROJECTS, "simPICO2")
     fw2 = os.path.join(ROOT, "firmware", "pico2", "pico2_demo_riscv.bin")
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_pico_lib.py"),
-                    "--mcu", "rp2350", "--fw", fw2,
+                    "--mcu", "rp2350", "--fw", fw2, "--pty",
                     "--so", so, "-o", os.path.join(pico2, "pico2.lib")], check=True)
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_terminal_lib.py"),
                     "--vhigh", "3.3", os.path.join(pico2, "terminal.txt"),
@@ -135,11 +135,13 @@ def main():
                     "-o", os.path.join(PROJECTS, "RaspberryPi_Pico2", "rp2350.lib")],
                    check=True)
 
+    # Arduino UNO, simPICO and simPICO2: UART0 also on a pseudo-terminal,
+    # ~/kisimavr_uart0 (picocom, CuteCom...).
     # Arduino UNO board (official schematic): uno_demo firmware, and the
     # terminal model rebuilt from terminal.txt (the text sent to RX).
     uno = os.path.join(PROJECTS, "Arduino_UNO")
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_atmega328p_lib.py"),
-                    "--hex", os.path.join(ROOT, "firmware", "uno_demo.hex"),
+                    "--hex", os.path.join(ROOT, "firmware", "uno_demo.hex"), "--pty",
                     "--so", so, "-o", os.path.join(uno, "atmega328p_full.lib")], check=True)
     subprocess.run([sys.executable, os.path.join(ROOT, "tools", "make_terminal_lib.py"),
                     os.path.join(uno, "terminal.txt"), "-o", os.path.join(uno, "terminal.lib")],

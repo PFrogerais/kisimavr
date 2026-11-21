@@ -298,7 +298,72 @@ bool Rp2040Device::start()
     std::fprintf(stderr, "%s %s (%s in QuickJS) running %s (%zu io, %zu ADC)\n", kTag,
                  chip.c_str(), rp2350 ? "rp2350js" : "rp2040js",
                  m_cfg.fwPath.c_str(), m_cfg.ios.size(), m_cfg.adc.size());
+
+    // Serial ports on pseudo-terminals: raw bytes kept by the bridge.
+    const std::pair<const std::string *, int> ports[] = { { &m_cfg.pty, 0 },
+                                                          { &m_cfg.ptyUsb, 2 } };
+    for (const auto &[link, k] : ports)
+    {
+        if (link->empty())
+        {
+            continue;
+        }
+        PtyPort &pty = k == 0 ? m_pty : m_ptyUsb;
+        if (!pty.open(*link == "1" ? "" : *link, k == 0 ? "UART0" : "USB serial"))
+        {
+            m_ok = false;
+            return false;
+        }
+        const double args[2] = { static_cast<double>(k), 1.0 };
+        if (!call("setRaw", 2, args, nullptr))
+        {
+            return false;
+        }
+    }
     return true;
+}
+
+/** Bytes between the firmware and the terminal programs. */
+void Rp2040Device::exchangePty()
+{
+    JSContext *ctx = m_js->ctx;
+    for (int k : { 0, 2 })
+    {
+        PtyPort &pty = k == 0 ? m_pty : m_ptyUsb;
+        if (!pty.isOpen())
+        {
+            continue;
+        }
+        std::vector<double> sent;
+        const double port = k;
+        if (call("takeRaw", 1, &port, &sent) && !sent.empty())
+        {
+            std::vector<uint8_t> bytes(sent.begin(), sent.end());
+            pty.write(bytes.data(), bytes.size());
+        }
+        const std::vector<uint8_t> typed = pty.read();
+        if (typed.empty())
+        {
+            continue;
+        }
+        JSValue arr = JS_NewArray(ctx);
+        for (size_t i = 0; i < typed.size(); ++i)
+        {
+            JS_SetPropertyUint32(ctx, arr, static_cast<uint32_t>(i), JS_NewInt32(ctx, typed[i]));
+        }
+        JSValue fn = JS_GetPropertyStr(ctx, m_js->bridge, "feed");
+        JSValue args[2] = { JS_NewInt32(ctx, k), arr };
+        JSValue r = JS_Call(ctx, fn, m_js->bridge, 2, args);
+        JS_FreeValue(ctx, fn);
+        JS_FreeValue(ctx, args[0]);
+        JS_FreeValue(ctx, args[1]);
+        if (JS_IsException(r))
+        {
+            fail("feed");
+            return;
+        }
+        JS_FreeValue(ctx, r);
+    }
 }
 
 /** bridge[method](argv...) -> numbers of the returned array (if result). */
@@ -393,6 +458,7 @@ void Rp2040Device::step(co_info *info)
         return;
     }
     printLines(false);
+    exchangePty();
     if (r.size() == 1u)
     {
         return;    // vtime reached, no change.

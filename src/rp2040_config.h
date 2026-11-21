@@ -17,6 +17,9 @@
  *   io       bidirectional GPIOs, e.g. "GP0" "GP1" "GP25" (or "0" "1" "25")
  *   adc      ADC channels measured by the SAR model: 0..3 = GP26..GP29
  *   uartlog  file receiving the UART0 / UART1 / USB text, .txt or .log
+ *   pty      UART0 on a pseudo-terminal (pty_port.h): "1", or the path of a
+ *            symbolic link to it, e.g. "~/kisimavr_uart0"
+ *   ptyusb   the USB serial port (Serial of Arduino-pico) on a pseudo-terminal
  *   bridge   rp2040/bridge.js or rp2040/rp2350_bridge.js (default: next
  *            to the plug-in, ../rp2040/)
  *   log      1 to print the time of each run on stderr
@@ -41,6 +44,8 @@ struct Rp2040Config
     std::vector<int> ios;        // GPIO numbers 0..29
     std::vector<int> adc;        // Channels 0..3
     std::string      uartLog;
+    std::string      pty;               // UART0 on a pseudo-terminal
+    std::string      ptyUsb;            // USB CDC on a pseudo-terminal
     std::string      bridgePath;
     bool             log = false;
 };

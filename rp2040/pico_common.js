@@ -12,6 +12,10 @@
 //   setInput(k, level)   voltage read back on io pin k (true = high)
 //   setComparator(c, v)  SAR comparator of ADC channel c (true: Vin > Vdac)
 //   takeLines(final)     finished text lines: [timeNs, "UART0", "text", ...]
+//   setRaw(k, on)        keep the raw bytes of port k (0 UART0, 1 UART1, 2 USB)
+//   takeRaw(k)           raw bytes sent by the firmware on port k since the last call
+//   feed(k, bytes)       bytes typed in a terminal: to UART k (one frame time
+//                        apart) or to the USB serial port (k = 2)
 //
 // The emulators run on a SimulationClock: time only moves when run() ticks it.
 
@@ -480,6 +484,8 @@ export class PicoBridge {
     this.code = 0;
     this.lastCode = 0;
     this.cmp = adc.map(() => false);
+    this.raw = [null, null, null];    // Raw bytes kept for a pseudo-terminal
+    this.rxQueue = [[], []];          // Typed bytes waiting for UART0 / UART1
     this.mcu = null;
     this.clock = null;
   }
@@ -511,6 +517,8 @@ export class PicoBridge {
         this.textByte(k, value);
       };
     });
+
+    this.rxAlarms = [0, 1].map((k) => createAlarm(clock, () => this.feedNext(k)));
 
     // I2C and SPI controllers: signals on their pins.
     this.i2cLow = new Array(mcu.gpio.length).fill(false);
@@ -618,6 +626,9 @@ export class PicoBridge {
   // -- Text -------------------------------------------------------------------
 
   textByte(k, value) {
+    if (this.raw[k] !== null) {
+      this.raw[k].push(value);
+    }
     if (value === 10) {
       this.flushText(k);
     } else if (value !== 13) {
@@ -635,6 +646,46 @@ export class PicoBridge {
     if (this.text[k].length > 0) {
       this.lines.push(this.textTime[k], ['UART0', 'UART1', 'USB'][k], this.text[k]);
       this.text[k] = '';
+    }
+  }
+
+  setRaw(k, on) {
+    this.raw[k] = on ? [] : null;
+  }
+
+  takeRaw(k) {
+    const out = this.raw[k] ?? [];
+    if (this.raw[k] !== null) {
+      this.raw[k] = [];
+    }
+    return out;
+  }
+
+  feed(k, bytes) {
+    if (k === 2) {
+      for (const b of bytes) {
+        this.cdc.sendSerialByte(b);
+      }
+      return;
+    }
+    const queue = this.rxQueue[k];
+    const idle = queue.length === 0;
+    queue.push(...bytes);
+    if (idle && queue.length > 0) {
+      this.feedNext(k);
+    }
+  }
+
+  /** One typed byte to the UART, the next one a frame time later (10 bits). */
+  feedNext(k) {
+    const queue = this.rxQueue[k];
+    if (queue.length === 0) {
+      return;
+    }
+    this.mcu.uart[k].feedByte(queue.shift());
+    if (queue.length > 0) {
+      const baud = this.mcu.uart[k].baudRate;
+      this.rxAlarms[k].schedule(10e9 / (baud > 0 ? baud : 115200));
     }
   }
 

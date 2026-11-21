@@ -27,7 +27,7 @@ bool isKey(const std::string &word)
 {
     const std::string k = toLower(word);
     return k == "mcu" || k == "fw" || k == "io" || k == "adc" || k == "uartlog" ||
-           k == "bridge" || k == "log" || k == "arch";
+           k == "bridge" || k == "log" || k == "arch" || k == "pty" || k == "ptyusb";
 }
 
 } // namespace
@@ -153,6 +153,14 @@ bool parseRp2040Config(const std::vector<std::string> &args, Rp2040Config &cfg)
         else if (key == "uartlog")
         {
             cfg.uartLog = value;
+        }
+        else if (key == "pty")
+        {
+            cfg.pty = value;
+        }
+        else if (key == "ptyusb")
+        {
+            cfg.ptyUsb = value;
         }
         else if (key == "bridge")
         {

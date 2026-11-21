@@ -28,7 +28,7 @@ pour les démos Pico bare-metal.
 | GPIO | sens choisi par le firmware (DDRx), sortie 25 Ω, pull-up interne 35 kΩ, lecture de la tension réelle |
 | Timers, interruptions, PWM | émulés par simavr (`millis()`, `analogWrite()`…) |
 | ADC A0–A5 | convertisseur SAR reconstruit dans ngspice : la dichotomie est visible |
-| UART0 | émission : texte dans le terminal et un fichier, trames réelles sur TXD (PD1) ; réception : fichier de commandes horodaté ou trames venant du circuit sur RXD (PD0) |
+| UART0 | émission : texte dans le terminal et un fichier, trames réelles sur TXD (PD1) ; réception : fichier de commandes horodaté ou trames venant du circuit sur RXD (PD0) ; port série virtuel pour picocom, CuteCom, PuTTY… (§ 6.7) |
 | I²C (TWI) | esclaves virtuels LM75 et EEPROM 24C02, journal des transactions, signaux SDA/SCL réels en drain ouvert |
 | SPI | maître sur les vraies broches (SCK, MOSI, MISO), 4 modes, ordre des bits, débit de SPCR ; esclaves = composants du schéma (modèle 74HC595 fourni) ; journal des octets |
 | Afficheur LCD | module 16x2 / 20x4 (HD44780) comme composant du schéma : écran affiché dans le terminal et un fichier, vérification des temps du datasheet |
@@ -498,6 +498,46 @@ sinon ngspice plante. ngspice fait avancer les MCU l'un après l'autre :
 il signale alors souvent `XSPICE time is behind vtime` pour le second,
 sans conséquence sur les résultats.
 
+### 6.7 Terminal série externe (picocom, CuteCom, PuTTY…)
+
+L'UART0 de l'ATmega, l'UART0 de la Pico / Pico 2 et l'USB série de la
+Pico (`Serial` d'Arduino-pico) peuvent sortir sur un **vrai port série
+virtuel** : on l'ouvre avec un logiciel de terminal comme un adaptateur
+USB-série. Ce que le firmware envoie s'y affiche au fil de la simulation,
+ce qu'on y tape arrive sur son RX (`Serial.read()`), au débit programmé.
+
+```bash
+# Modèle avec le port série virtuel (lien ~/kisimavr_uart0 par défaut)
+python3 tools/make_atmega328p_lib.py --hex prog.hex --pty -o atmega328p_full.lib
+python3 tools/make_pico_lib.py --fw prog.uf2 --pty -o pico.lib     # UART0
+python3 tools/make_pico_lib.py --fw prog.uf2 --ptyusb -o pico.lib  # Serial (USB)
+```
+
+Pendant la simulation (le plug-in affiche
+`UART0 on ~/kisimavr_uart0 -> /dev/pts/5`) :
+
+```bash
+picocom -b 115200 ~/kisimavr_uart0      # ou CuteCom, GTKTerm, screen, pyserial
+```
+
+- **KiCad en Flatpak** : ses pseudo-terminaux ne sont pas visibles depuis
+  le système. Le plug-in le détecte et ouvre à la place un **serveur TCP
+  local** : `127.0.0.1:5555` (UART0) ou `5556` (USB), message
+  `KiCad runs in Flatpak, pseudo-terminal replaced by tcp:5555`. On s'y
+  connecte avec `nc localhost 5555`, PuTTY (type *Raw*), ou, pour CuteCom
+  et picocom, par un pont :
+  `socat pty,link=$HOME/kisimavr_uart0,raw,echo=0 tcp:localhost:5555`.
+  On peut aussi le demander directement : `--pty tcp:5555`. Les 4 derniers
+  ko envoyés avant la connexion sont transmis à la connexion.
+- La simulation ne tourne pas en temps réel (souvent plus lentement) : un
+  caractère tapé arrive au temps simulé du moment. Prévoir une durée de
+  simulation assez longue pour avoir le temps de taper.
+- Le moniteur série de l'IDE Arduino ne liste que les vrais ports série.
+- Les projets `Arduino_UNO`, `simPICO` et `simPICO2` ont le port activé.
+- L'USB série (`--ptyusb`) suppose la pile USB du firmware (TinyUSB
+  d'Arduino-pico ou du Pico SDK) ; il n'est pas couvert par les tests
+  automatiques (les démos sont bare-metal, sans USB).
+
 ## 7. Référence `sim_args`
 
 Chaque clé et chaque valeur est **une chaîne séparée** :
@@ -524,6 +564,7 @@ Chaque clé et chaque valeur est **une chaîne séparée** :
 | `uartlog` | fichier recevant le texte de l'UART0 (`.txt` ou `.log`) | — |
 | `uartin` | fichier de texte horodaté envoyé au récepteur (§ 6.6) | — |
 | `rxpin` | broche dont les trames sont décodées par le récepteur | `PD0` |
+| `pty` | UART0 sur un port série virtuel (§ 6.7) : `"1"`, chemin d'un lien (`"~/kisimavr_uart0"`) ou `"tcp:5555"` | — |
 | `vcd` | trace VCD des broches (`.vcd`) | — |
 | `i2c` | esclaves virtuels : `"lm75" ["0x48"] "eeprom" ["0x50"]` | — |
 | `lm75temp` | température du LM75 à t = 0 (°C) | `25` |
@@ -543,7 +584,7 @@ dans l'en-tête de leur source et générés par les scripts de `tools/` :
 
 | `sim_args` | Composant | Ports (entrées / sorties) | Script |
 |---|---|---|---|
-| `"mcu" "rp2040"` / `"mcu" "rp2350"` + `"fw"` | Pico / Pico 2 (`src/rp2040_config.h`) | lectures `io` + comparateurs ADC / 4 sorties par `io` + 12 bits CNA | `make_pico_lib.py` |
+| `"mcu" "rp2040"` / `"mcu" "rp2350"` + `"fw"` (+ `"pty"`, `"ptyusb"`) | Pico / Pico 2 (`src/rp2040_config.h`) | lectures `io` + comparateurs ADC / 4 sorties par `io` + 12 bits CNA | `make_pico_lib.py` |
 | `"device" "hd44780"` | afficheur LCD (`src/lcd_device.h`) | RS RW E D0..D7 / — | `make_lcd_lib.py` |
 | `"device" "i2c"` | modules I²C (`src/i2c_slave_device.h`) | SDA SCL / SDA tiré à 0 | `make_i2c_lib.py` |
 | `"device" "hcsr04"` | HC-SR04 (`src/sensor_devices.h`) | TRIG / ECHO | `make_module_lib.py hcsr04` |
@@ -634,6 +675,7 @@ Voir les messages du plug-in : lancer ngspice ou KiCad depuis un terminal ;
 | `src/i2c_slave_device.*`, `tools/make_i2c_lib.py` | modules I²C du circuit (LM75, 24C02, LCD PCF8574) décodés bit à bit ; leur modèle SPICE |
 | `kicad/74hc595.lib` | modèle XSPICE du 74HC595 (symbole officiel `74xx:74HC595`) |
 | `src/i2c_bus.*`, `src/i2c_devices.*` | TWI : esclaves virtuels, journal, signaux SDA/SCL ; logique LM75 / 24C02 (testée unitairement) |
+| `src/pty_port.*`, `tests/pty_test.py` | port série virtuel (pseudo-terminal ou TCP) ; test qui joue le rôle d'un logiciel de terminal |
 | `src/config.*`, `src/paths.*`, `src/vcd.*` | `sim_args`, chemins et fichiers de sortie, trace VCD (sans simavr, testés unitairement) |
 | `include/cosim_abi.h` | copie binaire-compatible de `ngspice/cosim.h` |
 | `tools/main.cpp` | `cosim_runner` : test sans ngspice |

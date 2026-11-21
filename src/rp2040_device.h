@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "cosim_device.h"
+#include "pty_port.h"
 #include "rp2040_config.h"
 
 struct JSRuntime;
@@ -48,6 +49,7 @@ private:
 
     bool call(const char *method, int argc, const double *argv, std::vector<double> *result);
     void printLines(bool final);
+    void exchangePty();
     void fail(const char *what);
     const char *label() const;    // "RP2040" or "RP2350"
 
@@ -57,6 +59,8 @@ private:
     bool                  m_first = true;
     std::vector<int>      m_lastOut;
     std::FILE            *m_log = nullptr;
+    PtyPort               m_pty;          // UART0
+    PtyPort               m_ptyUsb;       // USB serial
 };
 
 } // namespace kisimavr

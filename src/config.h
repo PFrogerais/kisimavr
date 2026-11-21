@@ -67,6 +67,7 @@ struct Config
     std::string         txPin   = "PD1";
     std::string         uartLog;
     std::string         uartIn;               // Timed text for the receiver.
+    std::string         pty;                  // UART0 on a pseudo-terminal: "1" or a link path
     std::string         rxPin    = "PD0";     // RXD frames decoded from the circuit.
     std::string         vcdPath;
     std::vector<I2cSlaveConfig> i2cSlaves;    // "i2c" "lm75" ["0x48"] "eeprom" ...

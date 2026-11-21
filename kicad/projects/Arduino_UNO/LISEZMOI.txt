@@ -57,3 +57,9 @@ Ou voir quoi ?
 Simulation : transitoire, pas 0.5u, duree 10m,
              "Sauvegarder tous les courants" decoche.
 Guide detaille : README.md du dossier parent.
+
+Terminal externe : l'UART0 est aussi sur un port serie virtuel, ~/kisimavr_uart0 :
+  picocom -b 115200 ~/kisimavr_uart0      (ou CuteCom, GTKTerm, screen)
+KiCad en Flatpak : serveur TCP local a la place, nc localhost 5555 ou
+  socat pty,link=$HOME/kisimavr_uart0,raw,echo=0 tcp:localhost:5555 puis CuteCom.
+Ce qu'on tape arrive sur RX du microcontroleur (README.md, section 6.7).

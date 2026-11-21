@@ -76,6 +76,12 @@ def parse_args():
     ap.add_argument("--so", default=os.path.join(here, "..", "build", "mcu_cosim.so"),
                     help="mcu_cosim.so (default: ../build/mcu_cosim.so)")
     ap.add_argument("--uartlog", help="UART / USB text file (default: next to the .lib)")
+    ap.add_argument("--pty", nargs="?", const="~/kisimavr_uart0", default="",
+                    help="UART0 on a pseudo-terminal for a terminal program (picocom, "
+                         "CuteCom...), reached by this link (default ~/kisimavr_uart0)")
+    ap.add_argument("--ptyusb", nargs="?", const="~/kisimavr_usb", default="",
+                    help="USB serial port (Serial of Arduino-pico) on a pseudo-terminal "
+                         "(default link ~/kisimavr_usb)")
     ap.add_argument("--name", default="", help="suffix: PICO_<NAME>, for several Picos")
     ap.add_argument("--irreversible", type=int, default=1,
                     help="d_cosim rank, distinct for each co-simulated part (default 1)")
@@ -137,7 +143,9 @@ def main():
     arch = ['"arch"', f'"{a.arch}"'] if a.arch else []
     sim_args = (['"mcu"', f'"{a.mcu}"', '"fw"', f'"{a.fw}"'] + arch + ['"io"'] +
                 [f'"{g}"' for g in ios] +
-                ['"adc"'] + [f'"{c}"' for c in ADC] + ['"uartlog"', f'"{a.uartlog}"'])
+                ['"adc"'] + [f'"{c}"' for c in ADC] + ['"uartlog"', f'"{a.uartlog}"'] +
+                (['"pty"', f'"{a.pty}"'] if a.pty else []) +
+                (['"ptyusb"', f'"{a.ptyusb}"'] if a.ptyusb else []))
 
     out = []
     w = out.append

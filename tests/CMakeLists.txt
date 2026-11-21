@@ -140,6 +140,29 @@ if(PICO_CLANG AND PICO_LLD AND PICO_OBJCOPY AND KISIMAVR_RP2040)
         EXPECT [[UART0> SPI : envoye 02, relu 00]]
                [[out12: 4[0-9] changes]]
         REJECT [[setup failed]] [[RP2040: ]])
+    foreach(chip IN ITEMS rp2040 rp2350)
+        if(chip STREQUAL "rp2040")
+            set(fw ${FW}/pico/pico_demo.bin)
+            set(fix firmware_pico)
+        else()
+            set(fw ${FW}/pico2/pico2_demo_riscv.bin)
+            set(fix firmware_pico2)
+        endif()
+        add_test(NAME pty.${chip}
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/pty_test.py
+                    ${CMAKE_CURRENT_BINARY_DIR}/pty_${chip} [[Bonjour\n]] [[Recu : Bonjour]] 200 --
+                    ${RUN} -t 0.05 ${SO} -- mcu ${chip} fw ${fw} io GP0
+                    pty ${CMAKE_CURRENT_BINARY_DIR}/pty_${chip})
+        set_tests_properties(pty.${chip} PROPERTIES FIXTURES_REQUIRED ${fix} TIMEOUT 300
+                             PASS_REGULAR_EXPRESSION "PTY OK")
+    endforeach()
+    # The same over TCP (KiCad in Flatpak): the first lines come from the backlog.
+    add_test(NAME pty.rp2040_tcp
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/pty_test.py
+                tcp:5793 [[Bonjour\n]] [[Recu : Bonjour]] 200 --
+                ${RUN} -t 0.05 ${SO} -- mcu rp2040 fw ${FW}/pico/pico_demo.bin io GP0 pty tcp:5793)
+    set_tests_properties(pty.rp2040_tcp PROPERTIES FIXTURES_REQUIRED firmware_pico TIMEOUT 300
+                         PASS_REGULAR_EXPRESSION "Pico pret.*PTY OK")
     kisimavr_test(args.pico_missing_fw
         COMMAND ${RUN} -t 0.001 ${SO} -- mcu rp2040 io GP25
         EXPECT [[missing firmware]] [[setup failed]])
@@ -174,6 +197,18 @@ kisimavr_test(runner.adc_pwm_high FIXTURE firmware
     EXPECT [[out0: [0-9]+ changes, [0-9]+ rising edges, mean period [0-9.]+ ms \([0-9.]+ Hz\), median period 0\.128[0-9]* ms]]
            [[out1: [0-9]+ changes, 1 rising edges]]
     REJECT [[setup failed]])
+# UART0 on a pseudo-terminal, used like a terminal program (tests/pty_test.py):
+# the firmware answers the typed command.
+if(Python3_EXECUTABLE)
+    add_test(NAME pty.avr
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/pty_test.py
+                ${CMAKE_CURRENT_BINARY_DIR}/pty_avr [[LED ON\n]] [[OK LED ON]] 60 --
+                ${RUN} -t 30 ${SO} -- hex ${FW}/uart_cmd.hex out PD1 PB5
+                pty ${CMAKE_CURRENT_BINARY_DIR}/pty_avr)
+    set_tests_properties(pty.avr PROPERTIES FIXTURES_REQUIRED firmware TIMEOUT 90
+                         PASS_REGULAR_EXPRESSION "PTY OK")
+endif()
+
 # Fan: NTC divider at 0.5 V (hot): ENA (PD6) PWM at 976 Hz, IN1 high.
 kisimavr_test(runner.ventilo FIXTURE firmware
     COMMAND ${RUN} -t 0.05 -a 0,0.5,0.5 ${SO} -- hex ${FW}/ventilo.hex out PD6 PD7 PB0 adc 0

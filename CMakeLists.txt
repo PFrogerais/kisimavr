@@ -36,7 +36,7 @@ message(STATUS "simavr library: ${SIMAVR_LIBRARIES}")
 set(KISIMAVR_WARNINGS -Wall -Wextra -Wpedantic)
 add_library(kisimavr_core STATIC
     src/config.cpp src/hd44780.cpp src/i2c_devices.cpp src/i2c_slave_device.cpp
-    src/lcd_device.cpp src/paths.cpp src/sensor_devices.cpp
+    src/lcd_device.cpp src/paths.cpp src/sensor_devices.cpp src/pty_port.cpp
     src/rp2040_config.cpp src/spi_frame.cpp src/uart_script.cpp src/vcd.cpp)
 target_include_directories(kisimavr_core PUBLIC include src)
 target_compile_options(kisimavr_core PRIVATE ${KISIMAVR_WARNINGS})

@@ -20,6 +20,9 @@
  *   - the RX pin ("rxpin", PD0) when it is an "in" or "io" pin: frames
  *     coming from the circuit (another MCU, a generator) are decoded at
  *     the programmed baud rate, sampled in the middle of each bit.
+ *   - "pty": a pseudo-terminal (see pty_port.h) opened by a terminal
+ *     program; what is typed there is sent at the programmed baud rate,
+ *     and the bytes of the firmware are written to it.
  * Received text is printed as "UART0< ...". simavr ignores bytes while the
  * receiver is off (RXEN = 0): they are counted and reported. While RXEN is
  * set the RX pin is an input (the internal pull-up still follows PORTD0).
@@ -38,6 +41,7 @@
 #include <avr_uart.h>
 
 #include "config.h"
+#include "pty_port.h"
 #include "uart_script.h"
 
 namespace kisimavr
@@ -84,6 +88,9 @@ private:
     static avr_cycle_count_t onScriptTimer(avr_t *avr, avr_cycle_count_t when, void *param);
     static avr_cycle_count_t onPaceTimer(avr_t *avr, avr_cycle_count_t when, void *param);
     static avr_cycle_count_t onSampleTimer(avr_t *avr, avr_cycle_count_t when, void *param);
+    static avr_cycle_count_t onPtyTimer(avr_t *avr, avr_cycle_count_t when, void *param);
+    avr_cycle_count_t pollPty(avr_cycle_count_t when);
+    void queueReceived(uint8_t value);
     bool loadScript(const std::string &path);
     void scheduleScript();
     avr_cycle_count_t scriptEvent(avr_cycle_count_t when);
@@ -127,6 +134,9 @@ private:
     bool               m_rxBusy    = false;
     int                m_rxBit     = 0;       // -1 start, 0..n-1 data, n stop
     uint16_t           m_rxShift   = 0;
+
+    // Reception: pseudo-terminal
+    PtyPort            m_pty;
 
     // Received text log and dropped bytes (receiver off)
     std::string        m_rxLine;

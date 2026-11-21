@@ -54,6 +54,9 @@ def parse_args():
                     help="mcu_cosim.so (default: ../build/mcu_cosim.so)")
     ap.add_argument("--uartlog", help="UART text file (default: next to the .lib)")
     ap.add_argument("--uartin", help="timed text sent to the UART receiver (default: none)")
+    ap.add_argument("--pty", nargs="?", const="~/kisimavr_uart0", default="",
+                    help="UART0 on a pseudo-terminal for a terminal program (picocom, "
+                         "CuteCom...), reached by this link (default ~/kisimavr_uart0)")
     ap.add_argument("--irreversible", type=int, default=1,
                     help="d_cosim rank: each MCU of one netlist needs its own value (1, 2, ...)")
     ap.add_argument("--name", default="",
@@ -109,6 +112,7 @@ def main():
             ['"adc"'] + [f'"{c}"' for c in ADC] +
             ['"vref"', '"5"', '"adcbit"', '"1e-6"', '"uartlog"', f'"{a.uartlog}"'] +
             (['"uartin"', f'"{a.uartin}"'] if a.uartin else []) +
+            (['"pty"', f'"{a.pty}"'] if a.pty else []) +
             ((['"i2c"'] + [f'"{t}"' for t in a.i2c.split()] +
               ['"lm75temp"', f'"{a.lm75temp}"', '"lm75rate"', f'"{a.lm75rate}"'])
              if a.i2c.split() else []) +

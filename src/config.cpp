@@ -49,6 +49,7 @@ bool isKey(const std::string &word)
     return k == "hex" || k == "mcu" || k == "freq" || k == "in" || k == "out" || k == "io" ||
            k == "adc" || k == "vref" || k == "adcbit" || k == "txpin" ||
            k == "uartlog" || k == "uartin" || k == "rxpin" || k == "vcd" || k == "log" ||
+           k == "pty" ||
            k == "i2c" || k == "lm75temp" ||
            k == "lm75rate" || k == "i2clog" || k == "sda" || k == "scl" || k == "spilog";
 }
@@ -165,6 +166,10 @@ bool applyValue(const std::string &key, const std::string &value, Config &cfg)
     else if (key == "uartin")
     {
         cfg.uartIn = value;
+    }
+    else if (key == "pty")
+    {
+        cfg.pty = value;
     }
     else if (key == "rxpin")
     {
